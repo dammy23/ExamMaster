@@ -48,7 +48,7 @@ import {
   Upload,
   Download
 } from "lucide-react"
-import { getStudents, getStudentGroups, createStudentGroup, createStudent, bulkUploadStudents, type Student, type StudentGroup } from "@/api/students"
+import { getStudents, getStudentGroups, createStudentGroup, createStudent, updateStudent, bulkUploadStudents, type Student, type StudentGroup } from "@/api/students"
 import { useToast } from "@/hooks/useToast"
 
 export function StudentManagement() {
@@ -60,7 +60,9 @@ export function StudentManagement() {
   const [filterStatus, setFilterStatus] = useState("all")
   const [showCreateGroupDialog, setShowCreateGroupDialog] = useState(false)
   const [showAddStudentDialog, setShowAddStudentDialog] = useState(false)
+  const [showEditStudentDialog, setShowEditStudentDialog] = useState(false)
   const [showBulkUploadDialog, setShowBulkUploadDialog] = useState(false)
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -99,16 +101,15 @@ export function StudentManagement() {
         'email',
         'password',
         'studentId',
-        'applicationNo',
         'group'
       ]
       
       const csvContent = [
         csvHeaders.join(','),
         // Add sample row with example data
-        'John Doe,john.doe@example.com,password123,STU001,APP001,2025/2026',
-        'Jane Smith,jane.smith@example.com,password456,STU002,APP002,2025/2026',
-        'Bob Johnson,bob.johnson@example.com,password789,STU003,APP003,2024/2025'
+        'John Doe,john.doe@example.com,password123,STU001,2025/2026',
+        'Jane Smith,jane.smith@example.com,password456,STU002,2025/2026',
+        'Bob Johnson,bob.johnson@example.com,password789,STU003,2024/2025'
       ].join('\n')
 
       // Create and download file
@@ -149,11 +150,47 @@ export function StudentManagement() {
     return <Badge className="bg-red-500">Needs Improvement</Badge>
   }
 
+  const handleEditStudent = (student: Student) => {
+    console.log('Opening edit dialog for student:', student._id)
+    setSelectedStudent(student)
+    setShowEditStudentDialog(true)
+  }
+
+  const handleEditStudentSubmit = async (formData: {
+    name: string;
+    email: string;
+    studentId: string;
+    group: string;
+    status: 'active' | 'inactive';
+  }) => {
+    if (!selectedStudent) return
+
+    try {
+      console.log('Updating student:', selectedStudent._id, formData)
+      await updateStudent(selectedStudent._id, formData)
+      
+      setShowEditStudentDialog(false)
+      setSelectedStudent(null)
+      fetchData()
+      
+      toast({
+        title: "Success",
+        description: "Student updated successfully"
+      })
+    } catch (error: any) {
+      console.error('Error updating student:', error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update student",
+        variant: "destructive"
+      })
+    }
+  }
+
   const filteredStudents = students.filter(student => {
     const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (student.studentId && student.studentId.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                         (student.applicationNo && student.applicationNo.toLowerCase().includes(searchTerm.toLowerCase()))
+                         (student.studentId && student.studentId.toLowerCase().includes(searchTerm.toLowerCase()))
     const matchesGroup = filterGroup === "all" || student.group === filterGroup
     const matchesStatus = filterStatus === "all" || student.status === filterStatus
 
@@ -330,7 +367,6 @@ export function StudentManagement() {
                 <TableRow>
                   <TableHead>Student</TableHead>
                   <TableHead>Student ID</TableHead>
-                  <TableHead>Application No</TableHead>
                   <TableHead>Group</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Exams Taken</TableHead>
@@ -351,7 +387,6 @@ export function StudentManagement() {
                         </div>
                       </TableCell>
                       <TableCell className="font-mono">{student.studentId || 'N/A'}</TableCell>
-                      <TableCell className="font-mono">{student.applicationNo || 'N/A'}</TableCell>
                       <TableCell>{student.group || 'Not assigned'}</TableCell>
                       <TableCell>{getStatusBadge(student.status)}</TableCell>
                       <TableCell>{(student as any).totalExamsAttempted || 0}</TableCell>
@@ -375,7 +410,7 @@ export function StudentManagement() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEditStudent(student)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Edit Student
                             </DropdownMenuItem>
@@ -394,7 +429,7 @@ export function StudentManagement() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8">
+                    <TableCell colSpan={9} className="text-center py-8">
                       <div className="text-muted-foreground">
                         {searchTerm || filterGroup !== "all" || filterStatus !== "all"
                           ? "No students found matching your filters."
@@ -408,7 +443,163 @@ export function StudentManagement() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Student Dialog */}
+      <Dialog open={showEditStudentDialog} onOpenChange={setShowEditStudentDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Student</DialogTitle>
+            <DialogDescription>
+              Update student information
+            </DialogDescription>
+          </DialogHeader>
+          {selectedStudent && (
+            <EditStudentForm 
+              student={selectedStudent}
+              groups={groups}
+              onSuccess={handleEditStudentSubmit}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
+  )
+}
+
+function EditStudentForm({ 
+  student, 
+  groups, 
+  onSuccess 
+}: { 
+  student: Student;
+  groups: StudentGroup[];
+  onSuccess: (data: {
+    name: string;
+    email: string;
+    studentId: string;
+    group: string;
+    status: 'active' | 'inactive';
+  }) => void;
+}) {
+  const [loading, setLoading] = useState(false)
+  const { toast } = useToast()
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    
+    const name = formData.get('name') as string
+    const email = formData.get('email') as string
+    const studentId = formData.get('studentId') as string
+    const group = formData.get('group') as string
+    const status = formData.get('status') as 'active' | 'inactive'
+
+    if (!name || !email) {
+      toast({
+        title: "Error",
+        description: "Name and email are required",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      await onSuccess({
+        name,
+        email,
+        studentId,
+        group,
+        status
+      })
+    } catch (error: any) {
+      console.error('Error in form submission:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update student",
+        variant: "destructive"
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="edit-name">Full Name *</Label>
+        <Input
+          id="edit-name"
+          name="name"
+          defaultValue={student.name}
+          placeholder="Enter full name"
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="edit-email">Email *</Label>
+        <Input
+          id="edit-email"
+          name="email"
+          type="email"
+          defaultValue={student.email}
+          placeholder="Enter email address"
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="edit-studentId">Student ID</Label>
+        <Input
+          id="edit-studentId"
+          name="studentId"
+          defaultValue={student.studentId || ''}
+          placeholder="Enter student ID"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="edit-group">Group</Label>
+        <Select name="group" defaultValue={student.group || 'none'}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select group" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">No Group</SelectItem>
+            {groups.map((group) => (
+              <SelectItem key={group._id} value={group.name}>
+                {group.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="edit-status">Status</Label>
+        <Select name="status" defaultValue={student.status}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <DialogFooter>
+        <Button type="submit" disabled={loading}>
+          {loading ? (
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+          ) : (
+            "Update Student"
+          )}
+        </Button>
+      </DialogFooter>
+    </form>
   )
 }
 
@@ -495,7 +686,6 @@ function AddStudentForm({ groups, onSuccess }: { groups: StudentGroup[]; onSucce
       email: formData.get('email') as string,
       password: formData.get('password') as string,
       studentId: formData.get('studentId') as string || undefined,
-      applicationNo: formData.get('applicationNo') as string || undefined,
       group: selectedGroup === "none" ? undefined : selectedGroup || undefined
     }
 
@@ -556,24 +746,13 @@ function AddStudentForm({ groups, onSuccess }: { groups: StudentGroup[]; onSucce
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="studentId">Student ID</Label>
-          <Input
-            id="studentId"
-            name="studentId"
-            placeholder="e.g., STU001"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="applicationNo">Application No</Label>
-          <Input
-            id="applicationNo"
-            name="applicationNo"
-            placeholder="e.g., APP001"
-          />
-        </div>
+      <div className="space-y-2">
+        <Label htmlFor="studentId">Student ID</Label>
+        <Input
+          id="studentId"
+          name="studentId"
+          placeholder="e.g., STU001"
+        />
       </div>
 
       <div className="space-y-2">
@@ -677,7 +856,7 @@ function BulkUploadForm({ onSuccess }: { onSuccess: () => void }) {
           required
         />
         <p className="text-sm text-muted-foreground">
-          Upload a CSV file with columns: name, email, password, studentId, applicationNo, group
+          Upload a CSV file with columns: name, email, password, studentId, group
         </p>
       </div>
 

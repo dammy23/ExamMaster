@@ -107,10 +107,11 @@ export function ExamManagement() {
     }
   }
 
-  const filteredExams = exams.filter(exam =>
-    exam.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    exam.subject.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredExams = exams.filter(exam => {
+    const subjectName = typeof exam.subject === 'string' ? exam.subject : exam.subject.name
+    return exam.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           subjectName.toLowerCase().includes(searchTerm.toLowerCase())
+  })
 
   if (loading) {
     return (
@@ -176,7 +177,12 @@ export function ExamManagement() {
                   filteredExams.map((exam) => (
                     <TableRow key={exam._id}>
                       <TableCell className="font-medium">{exam.title}</TableCell>
-                      <TableCell>{exam.subject}</TableCell>
+                      <TableCell>
+                        {typeof exam.subject === 'string' 
+                          ? exam.subject 
+                          : `${exam.subject.name} (${exam.subject.code})`
+                        }
+                      </TableCell>
                       <TableCell>{getStatusBadge(exam.status)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
@@ -209,10 +215,12 @@ export function ExamManagement() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem>
-                              <Eye className="mr-2 h-4 w-4" />
-                              View Details
-                            </DropdownMenuItem>
+                            <Link to={`/admin/exams/${exam._id}/details`}>
+                              <DropdownMenuItem>
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Details
+                              </DropdownMenuItem>
+                            </Link>
                             <Link to={`/admin/exams/edit/${exam._id}`}>
                               <DropdownMenuItem>
                                 <Edit className="mr-2 h-4 w-4" />

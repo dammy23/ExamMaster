@@ -12,12 +12,14 @@ import { AdminDashboard } from "./pages/admin/AdminDashboard"
 import { StudentDashboard } from "./pages/student/StudentDashboard"
 import { ExamManagement } from "./pages/admin/ExamManagement"
 import { QuestionManagement } from "./pages/admin/QuestionManagement"
+import { Subjects } from "./pages/admin/Subjects"
 import { StudentManagement } from "./pages/admin/StudentManagement"
 import { Reports } from "./pages/admin/Reports"
 import { ExamAttempt } from "./pages/student/ExamAttempt"
 import { StudentResults } from "./pages/student/StudentResults"
 import { CreateExam } from "./pages/admin/CreateExam"
 import { EditExam } from "./pages/admin/EditExam"
+import { ExamDetails } from "./pages/admin/ExamDetails"
 import { ExamQuestions } from "./pages/admin/ExamQuestions"
 import { DatabaseSeeding } from "./pages/admin/DatabaseSeeding"
 
@@ -37,8 +39,10 @@ function App() {
             <Route path="admin/exams" element={<ExamManagement />} />
             <Route path="admin/exams/create" element={<CreateExam />} />
             <Route path="admin/exams/edit/:id" element={<EditExam />} />
+            <Route path="admin/exams/:id/details" element={<ExamDetails />} />
             <Route path="admin/exams/:examId/questions" element={<ExamQuestions />} />
             <Route path="admin/questions" element={<QuestionManagement />} />
+            <Route path="admin/subjects" element={<Subjects />} />
             <Route path="admin/students" element={<StudentManagement />} />
             <Route path="admin/reports" element={<Reports />} />
             <Route path="admin/seeding" element={<DatabaseSeeding />} />
