@@ -26,12 +26,6 @@ const questionSchema = new mongoose.Schema({
     trim: true,
     maxlength: 500
   },
-  subject: {
-    type: String,
-    required: true,
-    trim: true,
-    lowercase: true
-  },
   difficulty: {
     type: String,
     enum: ['easy', 'medium', 'hard'],
@@ -88,7 +82,7 @@ questionSchema.pre('save', function(next) {
 });
 
 // Index for better query performance
-questionSchema.index({ subject: 1, difficulty: 1 });
+questionSchema.index({ difficulty: 1 });
 questionSchema.index({ createdBy: 1 });
 questionSchema.index({ createdAt: -1 });
 

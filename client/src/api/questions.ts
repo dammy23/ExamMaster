@@ -7,7 +7,6 @@ export interface Question {
   options?: string[];
   correctAnswers: string[];
   explanation: string;
-  subject: string;
   difficulty: 'easy' | 'medium' | 'hard';
   marks: number;
   createdAt: string;
@@ -16,14 +15,13 @@ export interface Question {
 
 // Description: Get all questions
 // Endpoint: GET /api/questions
-// Request: { page?: number, limit?: number, subject?: string, difficulty?: string, search?: string }
+// Request: { page?: number, limit?: number, difficulty?: string, search?: string }
 // Response: { success: boolean, data: { questions: Question[], pagination: { currentPage: number, totalPages: number, totalItems: number, itemsPerPage: number } } }
-export const getQuestions = async (filters?: { page?: number; limit?: number; subject?: string; difficulty?: string; search?: string }) => {
+export const getQuestions = async (filters?: { page?: number; limit?: number; difficulty?: string; search?: string }) => {
   try {
     const params = new URLSearchParams();
     if (filters?.page) params.append('page', filters.page.toString());
     if (filters?.limit) params.append('limit', filters.limit.toString());
-    if (filters?.subject) params.append('subject', filters.subject);
     if (filters?.difficulty) params.append('difficulty', filters.difficulty);
     if (filters?.search) params.append('search', filters.search);
     

@@ -6,15 +6,11 @@ class QuestionService {
     try {
       console.log('QuestionService: Fetching questions with filters:', filters);
       
-      const { page = 1, limit = 50, subject, difficulty, search } = { ...filters, ...pagination };
+      const { page = 1, limit = 50, difficulty, search } = { ...filters, ...pagination };
       const skip = (page - 1) * limit;
       
       // Build query
       const query = {};
-      
-      if (subject && subject !== 'all') {
-        query.subject = subject.toLowerCase();
-      }
       
       if (difficulty && difficulty !== 'all') {
         query.difficulty = difficulty;
@@ -22,8 +18,7 @@ class QuestionService {
       
       if (search) {
         query.$or = [
-          { question: { $regex: search, $options: 'i' } },
-          { subject: { $regex: search, $options: 'i' } }
+          { question: { $regex: search, $options: 'i' } }
         ];
       }
       
@@ -144,21 +139,6 @@ class QuestionService {
     }
   }
   
-  async getQuestionsBySubject(subject) {
-    try {
-      console.log('QuestionService: Fetching questions by subject:', subject);
-      
-      const questions = await Question.find({ subject: subject.toLowerCase() })
-        .populate('createdBy', 'name email')
-        .sort({ createdAt: -1 });
-      
-      console.log(`QuestionService: Found ${questions.length} questions for subject ${subject}`);
-      return questions;
-    } catch (error) {
-      console.error('QuestionService: Error fetching questions by subject:', error);
-      throw new Error(`Failed to fetch questions by subject: ${error.message}`);
-    }
-  }
   
   async bulkCreateQuestions(questionsData, createdBy) {
     try {

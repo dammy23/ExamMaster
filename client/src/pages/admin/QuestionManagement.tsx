@@ -55,7 +55,6 @@ export function QuestionManagement() {
   const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-  const [filterSubject, setFilterSubject] = useState("all")
   const [filterDifficulty, setFilterDifficulty] = useState("all")
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showDetailsDialog, setShowDetailsDialog] = useState(false)
@@ -71,7 +70,7 @@ export function QuestionManagement() {
 
   useEffect(() => {
     fetchQuestions()
-  }, [searchTerm, filterSubject, filterDifficulty, pagination.currentPage])
+  }, [searchTerm, filterDifficulty, pagination.currentPage])
 
   const fetchQuestions = async () => {
     try {
@@ -80,7 +79,6 @@ export function QuestionManagement() {
       const response = await getQuestions({
         page: pagination.currentPage,
         limit: pagination.itemsPerPage,
-        subject: filterSubject !== "all" ? filterSubject : undefined,
         difficulty: filterDifficulty !== "all" ? filterDifficulty : undefined,
         search: searchTerm || undefined
       })
@@ -186,7 +184,6 @@ export function QuestionManagement() {
       const csvHeaders = [
         'type',
         'question', 
-        'subject',
         'difficulty',
         'marks',
         'options',
@@ -197,9 +194,9 @@ export function QuestionManagement() {
       const csvContent = [
         csvHeaders.join(','),
         // Add sample row with example data
-        'multiple-choice,"What is 2 + 2?",mathematics,easy,1,"A) 1|B) 2|C) 3|D) 4","D) 4","Basic arithmetic operation"',
-        'true-false,"The Earth is round",physics,easy,1,"","true","Basic geography fact"',
-        'short-answer,"Name the capital of France",geography,easy,2,"","Paris","Basic geography knowledge"'
+        'multiple-choice,"What is 2 + 2?",easy,1,"A) 1|B) 2|C) 3|D) 4","D) 4","Basic arithmetic operation"',
+        'true-false,"The Earth is round",easy,1,"","true","Basic geography fact"',
+        'short-answer,"Name the capital of France",easy,2,"","Paris","Basic geography knowledge"'
       ].join('\n')
 
       // Create and download file
@@ -337,18 +334,6 @@ export function QuestionManagement() {
                 className="pl-8"
               />
             </div>
-            <Select value={filterSubject} onValueChange={setFilterSubject}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Subject" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Subjects</SelectItem>
-                <SelectItem value="mathematics">Mathematics</SelectItem>
-                <SelectItem value="physics">Physics</SelectItem>
-                <SelectItem value="chemistry">Chemistry</SelectItem>
-                <SelectItem value="biology">Biology</SelectItem>
-              </SelectContent>
-            </Select>
             <Select value={filterDifficulty} onValueChange={setFilterDifficulty}>
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Difficulty" />
@@ -368,7 +353,6 @@ export function QuestionManagement() {
                 <TableRow>
                   <TableHead>Question</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead>Subject</TableHead>
                   <TableHead>Difficulty</TableHead>
                   <TableHead>Marks</TableHead>
                   <TableHead>Created</TableHead>
@@ -389,7 +373,6 @@ export function QuestionManagement() {
                         </div>
                       </TableCell>
                       <TableCell>{getTypeBadge(question.type)}</TableCell>
-                      <TableCell className="capitalize">{question.subject}</TableCell>
                       <TableCell>{getDifficultyBadge(question.difficulty)}</TableCell>
                       <TableCell>{question.marks}</TableCell>
                       <TableCell>
@@ -437,9 +420,9 @@ export function QuestionManagement() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
+                    <TableCell colSpan={6} className="text-center py-8">
                       <div className="text-muted-foreground">
-                        {searchTerm || filterSubject !== "all" || filterDifficulty !== "all"
+                        {searchTerm || filterDifficulty !== "all"
                           ? "No questions found matching your filters."
                           : "No questions created yet."}
                       </div>
@@ -551,10 +534,6 @@ function QuestionDetailsView({ question }: { question: Question }) {
         <div>
           <Label className="text-sm font-medium text-muted-foreground">Type</Label>
           <div className="mt-1">{getTypeBadge(question.type)}</div>
-        </div>
-        <div>
-          <Label className="text-sm font-medium text-muted-foreground">Subject</Label>
-          <div className="mt-1 capitalize">{question.subject}</div>
         </div>
         <div>
           <Label className="text-sm font-medium text-muted-foreground">Difficulty</Label>
@@ -708,7 +687,6 @@ function CreateQuestionForm({ onSuccess }: { onSuccess: () => void }) {
     const questionData = {
       type: questionType,
       question: formData.get('question') as string,
-      subject: formData.get('subject') as string,
       difficulty: formData.get('difficulty') as 'easy' | 'medium' | 'hard',
       marks: parseInt(formData.get('marks') as string),
       explanation: formData.get('explanation') as string,
@@ -757,35 +735,18 @@ function CreateQuestionForm({ onSuccess }: { onSuccess: () => void }) {
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="type">Question Type *</Label>
-          <Select value={questionType} onValueChange={(value: any) => setQuestionType(value)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="multiple-choice">Multiple Choice</SelectItem>
-              <SelectItem value="true-false">True/False</SelectItem>
-              <SelectItem value="short-answer">Short Answer</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="subject">Subject *</Label>
-          <Select name="subject" required>
-            <SelectTrigger>
-              <SelectValue placeholder="Select subject" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="mathematics">Mathematics</SelectItem>
-              <SelectItem value="physics">Physics</SelectItem>
-              <SelectItem value="chemistry">Chemistry</SelectItem>
-              <SelectItem value="biology">Biology</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="space-y-2">
+        <Label htmlFor="type">Question Type *</Label>
+        <Select value={questionType} onValueChange={(value: any) => setQuestionType(value)}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="multiple-choice">Multiple Choice</SelectItem>
+            <SelectItem value="true-false">True/False</SelectItem>
+            <SelectItem value="short-answer">Short Answer</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -930,7 +891,6 @@ function EditQuestionForm({ question, onSuccess }: { question: Question, onSucce
     const updatedQuestion = {
       type: questionType,
       question: formData.get('question') as string,
-      subject: formData.get('subject') as string,
       difficulty: formData.get('difficulty') as 'easy' | 'medium' | 'hard',
       marks: parseInt(formData.get('marks') as string),
       explanation: formData.get('explanation') as string,
@@ -975,35 +935,18 @@ function EditQuestionForm({ question, onSuccess }: { question: Question, onSucce
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="type">Question Type *</Label>
-          <Select value={questionType} onValueChange={(value: any) => setQuestionType(value)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="multiple-choice">Multiple Choice</SelectItem>
-              <SelectItem value="true-false">True/False</SelectItem>
-              <SelectItem value="short-answer">Short Answer</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="subject">Subject *</Label>
-          <Select name="subject" defaultValue={question.subject}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="mathematics">Mathematics</SelectItem>
-              <SelectItem value="physics">Physics</SelectItem>
-              <SelectItem value="chemistry">Chemistry</SelectItem>
-              <SelectItem value="biology">Biology</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="space-y-2">
+        <Label htmlFor="type">Question Type *</Label>
+        <Select value={questionType} onValueChange={(value: any) => setQuestionType(value)}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="multiple-choice">Multiple Choice</SelectItem>
+            <SelectItem value="true-false">True/False</SelectItem>
+            <SelectItem value="short-answer">Short Answer</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid grid-cols-2 gap-4">

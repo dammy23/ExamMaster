@@ -35,10 +35,10 @@ router.get('/', requireUser, async (req, res) => {
   try {
     console.log('GET /api/questions - User:', req.user?.email);
     
-    const { page, limit, subject, difficulty, search } = req.query;
+    const { page, limit, difficulty, search } = req.query;
     
     const result = await questionService.getAllQuestions(
-      { subject, difficulty, search },
+      { difficulty, search },
       { page, limit }
     );
     
@@ -84,10 +84,10 @@ router.post('/', requireUser, async (req, res) => {
     const questionData = req.body;
     
     // Validate required fields
-    if (!questionData.question || !questionData.type || !questionData.subject || !questionData.difficulty || !questionData.marks) {
+    if (!questionData.question || !questionData.type || !questionData.difficulty || !questionData.marks) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields: question, type, subject, difficulty, marks'
+        error: 'Missing required fields: question, type, difficulty, marks'
       });
     }
     
@@ -184,7 +184,6 @@ router.post('/bulk-upload', requireUser, upload.single('file'), async (req, res)
               const questionData = {
                 type: normalizedData.type || normalizedData.questiontype,
                 question: normalizedData.question || normalizedData.questiontext,
-                subject: normalizedData.subject,
                 difficulty: normalizedData.difficulty || 'easy',
                 marks: parseInt(normalizedData.marks || normalizedData.points || 1),
                 explanation: normalizedData.explanation || normalizedData.hint || ''
@@ -222,7 +221,7 @@ router.post('/bulk-upload', requireUser, upload.single('file'), async (req, res)
               }
 
               // Only add if we have required fields
-              if (questionData.question && questionData.type && questionData.subject) {
+              if (questionData.question && questionData.type) {
                 questions.push(questionData);
               }
             })
@@ -284,26 +283,6 @@ router.post('/bulk-upload', requireUser, upload.single('file'), async (req, res)
     }
     
     res.status(400).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// Get questions by subject
-router.get('/subject/:subject', requireUser, async (req, res) => {
-  try {
-    console.log('GET /api/questions/subject/:subject - Subject:', req.params.subject);
-    
-    const questions = await questionService.getQuestionsBySubject(req.params.subject);
-    
-    res.json({
-      success: true,
-      data: { questions }
-    });
-  } catch (error) {
-    console.error('GET /api/questions/subject/:subject error:', error);
-    res.status(500).json({
       success: false,
       error: error.message
     });
