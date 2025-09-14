@@ -385,11 +385,22 @@ export function ExamAttempt() {
     )
   }
 
-  if (!exam || !currentQuestion) {
+  if (!exam ) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-2">Exam not found</h2>
+          <Button onClick={() => navigate('/student')}>Return to Dashboard</Button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!currentQuestion) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-2">Questions not found</h2>
           <Button onClick={() => navigate('/student')}>Return to Dashboard</Button>
         </div>
       </div>
