@@ -5,6 +5,7 @@ import { AuthProvider } from "./contexts/AuthContext"
 import { Login } from "./pages/Login"
 import { Register } from "./pages/Register"
 import { ProtectedRoute } from "./components/ProtectedRoute"
+import { RoleDashboard } from "./components/RoleDashboard"
 import { Layout } from "./components/Layout"
 import { BlankPage } from "./pages/BlankPage"
 import { AdminDashboard } from "./pages/admin/AdminDashboard"
@@ -29,7 +30,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/seeding" element={<DatabaseSeeding />} />
           <Route path="/" element={<ProtectedRoute> <Layout /> </ProtectedRoute>}>
-            <Route index element={<AdminDashboard />} />
+            <Route index element={<RoleDashboard />} />
             <Route path="admin" element={<AdminDashboard />} />
             <Route path="student" element={<StudentDashboard />} />
             <Route path="admin/exams" element={<ExamManagement />} />
