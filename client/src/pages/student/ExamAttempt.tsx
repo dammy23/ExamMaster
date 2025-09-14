@@ -424,7 +424,7 @@ export function ExamAttempt() {
         <div className="flex items-center justify-between max-w-6xl mx-auto">
           <div>
             <h1 className="text-xl font-bold">{exam.title}</h1>
-            <p className="text-sm text-muted-foreground">{exam.subject}</p>
+            <p className="text-sm text-muted-foreground">{exam.subject?.name || 'No subject'}</p>
           </div>
 
           <div className="flex items-center gap-4">

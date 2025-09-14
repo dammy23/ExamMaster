@@ -169,7 +169,7 @@ export function ExamDetails() {
           <CardContent className="space-y-4">
             <div>
               <label className="text-sm font-medium text-muted-foreground">Subject</label>
-              <p className="text-sm mt-1">{exam.subject}</p>
+              <p className="text-sm mt-1">{exam.subject?.name || 'No subject'}</p>
             </div>
 
             {exam.description && (
