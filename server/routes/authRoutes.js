@@ -1,0 +1,272 @@
+const express = require('express');
+const UserService = require('../services/userService.js');
+const { generateAccessToken, generateRefreshToken } = require('../utils/auth.js');
+const { requireUser } = require('./middleware/auth.js');
+const jwt = require('jsonwebtoken');
+
+const router = express.Router();
+
+// Login route
+router.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    console.log(`=== LOGIN ATTEMPT ===`);
+    console.log(`Email: ${email}`);
+    console.log(`Password provided: ${!!password}`);
+    console.log(`Request body:`, { email, password: password ? '[PROVIDED]' : '[MISSING]' });
+
+    if (!email || !password) {
+      console.log('Login failed: Missing email or password');
+      return res.status(400).json({
+        success: false,
+        error: 'Email and password are required'
+      });
+    }
+
+    console.log(`Attempting to find user with email: ${email}`);
+    const user = await UserService.getUserByEmail(email);
+
+    if (!user) {
+      console.log(`Login failed: User not found for email: ${email}`);
+      return res.status(400).json({
+        success: false,
+        error: 'Email or password is incorrect. If this is your first time, please visit /seeding to create initial users.'
+      });
+    }
+
+    console.log(`User found: ${user.email}, ID: ${user._id}, Role: ${user.role}`);
+    console.log(`User password hash exists: ${!!user.password}`);
+
+    console.log(`Validating password for user: ${email}`);
+    const isValidPassword = await UserService.validatePassword(password, user.password);
+    console.log(`Password validation result: ${isValidPassword}`);
+
+    if (!isValidPassword) {
+      console.log(`Login failed: Invalid password for email: ${email}`);
+      return res.status(400).json({
+        success: false,
+        error: 'Email or password is incorrect'
+      });
+    }
+
+    console.log(`Generating tokens for user: ${email}`);
+    const accessToken = generateAccessToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
+
+    console.log(`Tokens generated successfully for user: ${email}`);
+    console.log(`Access token length: ${accessToken.length}`);
+    console.log(`Refresh token length: ${refreshToken.length}`);
+
+    const userResponse = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role
+    };
+
+    console.log(`Login successful for user: ${email}`);
+    return res.status(200).json({
+      success: true,
+      data: {
+        accessToken,
+        refreshToken,
+        user: userResponse
+      }
+    });
+  } catch (error) {
+    console.error(`Login error for email ${req.body.email}:`, error.message);
+    console.error(`Login error stack:`, error.stack);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+});
+
+// Register route
+router.post('/register', async (req, res) => {
+  try {
+    const { name, email, password, role } = req.body;
+    console.log(`=== REGISTRATION ATTEMPT ===`);
+    console.log(`Name: ${name}, Email: ${email}, Role: ${role}`);
+
+    if (!name || !email || !password || !role) {
+      console.log('Registration failed: Missing required fields');
+      return res.status(400).json({
+        success: false,
+        error: 'All fields are required'
+      });
+    }
+
+    if (!['admin', 'student'].includes(role)) {
+      console.log(`Registration failed: Invalid role: ${role}`);
+      return res.status(400).json({
+        success: false,
+        error: 'Role must be either admin or student'
+      });
+    }
+
+    console.log(`Checking if user exists with email: ${email}`);
+    const existingUser = await UserService.getUserByEmail(email);
+    if (existingUser) {
+      console.log(`Registration failed: User already exists with email: ${email}`);
+      return res.status(400).json({
+        success: false,
+        error: 'User with this email already exists'
+      });
+    }
+
+    console.log(`Creating new user with email: ${email}`);
+    const user = await UserService.createUser({ name, email, password, role });
+
+    console.log(`Generating access token for new user: ${email}`);
+    const accessToken = generateAccessToken(user._id);
+
+    const userResponse = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role
+    };
+
+    console.log(`Registration successful for user: ${email}`);
+    return res.status(201).json({
+      success: true,
+      data: {
+        accessToken,
+        user: userResponse
+      }
+    });
+  } catch (error) {
+    console.error(`Registration error for email ${req.body.email}:`, error.message);
+    console.error(`Registration error stack:`, error.stack);
+
+    // Handle validation errors specifically
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        error: validationErrors.join(', ')
+      });
+    }
+
+    // Handle duplicate key errors
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        error: 'User with this email already exists'
+      });
+    }
+
+    // Handle other known errors
+    if (error.message.includes('User with this email already exists')) {
+      return res.status(400).json({
+        success: false,
+        error: error.message
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+});
+
+// Refresh token route
+router.post('/refresh', async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    console.log(`=== TOKEN REFRESH ATTEMPT ===`);
+    console.log(`Refresh token provided: ${!!refreshToken}`);
+
+    if (!refreshToken) {
+      console.log('Token refresh failed: No refresh token provided');
+      return res.status(401).json({
+        success: false,
+        error: 'Refresh token required'
+      });
+    }
+
+    console.log('Verifying refresh token...');
+    const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+    console.log(`Refresh token verified for user ID: ${decoded.userId}`);
+
+    const user = await UserService.getUserById(decoded.userId);
+    if (!user) {
+      console.log(`Token refresh failed: User not found for ID: ${decoded.userId}`);
+      return res.status(401).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    console.log(`Generating new tokens for user: ${user.email}`);
+    const newAccessToken = generateAccessToken(user._id);
+    const newRefreshToken = generateRefreshToken(user._id);
+
+    console.log(`Token refresh successful for user: ${user.email}`);
+    return res.status(200).json({
+      success: true,
+      data: {
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken
+      }
+    });
+  } catch (error) {
+    console.error('Token refresh error:', error.message);
+    return res.status(401).json({
+      success: false,
+      error: 'Invalid or expired refresh token'
+    });
+  }
+});
+
+// Logout route
+router.post('/logout', requireUser, async (req, res) => {
+  try {
+    console.log(`=== LOGOUT ATTEMPT ===`);
+    console.log(`User: ${req.user.email}`);
+
+    console.log(`Logout successful for user: ${req.user.email}`);
+    return res.status(200).json({
+      success: true,
+      message: 'Logged out successfully'
+    });
+  } catch (error) {
+    console.error(`Logout error for user ${req.user?.email}:`, error.message);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+});
+
+// Get current user
+router.get('/me', requireUser, async (req, res) => {
+  try {
+    console.log(`=== GET CURRENT USER ===`);
+    console.log(`User: ${req.user.email}`);
+
+    const userResponse = {
+      _id: req.user._id,
+      name: req.user.name,
+      email: req.user.email,
+      role: req.user.role
+    };
+
+    console.log(`Current user retrieved: ${req.user.email}`);
+    return res.status(200).json({
+      success: true,
+      user: userResponse
+    });
+  } catch (error) {
+    console.error(`Get current user error for user ${req.user?.email}:`, error.message);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+});
+
+module.exports = router;

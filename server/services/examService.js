@@ -1,0 +1,204 @@
+const Exam = require('../models/Exam.js');
+const mongoose = require('mongoose');
+
+class ExamService {
+  
+  // Get all exams with optional filtering
+  static async getAll(filters = {}, userId = null) {
+    try {
+      console.log('ExamService: Getting all exams with filters:', filters);
+      
+      let query = {};
+      
+      // If userId is provided, filter by createdBy (for admin users)
+      if (userId) {
+        query.createdBy = userId;
+      }
+      
+      // Add additional filters if provided
+      if (filters.status) {
+        query.status = filters.status;
+      }
+      
+      if (filters.subject) {
+        query.subject = new RegExp(filters.subject, 'i');
+      }
+      
+      const exams = await Exam.find(query)
+        .populate('createdBy', 'name email')
+        .sort({ createdAt: -1 });
+      
+      console.log(`ExamService: Found ${exams.length} exams`);
+      return exams;
+    } catch (error) {
+      console.error('ExamService: Error getting all exams:', error.message);
+      throw new Error('Failed to retrieve exams');
+    }
+  }
+  
+  // Get exam by ID
+  static async getById(examId) {
+    try {
+      console.log('ExamService: Getting exam by ID:', examId);
+      
+      if (!mongoose.Types.ObjectId.isValid(examId)) {
+        throw new Error('Invalid exam ID format');
+      }
+      
+      const exam = await Exam.findById(examId)
+        .populate('createdBy', 'name email')
+        .populate('assignedStudents', 'name email');
+      
+      if (!exam) {
+        throw new Error('Exam not found');
+      }
+      
+      console.log('ExamService: Found exam:', exam.title);
+      return exam;
+    } catch (error) {
+      console.error('ExamService: Error getting exam by ID:', error.message);
+      throw error;
+    }
+  }
+  
+  // Create new exam
+  static async create(examData, userId) {
+    try {
+      console.log('ExamService: Creating new exam:', examData.title);
+      
+      // Validate required fields
+      const requiredFields = ['title', 'subject', 'duration', 'startDate', 'endDate', 'totalMarks', 'passingMarks'];
+      for (const field of requiredFields) {
+        if (!examData[field]) {
+          throw new Error(`${field} is required`);
+        }
+      }
+      
+      // Validate dates
+      const startDate = new Date(examData.startDate);
+      const endDate = new Date(examData.endDate);
+      
+      if (startDate >= endDate) {
+        throw new Error('End date must be after start date');
+      }
+      
+      // Validate passing marks
+      if (examData.passingMarks > examData.totalMarks) {
+        throw new Error('Passing marks cannot exceed total marks');
+      }
+      
+      const examToCreate = {
+        ...examData,
+        createdBy: userId,
+        startDate,
+        endDate
+      };
+      
+      const exam = new Exam(examToCreate);
+      const savedExam = await exam.save();
+      
+      // Populate the created exam
+      const populatedExam = await Exam.findById(savedExam._id)
+        .populate('createdBy', 'name email');
+      
+      console.log('ExamService: Exam created successfully with ID:', savedExam._id);
+      return populatedExam;
+    } catch (error) {
+      console.error('ExamService: Error creating exam:', error.message);
+      throw error;
+    }
+  }
+  
+  // Update exam
+  static async update(examId, examData, userId) {
+    try {
+      console.log('ExamService: Updating exam:', examId);
+      console.log('ExamService: Received exam data:', JSON.stringify(examData, null, 2));
+
+      if (!mongoose.Types.ObjectId.isValid(examId)) {
+        throw new Error('Invalid exam ID format');
+      }
+
+      const exam = await Exam.findById(examId);
+      if (!exam) {
+        throw new Error('Exam not found');
+      }
+
+      // Check if user is the creator of the exam
+      if (exam.createdBy.toString() !== userId.toString()) {
+        throw new Error('You are not authorized to update this exam');
+      }
+
+      // Validate dates if provided
+      if (examData.startDate && examData.endDate) {
+        const startDate = new Date(examData.startDate);
+        const endDate = new Date(examData.endDate);
+        
+        console.log('ExamService: Start date string:', examData.startDate);
+        console.log('ExamService: End date string:', examData.endDate);
+        console.log('ExamService: Start date object:', startDate);
+        console.log('ExamService: End date object:', endDate);
+        console.log('ExamService: Start date >= End date?', startDate >= endDate);
+
+        if (startDate >= endDate) {
+          throw new Error('End date must be after start date');
+        }
+      }
+
+      // Validate passing marks - need to check against both new and existing values
+      const totalMarks = examData.totalMarks !== undefined ? examData.totalMarks : exam.totalMarks;
+      const passingMarks = examData.passingMarks !== undefined ? examData.passingMarks : exam.passingMarks;
+
+      console.log('ExamService: Final passing marks:', passingMarks, typeof passingMarks);
+      console.log('ExamService: Final total marks:', totalMarks, typeof totalMarks);
+      console.log('ExamService: Passing marks > Total marks?', passingMarks > totalMarks);
+      
+      if (passingMarks > totalMarks) {
+        throw new Error('Passing marks cannot exceed total marks');
+      }
+
+      const updatedExam = await Exam.findByIdAndUpdate(
+        examId,
+        { ...examData, updatedAt: new Date() },
+        { new: true, runValidators: true }
+      ).populate('createdBy', 'name email');
+
+      console.log('ExamService: Exam updated successfully');
+      return updatedExam;
+    } catch (error) {
+      console.error('ExamService: Error updating exam:', error.message);
+      throw error;
+    }
+  }
+  
+  // Delete exam
+  static async delete(examId, userId) {
+    try {
+      console.log('ExamService: Deleting exam:', examId);
+      
+      if (!mongoose.Types.ObjectId.isValid(examId)) {
+        throw new Error('Invalid exam ID format');
+      }
+      
+      const exam = await Exam.findById(examId);
+      if (!exam) {
+        throw new Error('Exam not found');
+      }
+      
+      // Check if user is the creator of the exam
+      if (exam.createdBy.toString() !== userId.toString()) {
+        throw new Error('You are not authorized to delete this exam');
+      }
+      
+      await Exam.findByIdAndDelete(examId);
+      
+      console.log('ExamService: Exam deleted successfully');
+      return { message: 'Exam deleted successfully' };
+    } catch (error) {
+      console.error('ExamService: Error deleting exam:', error.message);
+      throw error;
+    }
+  }
+}
+
+module.exports = ExamService;
