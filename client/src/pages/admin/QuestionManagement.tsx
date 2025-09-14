@@ -178,6 +178,55 @@ export function QuestionManagement() {
     }
   }
 
+  const handleDownloadTemplate = () => {
+    try {
+      console.log('Downloading questions CSV template...')
+      
+      // Create CSV content
+      const csvHeaders = [
+        'type',
+        'question', 
+        'subject',
+        'difficulty',
+        'marks',
+        'options',
+        'correctAnswers',
+        'explanation'
+      ]
+      
+      const csvContent = [
+        csvHeaders.join(','),
+        // Add sample row with example data
+        'multiple-choice,"What is 2 + 2?",mathematics,easy,1,"A) 1|B) 2|C) 3|D) 4","D) 4","Basic arithmetic operation"',
+        'true-false,"The Earth is round",physics,easy,1,"","true","Basic geography fact"',
+        'short-answer,"Name the capital of France",geography,easy,2,"","Paris","Basic geography knowledge"'
+      ].join('\n')
+
+      // Create and download file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(blob)
+      link.setAttribute('href', url)
+      link.setAttribute('download', 'questions_template.csv')
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      toast({
+        title: "Success",
+        description: "CSV template downloaded successfully"
+      })
+    } catch (error: any) {
+      console.error('Error downloading template:', error)
+      toast({
+        title: "Error", 
+        description: "Failed to download CSV template",
+        variant: "destructive"
+      })
+    }
+  }
+
   const getDifficultyBadge = (difficulty: string) => {
     switch (difficulty) {
       case 'easy':
@@ -222,6 +271,14 @@ export function QuestionManagement() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            className="gap-2"
+            onClick={() => handleDownloadTemplate()}
+          >
+            <Download className="h-4 w-4" />
+            Download Template
+          </Button>
           <input
             type="file"
             accept=".csv,.xlsx"

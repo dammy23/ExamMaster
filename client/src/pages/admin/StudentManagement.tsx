@@ -45,7 +45,8 @@ import {
   Trash2,
   UserPlus,
   GraduationCap,
-  Upload
+  Upload,
+  Download
 } from "lucide-react"
 import { getStudents, getStudentGroups, createStudentGroup, createStudent, bulkUploadStudents, type Student, type StudentGroup } from "@/api/students"
 import { useToast } from "@/hooks/useToast"
@@ -85,6 +86,53 @@ export function StudentManagement() {
       })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDownloadStudentTemplate = () => {
+    try {
+      console.log('Downloading students CSV template...')
+      
+      // Create CSV content
+      const csvHeaders = [
+        'name',
+        'email',
+        'password',
+        'studentId',
+        'applicationNo',
+        'group'
+      ]
+      
+      const csvContent = [
+        csvHeaders.join(','),
+        // Add sample row with example data
+        'John Doe,john.doe@example.com,password123,STU001,APP001,2025/2026',
+        'Jane Smith,jane.smith@example.com,password456,STU002,APP002,2025/2026',
+        'Bob Johnson,bob.johnson@example.com,password789,STU003,APP003,2024/2025'
+      ].join('\n')
+
+      // Create and download file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(blob)
+      link.setAttribute('href', url)
+      link.setAttribute('download', 'students_template.csv')
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      toast({
+        title: "Success",
+        description: "CSV template downloaded successfully"
+      })
+    } catch (error: any) {
+      console.error('Error downloading template:', error)
+      toast({
+        title: "Error", 
+        description: "Failed to download CSV template",
+        variant: "destructive"
+      })
     }
   }
 
@@ -130,6 +178,14 @@ export function StudentManagement() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            className="gap-2"
+            onClick={() => handleDownloadStudentTemplate()}
+          >
+            <Download className="h-4 w-4" />
+            Download Template
+          </Button>
           <Dialog open={showBulkUploadDialog} onOpenChange={setShowBulkUploadDialog}>
             <DialogTrigger asChild>
               <Button variant="outline" className="gap-2">
