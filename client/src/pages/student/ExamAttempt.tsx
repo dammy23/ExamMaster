@@ -26,7 +26,8 @@ import {
   Flag,
   Send,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  Video
 } from "lucide-react"
 import {
   startExamAttempt,
@@ -37,6 +38,7 @@ import {
 } from "@/api/examAttempts"
 import { getExamById } from "@/api/exams"
 import { useToast } from "@/hooks/useToast"
+import { VideoRecorder } from "@/components/VideoRecorder"
 
 export function ExamAttempt() {
   const { id } = useParams<{ id: string }>()
@@ -55,6 +57,9 @@ export function ExamAttempt() {
   const [tabSwitchCount, setTabSwitchCount] = useState(0)
   const [securityWarnings, setSecurityWarnings] = useState<string[]>([])
   const [focusLostCount, setFocusLostCount] = useState(0)
+  const [videoRecordingEnabled, setVideoRecordingEnabled] = useState(false)
+  const [attemptNumber, setAttemptNumber] = useState(1)
+  const [maxAttempts, setMaxAttempts] = useState(1)
 
   useEffect(() => {
     if (id) {
@@ -277,6 +282,9 @@ export function ExamAttempt() {
       setQuestions(attemptData.questions)
       setAttemptId(attemptData.attemptId)
       setTimeRemaining(examData.duration * 60) // Convert minutes to seconds
+      setVideoRecordingEnabled(attemptData.videoRecording || false)
+      setAttemptNumber(attemptData.attemptNumber || 1)
+      setMaxAttempts(attemptData.maxAttempts || 1)
     } catch (error) {
       console.error('Error initializing exam:', error)
       toast({
@@ -406,6 +414,20 @@ export function ExamAttempt() {
               </span>
             </div>
 
+            {/* Attempt Information */}
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">
+                Attempt {attemptNumber} of {maxAttempts}
+              </Badge>
+              
+              {videoRecordingEnabled && (
+                <Badge variant="secondary" className="gap-1">
+                  <Video className="h-3 w-3" />
+                  Recording
+                </Badge>
+              )}
+            </div>
+
             {/* Security Status Indicators */}
             <div className="flex items-center gap-2">
               {!isFullScreen && (
@@ -440,8 +462,8 @@ export function ExamAttempt() {
         </div>
       </div>
 
-      <div className="pt-20 max-w-6xl mx-auto">
-        <div className="grid gap-6 lg:grid-cols-4">
+      <div className="pt-20 max-w-7xl mx-auto">
+        <div className={`grid gap-6 ${videoRecordingEnabled ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
           {/* Question Navigation */}
           <Card className="lg:col-span-1">
             <CardHeader>
@@ -482,8 +504,20 @@ export function ExamAttempt() {
             </CardContent>
           </Card>
 
+          {/* Video Recording (if enabled) */}
+          {videoRecordingEnabled && (
+            <div className="lg:col-span-1">
+              <VideoRecorder 
+                attemptId={attemptId}
+                onRecordingComplete={(videoUrl) => {
+                  console.log('Video recording completed:', videoUrl)
+                }}
+              />
+            </div>
+          )}
+
           {/* Question Content */}
-          <Card className="lg:col-span-3">
+          <Card className={videoRecordingEnabled ? "lg:col-span-3" : "lg:col-span-3"}>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>

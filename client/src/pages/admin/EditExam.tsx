@@ -36,6 +36,8 @@ interface ExamFormData {
   randomizeOptions: boolean
   negativeMarking: boolean
   negativeMarkingValue: number
+  maxAttempts: number
+  videoRecording: boolean
   assignedGroups: string[]
 }
 
@@ -124,6 +126,8 @@ export function EditExam() {
         randomizeOptions: exam.randomizeOptions,
         negativeMarking: exam.negativeMarking,
         negativeMarkingValue: exam.negativeMarkingValue,
+        maxAttempts: exam.maxAttempts || 1,
+        videoRecording: exam.videoRecording || false,
         assignedGroups: exam.assignedGroups || []
       })
 
@@ -534,6 +538,39 @@ export function EditExam() {
                     </p>
                   </div>
                 )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="maxAttempts">No. of Allowed Attempts</Label>
+                  <Input
+                    id="maxAttempts"
+                    type="number"
+                    {...register("maxAttempts", {
+                      required: "Number of attempts is required",
+                      min: { value: 1, message: "Must be at least 1 attempt" },
+                      max: { value: 10, message: "Cannot exceed 10 attempts" }
+                    })}
+                    placeholder="1"
+                  />
+                  {errors.maxAttempts && (
+                    <p className="text-sm text-red-600">{errors.maxAttempts.message}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Maximum number of times a student can attempt this exam
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Use Video Security</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Record student video and audio during exam
+                    </p>
+                  </div>
+                  <Switch
+                    checked={watch("videoRecording")}
+                    onCheckedChange={(checked) => setValue("videoRecording", checked)}
+                  />
+                </div>
               </div>
             </div>
           </CardContent>

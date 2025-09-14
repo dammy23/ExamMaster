@@ -55,7 +55,37 @@ const examAttemptSchema = new mongoose.Schema({
       type: Date,
       default: Date.now
     }
-  }]
+  }],
+  attemptNumber: {
+    type: Number,
+    default: 1,
+    min: [1, 'Attempt number must be at least 1']
+  },
+  videoRecording: {
+    enabled: {
+      type: Boolean,
+      default: false
+    },
+    videoUrl: {
+      type: String,
+      trim: true
+    },
+    recordingStartTime: {
+      type: Date
+    },
+    recordingEndTime: {
+      type: Date
+    },
+    recordingStatus: {
+      type: String,
+      enum: ['not_started', 'recording', 'completed', 'failed'],
+      default: 'not_started'
+    },
+    fileSize: {
+      type: Number, // in bytes
+      min: 0
+    }
+  }
 }, {
   timestamps: true,
   versionKey: false
@@ -72,6 +102,12 @@ examAttemptSchema.index(
     unique: true,
     partialFilterExpression: { status: 'in-progress' }
   }
+);
+
+// Ensure unique attempt number per student per exam
+examAttemptSchema.index(
+  { examId: 1, studentId: 1, attemptNumber: 1 },
+  { unique: true }
 );
 
 const ExamAttempt = mongoose.model('ExamAttempt', examAttemptSchema);

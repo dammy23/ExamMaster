@@ -91,6 +91,16 @@ const examSchema = new mongoose.Schema({
     type: String,
     trim: true
   }],
+  maxAttempts: {
+    type: Number,
+    default: 1,
+    min: [1, 'Maximum attempts must be at least 1'],
+    max: [10, 'Maximum attempts cannot exceed 10']
+  },
+  videoRecording: {
+    type: Boolean,
+    default: false
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
