@@ -58,6 +58,7 @@ connectDB().then(() => {
   app.use('/api/exams', require('./routes/examRoutes.js'));
   app.use('/api/questions', require('./routes/questionRoutes.js'));
   app.use('/api/exam-attempts', require('./routes/examAttemptRoutes.js'));
+  app.use('/api/reports', require('./routes/reportRoutes.js'));
   app.use('/', require('./routes/index.js'));
 
   console.log("Starting server on port", PORT);
