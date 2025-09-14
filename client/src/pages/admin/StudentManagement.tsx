@@ -426,7 +426,7 @@ function CreateGroupForm({ onSuccess }: { onSuccess: () => void }) {
 
 function AddStudentForm({ groups, onSuccess }: { groups: StudentGroup[]; onSuccess: () => void }) {
   const [loading, setLoading] = useState(false)
-  const [selectedGroup, setSelectedGroup] = useState<string>("")
+  const [selectedGroup, setSelectedGroup] = useState<string>("none")
   const { toast } = useToast()
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -440,7 +440,7 @@ function AddStudentForm({ groups, onSuccess }: { groups: StudentGroup[]; onSucce
       password: formData.get('password') as string,
       studentId: formData.get('studentId') as string || undefined,
       applicationNo: formData.get('applicationNo') as string || undefined,
-      group: selectedGroup || undefined
+      group: selectedGroup === "none" ? undefined : selectedGroup || undefined
     }
 
     try {
@@ -527,7 +527,7 @@ function AddStudentForm({ groups, onSuccess }: { groups: StudentGroup[]; onSucce
             <SelectValue placeholder="Select a group (optional)" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">No group</SelectItem>
+            <SelectItem value="none">No group</SelectItem>
             {groups.map((group) => (
               <SelectItem key={group._id} value={group.name}>
                 {group.name}
