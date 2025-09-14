@@ -482,6 +482,8 @@ function EditStudentForm({
   }) => void;
 }) {
   const [loading, setLoading] = useState(false)
+  const [selectedGroup, setSelectedGroup] = useState(student.group || 'none')
+  const [selectedStatus, setSelectedStatus] = useState(student.status)
   const { toast } = useToast()
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -491,8 +493,8 @@ function EditStudentForm({
     const name = formData.get('name') as string
     const email = formData.get('email') as string
     const studentId = formData.get('studentId') as string
-    const group = formData.get('group') as string
-    const status = formData.get('status') as 'active' | 'inactive'
+    const group = selectedGroup === 'none' ? '' : selectedGroup
+    const status = selectedStatus
 
     if (!name || !email) {
       toast({
@@ -562,7 +564,7 @@ function EditStudentForm({
 
       <div className="space-y-2">
         <Label htmlFor="edit-group">Group</Label>
-        <Select name="group" defaultValue={student.group || 'none'}>
+        <Select value={selectedGroup} onValueChange={setSelectedGroup}>
           <SelectTrigger>
             <SelectValue placeholder="Select group" />
           </SelectTrigger>
@@ -579,7 +581,7 @@ function EditStudentForm({
 
       <div className="space-y-2">
         <Label htmlFor="edit-status">Status</Label>
-        <Select name="status" defaultValue={student.status}>
+        <Select value={selectedStatus} onValueChange={setSelectedStatus}>
           <SelectTrigger>
             <SelectValue placeholder="Select status" />
           </SelectTrigger>

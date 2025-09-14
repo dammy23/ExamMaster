@@ -223,6 +223,75 @@ router.post('/students', requireUser, async (req, res) => {
   }
 });
 
+// Update user (admin only)
+router.put('/:id', requireUser, async (req, res) => {
+  try {
+    console.log('PUT /api/users/:id - User:', req.user?.email);
+    console.log('PUT /api/users/:id - Request body:', req.body);
+    console.log('PUT /api/users/:id - User ID to update:', req.params.id);
+    
+    // Only allow admin users to update other users
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied. Admin role required.'
+      });
+    }
+
+    const userId = req.params.id;
+    const updateData = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        error: 'User ID is required'
+      });
+    }
+
+    // Sanitize update data - only allow certain fields to be updated
+    const allowedFields = ['name', 'email', 'studentId', 'group', 'status'];
+    const sanitizedData = {};
+    
+    allowedFields.forEach(field => {
+      if (updateData[field] !== undefined) {
+        sanitizedData[field] = typeof updateData[field] === 'string' ? updateData[field].trim() : updateData[field];
+      }
+    });
+
+    console.log('Sanitized update data:', sanitizedData);
+
+    if (Object.keys(sanitizedData).length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No valid fields provided for update'
+      });
+    }
+    
+    const updatedUser = await UserService.updateUser(userId, sanitizedData);
+    
+    console.log('User updated successfully:', updatedUser.email);
+    
+    res.json({
+      success: true,
+      data: { user: updatedUser }
+    });
+  } catch (error) {
+    console.error('PUT /api/users/:id error:', error);
+    
+    if (error.message === 'User not found' || error.message === 'Invalid user ID format') {
+      return res.status(404).json({
+        success: false,
+        error: error.message
+      });
+    }
+    
+    res.status(400).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Get all users (admin only)
 router.get('/', requireUser, async (req, res) => {
   try {
