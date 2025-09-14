@@ -169,3 +169,31 @@ export const getAttemptForReview = async (attemptId: string) => {
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
+
+// Description: Get recent exam results for student dashboard
+// Endpoint: GET /api/exam-attempts/student/recent-results
+// Request: {}
+// Response: { success: boolean, recentResults: Array<{ _id: string, exam: string, subject: string, score: number, percentage: number, date: string, timeSpent: number }> }
+export const getStudentRecentResults = async () => {
+  try {
+    const response = await api.get('/api/exam-attempts/student/recent-results');
+    return response.data;
+  } catch (error: any) {
+    console.error('Get student recent results error:', error);
+    throw new Error(error?.response?.data?.error || error.message);
+  }
+};
+
+// Description: Get recent exam activity for admin dashboard
+// Endpoint: GET /api/exam-attempts/admin/recent-activity
+// Request: {}
+// Response: { success: boolean, recentActivity: Array<{ _id: string, student: string, exam: string, action: string, time: string, percentage: number | null, status: string }> }
+export const getAdminRecentActivity = async () => {
+  try {
+    const response = await api.get('/api/exam-attempts/admin/recent-activity');
+    return response.data;
+  } catch (error: any) {
+    console.error('Get admin recent activity error:', error);
+    throw new Error(error?.response?.data?.error || error.message);
+  }
+};

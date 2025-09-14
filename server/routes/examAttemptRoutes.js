@@ -446,4 +446,64 @@ router.get('/admin/attempt/:attemptId', requireUser, async (req, res) => {
   }
 });
 
+// Get recent results for student dashboard
+router.get('/student/recent-results', requireUser, async (req, res) => {
+  try {
+    console.log(`Getting recent results for student: ${req.user.email}`);
+    
+    // Only allow students to access this endpoint
+    if (req.user.role === 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only students can access recent results'
+      });
+    }
+
+    const recentResults = await ExamAttemptService.getStudentRecentResults(req.user._id);
+
+    console.log(`Found ${recentResults.length} recent results for student: ${req.user.email}`);
+    return res.status(200).json({
+      success: true,
+      recentResults: recentResults
+    });
+  } catch (error) {
+    console.error(`Error getting recent results for student ${req.user.email}:`, error.message);
+
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Get recent activity for admin dashboard  
+router.get('/admin/recent-activity', requireUser, async (req, res) => {
+  try {
+    console.log(`Getting recent activity for admin: ${req.user.email}`);
+    
+    // Only allow admin users
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only admin users can view recent activity'
+      });
+    }
+
+    const recentActivity = await ExamAttemptService.getAdminRecentActivity(req.user._id);
+
+    console.log(`Found ${recentActivity.length} recent activities for admin: ${req.user.email}`);
+    return res.status(200).json({
+      success: true,
+      recentActivity: recentActivity
+    });
+  } catch (error) {
+    console.error(`Error getting recent activity for admin ${req.user.email}:`, error.message);
+
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

@@ -16,6 +16,7 @@ import {
 import { Link } from "react-router-dom"
 import { getExams } from "@/api/exams"
 import { getStudents } from "@/api/students"
+import { getAdminRecentActivity } from "@/api/examAttempts"
 import { useToast } from "@/hooks/useToast"
 
 interface DashboardStats {
@@ -32,6 +33,7 @@ export function AdminDashboard() {
     totalStudents: 0,
     recentSubmissions: 0
   })
+  const [recentActivities, setRecentActivities] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
@@ -39,20 +41,31 @@ export function AdminDashboard() {
     const fetchDashboardData = async () => {
       try {
         console.log('Fetching dashboard data...')
-        const [examsResponse, studentsResponse] = await Promise.all([
+        const [examsResponse, studentsResponse, recentActivityResponse] = await Promise.all([
           getExams(),
-          getStudents()
+          getStudents(),
+          getAdminRecentActivity()
         ])
 
         const exams = (examsResponse as any).exams
         const students = (studentsResponse as any).students
+        const recentActivityData = (recentActivityResponse as any).recentActivity
+
+        console.log('Admin Dashboard - Recent activity received:', recentActivityData)
+
+        // Count recent submissions from activity data
+        const recentSubmissions = recentActivityData?.filter((activity: any) => 
+          activity.action === 'Completed' || activity.action === 'Submitted'
+        ).length || 0
 
         setStats({
           totalExams: exams.length,
           activeExams: exams.filter((exam: any) => exam.status === 'active').length,
           totalStudents: students.length,
-          recentSubmissions: 15 // Mock data
+          recentSubmissions: recentSubmissions
         })
+
+        setRecentActivities(recentActivityData || [])
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
         toast({
@@ -67,12 +80,6 @@ export function AdminDashboard() {
 
     fetchDashboardData()
   }, [toast])
-
-  const recentActivities = [
-    { id: 1, student: "John Doe", exam: "Mathematics Final", action: "Completed", time: "2 minutes ago" },
-    { id: 2, student: "Jane Smith", exam: "Physics Quiz", action: "Started", time: "5 minutes ago" },
-    { id: 3, student: "Mike Johnson", exam: "Chemistry Test", action: "Submitted", time: "10 minutes ago" },
-  ]
 
   if (loading) {
     return (
@@ -170,20 +177,29 @@ export function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentActivities.map((activity) => (
-                <div key={activity.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">{activity.student}</p>
-                    <p className="text-xs text-muted-foreground">{activity.exam}</p>
+              {recentActivities.length > 0 ? (
+                recentActivities.map((activity) => (
+                  <div key={activity._id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">{activity.student}</p>
+                      <p className="text-xs text-muted-foreground">{activity.exam}</p>
+                      {activity.percentage !== null && (
+                        <p className="text-xs text-muted-foreground">Score: {activity.percentage}%</p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <Badge variant={activity.action === 'Completed' ? 'default' : activity.action === 'Started' ? 'secondary' : 'outline'}>
+                        {activity.action}
+                      </Badge>
+                      <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <Badge variant={activity.action === 'Completed' ? 'default' : 'secondary'}>
-                      {activity.action}
-                    </Badge>
-                    <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No recent activities available
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>

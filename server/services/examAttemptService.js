@@ -468,6 +468,117 @@ class ExamAttemptService {
       throw error;
     }
   }
+
+  // Get recent exam results for student dashboard
+  static async getStudentRecentResults(studentId, limit = 3) {
+    try {
+      console.log('ExamAttemptService: Getting recent results for student:', studentId);
+
+      const attempts = await ExamAttempt.find({ 
+        studentId,
+        status: 'completed' 
+      })
+        .populate('examId', 'title subject')
+        .sort({ endTime: -1 })
+        .limit(limit);
+
+      const recentResults = attempts.map(attempt => ({
+        _id: attempt._id,
+        exam: attempt.examId.title,
+        subject: attempt.examId.subject?.name || 'No Subject',
+        score: attempt.score || 0,
+        percentage: attempt.percentage || 0,
+        date: attempt.endTime ? attempt.endTime.toISOString().split('T')[0] : 'N/A',
+        timeSpent: attempt.timeSpent || 0
+      }));
+
+      console.log(`ExamAttemptService: Found ${recentResults.length} recent results for student`);
+      return recentResults;
+    } catch (error) {
+      console.error('ExamAttemptService: Error getting student recent results:', error.message);
+      throw error;
+    }
+  }
+
+  // Get recent exam activities for admin dashboard
+  static async getAdminRecentActivity(adminId, limit = 5) {
+    try {
+      console.log('ExamAttemptService: Getting recent activities for admin:', adminId);
+
+      // First get exams created by this admin
+      const Exam = require('../models/Exam.js');
+      const adminExams = await Exam.find({ createdBy: adminId }).select('_id');
+      const examIds = adminExams.map(exam => exam._id);
+
+      if (examIds.length === 0) {
+        console.log('ExamAttemptService: Admin has no exams, returning empty activities');
+        return [];
+      }
+
+      // Get recent attempts for admin's exams
+      const attempts = await ExamAttempt.find({ 
+        examId: { $in: examIds }
+      })
+        .populate('studentId', 'name email')
+        .populate('examId', 'title')
+        .sort({ updatedAt: -1 })
+        .limit(limit);
+
+      const recentActivities = attempts.map(attempt => {
+        let action = 'Unknown';
+        let time = 'Unknown';
+        
+        // Determine action based on attempt status and timestamps
+        if (attempt.status === 'completed') {
+          action = 'Completed';
+          time = attempt.endTime ? this.getTimeAgo(attempt.endTime) : 'N/A';
+        } else if (attempt.status === 'in-progress') {
+          action = 'Started';
+          time = attempt.startTime ? this.getTimeAgo(attempt.startTime) : 'N/A';
+        } else if (attempt.status === 'submitted') {
+          action = 'Submitted';
+          time = attempt.updatedAt ? this.getTimeAgo(attempt.updatedAt) : 'N/A';
+        }
+
+        return {
+          _id: attempt._id,
+          student: attempt.studentId.name || attempt.studentId.email,
+          exam: attempt.examId.title,
+          action: action,
+          time: time,
+          percentage: attempt.percentage || null,
+          status: attempt.status
+        };
+      });
+
+      console.log(`ExamAttemptService: Found ${recentActivities.length} recent activities for admin`);
+      return recentActivities;
+    } catch (error) {
+      console.error('ExamAttemptService: Error getting admin recent activity:', error.message);
+      throw error;
+    }
+  }
+
+  // Helper method to calculate time ago
+  static getTimeAgo(date) {
+    const now = new Date();
+    const diffInMs = now - new Date(date);
+    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    const diffInDays = Math.floor(diffInHours / 24);
+
+    if (diffInMinutes < 1) {
+      return 'Just now';
+    } else if (diffInMinutes < 60) {
+      return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`;
+    } else if (diffInHours < 24) {
+      return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+    } else if (diffInDays < 7) {
+      return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+    } else {
+      return new Date(date).toLocaleDateString();
+    }
+  }
 }
 
 module.exports = ExamAttemptService;

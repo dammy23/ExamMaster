@@ -15,7 +15,7 @@ import {
 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { getExams } from "@/api/exams"
-import { getStudentExamAttempts } from "@/api/examAttempts"
+import { getStudentExamAttempts, getStudentRecentResults } from "@/api/examAttempts"
 import { useToast } from "@/hooks/useToast"
 
 interface StudentStats {
@@ -33,6 +33,7 @@ export function StudentDashboard() {
     totalTimeSpent: 0
   })
   const [upcomingExams, setUpcomingExams] = useState<any[]>([])
+  const [recentResults, setRecentResults] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
@@ -40,16 +41,19 @@ export function StudentDashboard() {
     const fetchDashboardData = async () => {
       try {
         console.log('Fetching student dashboard data...')
-        const [examsResponse, attemptsResponse] = await Promise.all([
+        const [examsResponse, attemptsResponse, recentResultsResponse] = await Promise.all([
           getExams(),
-          getStudentExamAttempts()
+          getStudentExamAttempts(),
+          getStudentRecentResults()
         ])
 
         const exams = (examsResponse as any).exams
         const attempts = (attemptsResponse as any).attempts
+        const recentResultsData = (recentResultsResponse as any).recentResults
 
         console.log('Student Dashboard - All exams received:', exams)
         console.log('Student Dashboard - All attempts received:', attempts)
+        console.log('Student Dashboard - Recent results received:', recentResultsData)
 
         // For students, show exams that are either 'active' or 'draft' (available to attempt)
         // Also check if exam is within the time window
@@ -80,6 +84,7 @@ export function StudentDashboard() {
         })
 
         setUpcomingExams(upcoming.slice(0, 3))
+        setRecentResults(recentResultsData || [])
       } catch (error) {
         console.error('Error fetching student dashboard data:', error)
         toast({
@@ -94,12 +99,6 @@ export function StudentDashboard() {
 
     fetchDashboardData()
   }, [toast])
-
-  const recentResults = [
-    { exam: "Mathematics Final", score: 85, percentage: 85, date: "2024-01-15" },
-    { exam: "Physics Quiz", score: 42, percentage: 84, date: "2024-01-10" },
-    { exam: "Chemistry Test", score: 38, percentage: 76, date: "2024-01-05" },
-  ]
 
   if (loading) {
     return (
@@ -240,20 +239,28 @@ export function StudentDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentResults.map((result, index) => (
-                <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">{result.exam}</p>
-                    <p className="text-xs text-muted-foreground">{result.date}</p>
+              {recentResults.length > 0 ? (
+                recentResults.map((result, index) => (
+                  <div key={result._id || index} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">{result.exam}</p>
+                      <p className="text-xs text-muted-foreground">{result.subject}</p>
+                      <p className="text-xs text-muted-foreground">{result.date}</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-medium">{result.percentage}%</div>
+                      <Badge variant={result.percentage >= 80 ? 'default' : result.percentage >= 60 ? 'secondary' : 'destructive'}>
+                        {result.percentage >= 80 ? 'Excellent' : result.percentage >= 60 ? 'Good' : 'Needs Improvement'}
+                      </Badge>
+                      <p className="text-xs text-muted-foreground mt-1">Score: {result.score}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-sm font-medium">{result.percentage}%</div>
-                    <Badge variant={result.percentage >= 80 ? 'default' : result.percentage >= 60 ? 'secondary' : 'destructive'}>
-                      {result.percentage >= 80 ? 'Excellent' : result.percentage >= 60 ? 'Good' : 'Needs Improvement'}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No recent exam results available
+                </p>
+              )}
             </div>
             <div className="mt-4">
               <Link to="/student/results">
