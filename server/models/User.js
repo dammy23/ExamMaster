@@ -37,6 +37,12 @@ const userSchema = new mongoose.Schema({
     sparse: true, // Allows null values but ensures uniqueness when present
     index: true
   },
+  applicationNo: {
+    type: String,
+    trim: true,
+    sparse: true, // Allows null values but ensures uniqueness when present
+    index: true
+  },
   group: {
     type: String,
     trim: true

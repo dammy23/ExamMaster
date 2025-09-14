@@ -44,9 +44,10 @@ import {
   Edit,
   Trash2,
   UserPlus,
-  GraduationCap
+  GraduationCap,
+  Upload
 } from "lucide-react"
-import { getStudents, getStudentGroups, createStudentGroup, type Student, type StudentGroup } from "@/api/students"
+import { getStudents, getStudentGroups, createStudentGroup, createStudent, bulkUploadStudents, type Student, type StudentGroup } from "@/api/students"
 import { useToast } from "@/hooks/useToast"
 
 export function StudentManagement() {
@@ -57,6 +58,8 @@ export function StudentManagement() {
   const [filterGroup, setFilterGroup] = useState("all")
   const [filterStatus, setFilterStatus] = useState("all")
   const [showCreateGroupDialog, setShowCreateGroupDialog] = useState(false)
+  const [showAddStudentDialog, setShowAddStudentDialog] = useState(false)
+  const [showBulkUploadDialog, setShowBulkUploadDialog] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -101,7 +104,8 @@ export function StudentManagement() {
   const filteredStudents = students.filter(student => {
     const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (student.studentId && student.studentId.toLowerCase().includes(searchTerm.toLowerCase()))
+                         (student.studentId && student.studentId.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                         (student.applicationNo && student.applicationNo.toLowerCase().includes(searchTerm.toLowerCase()))
     const matchesGroup = filterGroup === "all" || student.group === filterGroup
     const matchesStatus = filterStatus === "all" || student.status === filterStatus
 
@@ -126,6 +130,28 @@ export function StudentManagement() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Dialog open={showBulkUploadDialog} onOpenChange={setShowBulkUploadDialog}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Upload className="h-4 w-4" />
+                Bulk Upload
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Bulk Upload Students</DialogTitle>
+                <DialogDescription>
+                  Upload a CSV file with student information
+                </DialogDescription>
+              </DialogHeader>
+              <BulkUploadForm
+                onSuccess={() => {
+                  setShowBulkUploadDialog(false)
+                  fetchData()
+                }}
+              />
+            </DialogContent>
+          </Dialog>
           <Dialog open={showCreateGroupDialog} onOpenChange={setShowCreateGroupDialog}>
             <DialogTrigger asChild>
               <Button variant="outline" className="gap-2">
@@ -148,10 +174,29 @@ export function StudentManagement() {
               />
             </DialogContent>
           </Dialog>
-          <Button className="gap-2">
-            <UserPlus className="h-4 w-4" />
-            Add Student
-          </Button>
+          <Dialog open={showAddStudentDialog} onOpenChange={setShowAddStudentDialog}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <UserPlus className="h-4 w-4" />
+                Add Student
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Student</DialogTitle>
+                <DialogDescription>
+                  Create a new student account
+                </DialogDescription>
+              </DialogHeader>
+              <AddStudentForm
+                groups={groups}
+                onSuccess={() => {
+                  setShowAddStudentDialog(false)
+                  fetchData()
+                }}
+              />
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -229,6 +274,7 @@ export function StudentManagement() {
                 <TableRow>
                   <TableHead>Student</TableHead>
                   <TableHead>Student ID</TableHead>
+                  <TableHead>Application No</TableHead>
                   <TableHead>Group</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Exams Taken</TableHead>
@@ -249,6 +295,7 @@ export function StudentManagement() {
                         </div>
                       </TableCell>
                       <TableCell className="font-mono">{student.studentId || 'N/A'}</TableCell>
+                      <TableCell className="font-mono">{student.applicationNo || 'N/A'}</TableCell>
                       <TableCell>{student.group || 'Not assigned'}</TableCell>
                       <TableCell>{getStatusBadge(student.status)}</TableCell>
                       <TableCell>{(student as any).totalExamsAttempted || 0}</TableCell>
@@ -291,7 +338,7 @@ export function StudentManagement() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8">
+                    <TableCell colSpan={10} className="text-center py-8">
                       <div className="text-muted-foreground">
                         {searchTerm || filterGroup !== "all" || filterStatus !== "all"
                           ? "No students found matching your filters."
@@ -370,6 +417,227 @@ function CreateGroupForm({ onSuccess }: { onSuccess: () => void }) {
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
           ) : (
             "Create Group"
+          )}
+        </Button>
+      </DialogFooter>
+    </form>
+  )
+}
+
+function AddStudentForm({ groups, onSuccess }: { groups: StudentGroup[]; onSuccess: () => void }) {
+  const [loading, setLoading] = useState(false)
+  const [selectedGroup, setSelectedGroup] = useState<string>("")
+  const { toast } = useToast()
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setLoading(true)
+
+    const formData = new FormData(e.currentTarget)
+    const studentData = {
+      name: formData.get('name') as string,
+      email: formData.get('email') as string,
+      password: formData.get('password') as string,
+      studentId: formData.get('studentId') as string || undefined,
+      applicationNo: formData.get('applicationNo') as string || undefined,
+      group: selectedGroup || undefined
+    }
+
+    try {
+      console.log('Creating student:', { ...studentData, password: '[HIDDEN]' })
+      await createStudent(studentData)
+      toast({
+        title: "Success",
+        description: "Student created successfully"
+      })
+      onSuccess()
+    } catch (error: any) {
+      console.error('Error creating student:', error.message)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create student",
+        variant: "destructive"
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="name">Full Name *</Label>
+          <Input
+            id="name"
+            name="name"
+            placeholder="e.g., John Doe"
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="email">Email *</Label>
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            placeholder="john.doe@example.com"
+            required
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="password">Password *</Label>
+        <Input
+          id="password"
+          name="password"
+          type="password"
+          placeholder="Enter a secure password"
+          required
+          minLength={6}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="studentId">Student ID</Label>
+          <Input
+            id="studentId"
+            name="studentId"
+            placeholder="e.g., STU001"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="applicationNo">Application No</Label>
+          <Input
+            id="applicationNo"
+            name="applicationNo"
+            placeholder="e.g., APP001"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="group">Group</Label>
+        <Select value={selectedGroup} onValueChange={setSelectedGroup}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select a group (optional)" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">No group</SelectItem>
+            {groups.map((group) => (
+              <SelectItem key={group._id} value={group.name}>
+                {group.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <DialogFooter>
+        <Button type="submit" disabled={loading}>
+          {loading ? (
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+          ) : (
+            "Create Student"
+          )}
+        </Button>
+      </DialogFooter>
+    </form>
+  )
+}
+
+function BulkUploadForm({ onSuccess }: { onSuccess: () => void }) {
+  const [loading, setLoading] = useState(false)
+  const [file, setFile] = useState<File | null>(null)
+  const { toast } = useToast()
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0]
+    if (selectedFile) {
+      if (selectedFile.type !== 'text/csv' && !selectedFile.name.endsWith('.csv')) {
+        toast({
+          title: "Error",
+          description: "Please select a CSV file",
+          variant: "destructive"
+        })
+        return
+      }
+      setFile(selectedFile)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!file) {
+      toast({
+        title: "Error",
+        description: "Please select a file to upload",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      console.log('Uploading CSV file:', file.name)
+      const result = await bulkUploadStudents(file)
+      
+      toast({
+        title: "Success",
+        description: `Imported ${result.imported} students successfully${result.errors && result.errors.length > 0 ? ` with ${result.errors.length} errors` : ''}`
+      })
+      
+      if (result.errors && result.errors.length > 0) {
+        console.log('Bulk upload errors:', result.errors)
+      }
+      
+      onSuccess()
+    } catch (error: any) {
+      console.error('Error uploading file:', error.message)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to upload students",
+        variant: "destructive"
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="file">CSV File *</Label>
+        <Input
+          id="file"
+          type="file"
+          accept=".csv"
+          onChange={handleFileChange}
+          required
+        />
+        <p className="text-sm text-muted-foreground">
+          Upload a CSV file with columns: name, email, password, studentId, applicationNo, group
+        </p>
+      </div>
+
+      {file && (
+        <div className="p-2 bg-muted rounded">
+          <p className="text-sm">Selected file: {file.name}</p>
+          <p className="text-xs text-muted-foreground">Size: {Math.round(file.size / 1024)} KB</p>
+        </div>
+      )}
+
+      <DialogFooter>
+        <Button type="submit" disabled={loading || !file}>
+          {loading ? (
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+          ) : (
+            "Upload Students"
           )}
         </Button>
       </DialogFooter>

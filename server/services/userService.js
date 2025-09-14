@@ -73,7 +73,11 @@ class UserService {
         name: userData.name,
         email: userData.email.toLowerCase(),
         password: hashedPassword,
-        role: userData.role
+        role: userData.role,
+        studentId: userData.studentId,
+        applicationNo: userData.applicationNo,
+        group: userData.group,
+        status: userData.status || 'active'
       });
 
       console.log(`UserService: Saving user to database: ${userData.email}`);
@@ -86,6 +90,11 @@ class UserService {
         name: savedUser.name,
         email: savedUser.email,
         role: savedUser.role,
+        studentId: savedUser.studentId,
+        applicationNo: savedUser.applicationNo,
+        group: savedUser.group,
+        enrollmentDate: savedUser.enrollmentDate,
+        status: savedUser.status,
         createdAt: savedUser.createdAt,
         updatedAt: savedUser.updatedAt
       };
@@ -226,6 +235,11 @@ class UserService {
             userData.studentId = `STU${Date.now()}${Math.floor(Math.random() * 1000)}`;
           }
 
+          // Generate applicationNo if not provided for students
+          if (userData.role === 'student' && !userData.applicationNo) {
+            userData.applicationNo = `APP${Date.now()}${Math.floor(Math.random() * 1000)}`;
+          }
+
           // Hash password
           const hashedPassword = await hashPassword(userData.password);
           
@@ -235,6 +249,7 @@ class UserService {
             password: hashedPassword,
             role: userData.role,
             studentId: userData.studentId,
+            applicationNo: userData.applicationNo,
             group: userData.group,
             enrollmentDate: userData.enrollmentDate ? new Date(userData.enrollmentDate) : new Date(),
             status: userData.status || 'active'
@@ -249,6 +264,7 @@ class UserService {
             email: savedUser.email,
             role: savedUser.role,
             studentId: savedUser.studentId,
+            applicationNo: savedUser.applicationNo,
             group: savedUser.group,
             enrollmentDate: savedUser.enrollmentDate,
             status: savedUser.status,

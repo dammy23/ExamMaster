@@ -6,6 +6,7 @@ export interface Student {
   email: string;
   role: string;
   studentId?: string;
+  applicationNo?: string;
   group?: string;
   enrollmentDate?: string;
   status: 'active' | 'inactive';
@@ -67,51 +68,48 @@ export const bulkUploadStudents = async (file: File) => {
   }
 };
 
-// Description: Get student groups (mock data for now)
+// Description: Get student groups
 // Endpoint: GET /api/students/groups
 // Request: {}
-// Response: { groups: StudentGroup[] }
-export const getStudentGroups = () => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        groups: [
-          {
-            _id: '1',
-            name: 'Computer Science A',
-            description: 'First year computer science students',
-            studentCount: 25,
-            createdAt: '2024-01-01T00:00:00Z'
-          },
-          {
-            _id: '2',
-            name: 'Mathematics B',
-            description: 'Advanced mathematics students',
-            studentCount: 18,
-            createdAt: '2024-01-01T00:00:00Z'
-          }
-        ]
-      });
-    }, 500);
-  });
+// Response: { success: boolean, data: { groups: StudentGroup[] } }
+export const getStudentGroups = async () => {
+  try {
+    const response = await api.get('/api/students/groups');
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(error?.response?.data?.error || error.message);
+  }
 };
 
-// Description: Create student group (mock data for now)
+// Description: Create student group
 // Endpoint: POST /api/students/groups
 // Request: { name: string, description: string }
-// Response: { success: boolean, group: StudentGroup }
-export const createStudentGroup = (groupData: { name: string; description: string }) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        success: true,
-        group: {
-          _id: Date.now().toString(),
-          ...groupData,
-          studentCount: 0,
-          createdAt: new Date().toISOString()
-        }
-      });
-    }, 500);
-  });
+// Response: { success: boolean, data: { group: StudentGroup } }
+export const createStudentGroup = async (groupData: { name: string; description: string }) => {
+  try {
+    const response = await api.post('/api/students/groups', groupData);
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(error?.response?.data?.error || error.message);
+  }
+};
+
+// Description: Create a new student
+// Endpoint: POST /api/users/students
+// Request: { name: string, email: string, password: string, studentId?: string, applicationNo?: string, group?: string }
+// Response: { success: boolean, data: { student: Student } }
+export const createStudent = async (studentData: { 
+  name: string; 
+  email: string; 
+  password: string; 
+  studentId?: string; 
+  applicationNo?: string; 
+  group?: string; 
+}) => {
+  try {
+    const response = await api.post('/api/users/students', studentData);
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(error?.response?.data?.error || error.message);
+  }
 };

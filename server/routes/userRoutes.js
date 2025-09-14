@@ -122,6 +122,7 @@ router.post('/bulk-upload', requireUser, upload.single('file'), async (req, res)
               password: normalizedData.password || normalizedData.defaultpassword || 'defaultpass123',
               role: normalizedData.role || 'student',
               studentId: normalizedData.studentid || normalizedData.id,
+              applicationNo: normalizedData.applicationno || normalizedData.appno,
               group: normalizedData.group || normalizedData.class,
               enrollmentDate: normalizedData.enrollmentdate || normalizedData.joindate,
               status: normalizedData.status || 'active'
@@ -168,6 +169,55 @@ router.post('/bulk-upload', requireUser, upload.single('file'), async (req, res)
       fs.unlinkSync(req.file.path);
     }
     
+    res.status(400).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Create a new student (admin only)
+router.post('/students', requireUser, async (req, res) => {
+  try {
+    console.log('POST /api/users/students - User:', req.user?.email);
+    console.log('POST /api/users/students - Request body:', { ...req.body, password: '[HIDDEN]' });
+    
+    // Only allow admin users to create students
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied. Admin role required.'
+      });
+    }
+
+    const { name, email, password, studentId, applicationNo, group } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        error: 'Name, email, and password are required'
+      });
+    }
+    
+    const studentData = {
+      name: name.trim(),
+      email: email.trim(),
+      password: password,
+      role: 'student',
+      studentId: studentId ? studentId.trim() : null,
+      applicationNo: applicationNo ? applicationNo.trim() : null,
+      group: group ? group.trim() : null,
+      status: 'active'
+    };
+    
+    const student = await UserService.createUser(studentData);
+    
+    res.status(201).json({
+      success: true,
+      data: { student }
+    });
+  } catch (error) {
+    console.error('POST /api/users/students error:', error);
     res.status(400).json({
       success: false,
       error: error.message
