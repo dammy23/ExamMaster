@@ -35,7 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           console.log('AuthContext: Fetching current user...')
           const response = await getCurrentUser()
-          const userData = (response as any).user
+          const userData = (response as any).data
           console.log('AuthContext: User data received:', userData)
           setUser(userData)
         } catch (error) {
