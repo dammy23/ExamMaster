@@ -81,9 +81,45 @@ export function ExamAttempt() {
         return 'Are you sure you want to leave? Your exam progress may be lost.'
       }
       
+      // Listen for auth tokens from parent window
+      const handleMessage = (event: MessageEvent) => {
+        // Verify the origin for security
+        if (event.origin !== window.location.origin) {
+          console.warn('ExamAttempt: Received message from unknown origin:', event.origin)
+          return
+        }
+        
+        console.log('ExamAttempt: Received message:', event.data)
+        
+        if (event.data.type === 'AUTH_TOKENS') {
+          console.log('ExamAttempt: Setting auth tokens in localStorage')
+          
+          if (event.data.accessToken) {
+            localStorage.setItem('accessToken', event.data.accessToken)
+            console.log('ExamAttempt: Access token set')
+          }
+          
+          if (event.data.refreshToken) {
+            localStorage.setItem('refreshToken', event.data.refreshToken)
+            console.log('ExamAttempt: Refresh token set')
+          }
+          
+          // Trigger a re-initialization of the exam now that we have auth tokens
+          if (event.data.accessToken && id) {
+            console.log('ExamAttempt: Re-initializing exam with auth tokens')
+            setTimeout(() => {
+              initializeExam()
+            }, 100)
+          }
+        }
+      }
+      
       window.addEventListener('beforeunload', handleBeforeUnload)
+      window.addEventListener('message', handleMessage)
+      
       return () => {
         window.removeEventListener('beforeunload', handleBeforeUnload)
+        window.removeEventListener('message', handleMessage)
       }
     }
   }, [id])

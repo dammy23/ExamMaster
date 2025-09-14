@@ -149,6 +149,31 @@ export function ExamInstructions() {
       // Focus on the new window
       examWindow.focus()
       
+      // Pass authentication tokens to the new window
+      const accessToken = localStorage.getItem('accessToken')
+      const refreshToken = localStorage.getItem('refreshToken')
+      
+      console.log('Passing auth tokens to exam window. AccessToken exists:', !!accessToken)
+      
+      // Wait for the new window to load, then send auth tokens
+      const sendAuthTokens = () => {
+        try {
+          examWindow.postMessage({
+            type: 'AUTH_TOKENS',
+            accessToken: accessToken,
+            refreshToken: refreshToken
+          }, window.location.origin)
+          console.log('Auth tokens sent to exam window')
+        } catch (error) {
+          console.error('Error sending auth tokens to exam window:', error)
+        }
+      }
+      
+      // Send tokens immediately and also after a short delay to ensure the window is ready
+      sendAuthTokens()
+      setTimeout(sendAuthTokens, 1000)
+      setTimeout(sendAuthTokens, 2000)
+      
       toast({
         title: "Exam Window Opened",
         description: "Your exam has opened in a new fullscreen window. Complete your exam in that window.",
