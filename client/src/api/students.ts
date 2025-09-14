@@ -111,3 +111,48 @@ export const createStudent = async (studentData: {
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
+
+// Description: Update an existing student
+// Endpoint: PUT /api/users/:id
+// Request: { name?: string, email?: string, studentId?: string, group?: string, status?: string }
+// Response: { success: boolean, data: { user: Student } }
+export const updateStudent = async (id: string, studentData: { 
+  name?: string; 
+  email?: string; 
+  studentId?: string; 
+  group?: string;
+  status?: 'active' | 'inactive';
+}) => {
+  // Mocking the response
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      if (id === '507f1f77bcf86cd799439011' || id.length === 24) {
+        resolve({
+          success: true,
+          data: {
+            user: {
+              _id: id,
+              name: studentData.name || 'Updated Student',
+              email: studentData.email || 'updated@example.com',
+              role: 'student',
+              studentId: studentData.studentId || 'UPD001',
+              group: studentData.group || '',
+              status: studentData.status || 'active',
+              createdAt: '2024-01-15T10:00:00.000Z',
+              updatedAt: new Date().toISOString()
+            }
+          }
+        });
+      } else {
+        reject(new Error('Student not found'));
+      }
+    }, 800);
+  });
+  // Uncomment the below lines to make an actual API call
+  // try {
+  //   const response = await api.put(`/api/users/${id}`, studentData);
+  //   return response.data;
+  // } catch (error: any) {
+  //   throw new Error(error?.response?.data?.error || error.message);
+  // }
+};

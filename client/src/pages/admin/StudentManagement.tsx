@@ -48,7 +48,7 @@ import {
   Upload,
   Download
 } from "lucide-react"
-import { getStudents, getStudentGroups, createStudentGroup, createStudent, bulkUploadStudents, type Student, type StudentGroup } from "@/api/students"
+import { getStudents, getStudentGroups, createStudentGroup, createStudent, updateStudent, bulkUploadStudents, type Student, type StudentGroup } from "@/api/students"
 import { useToast } from "@/hooks/useToast"
 
 export function StudentManagement() {
@@ -60,7 +60,9 @@ export function StudentManagement() {
   const [filterStatus, setFilterStatus] = useState("all")
   const [showCreateGroupDialog, setShowCreateGroupDialog] = useState(false)
   const [showAddStudentDialog, setShowAddStudentDialog] = useState(false)
+  const [showEditStudentDialog, setShowEditStudentDialog] = useState(false)
   const [showBulkUploadDialog, setShowBulkUploadDialog] = useState(false)
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -146,6 +148,43 @@ export function StudentManagement() {
     if (score >= 80) return <Badge className="bg-blue-500">Good</Badge>
     if (score >= 70) return <Badge className="bg-yellow-500">Average</Badge>
     return <Badge className="bg-red-500">Needs Improvement</Badge>
+  }
+
+  const handleEditStudent = (student: Student) => {
+    console.log('Opening edit dialog for student:', student._id)
+    setSelectedStudent(student)
+    setShowEditStudentDialog(true)
+  }
+
+  const handleEditStudentSubmit = async (formData: {
+    name: string;
+    email: string;
+    studentId: string;
+    group: string;
+    status: 'active' | 'inactive';
+  }) => {
+    if (!selectedStudent) return
+
+    try {
+      console.log('Updating student:', selectedStudent._id, formData)
+      await updateStudent(selectedStudent._id, formData)
+      
+      setShowEditStudentDialog(false)
+      setSelectedStudent(null)
+      fetchData()
+      
+      toast({
+        title: "Success",
+        description: "Student updated successfully"
+      })
+    } catch (error: any) {
+      console.error('Error updating student:', error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update student",
+        variant: "destructive"
+      })
+    }
   }
 
   const filteredStudents = students.filter(student => {
@@ -371,7 +410,7 @@ export function StudentManagement() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEditStudent(student)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Edit Student
                             </DropdownMenuItem>
@@ -404,7 +443,163 @@ export function StudentManagement() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Student Dialog */}
+      <Dialog open={showEditStudentDialog} onOpenChange={setShowEditStudentDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Student</DialogTitle>
+            <DialogDescription>
+              Update student information
+            </DialogDescription>
+          </DialogHeader>
+          {selectedStudent && (
+            <EditStudentForm 
+              student={selectedStudent}
+              groups={groups}
+              onSuccess={handleEditStudentSubmit}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
+  )
+}
+
+function EditStudentForm({ 
+  student, 
+  groups, 
+  onSuccess 
+}: { 
+  student: Student;
+  groups: StudentGroup[];
+  onSuccess: (data: {
+    name: string;
+    email: string;
+    studentId: string;
+    group: string;
+    status: 'active' | 'inactive';
+  }) => void;
+}) {
+  const [loading, setLoading] = useState(false)
+  const { toast } = useToast()
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    
+    const name = formData.get('name') as string
+    const email = formData.get('email') as string
+    const studentId = formData.get('studentId') as string
+    const group = formData.get('group') as string
+    const status = formData.get('status') as 'active' | 'inactive'
+
+    if (!name || !email) {
+      toast({
+        title: "Error",
+        description: "Name and email are required",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      await onSuccess({
+        name,
+        email,
+        studentId,
+        group,
+        status
+      })
+    } catch (error: any) {
+      console.error('Error in form submission:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update student",
+        variant: "destructive"
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="edit-name">Full Name *</Label>
+        <Input
+          id="edit-name"
+          name="name"
+          defaultValue={student.name}
+          placeholder="Enter full name"
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="edit-email">Email *</Label>
+        <Input
+          id="edit-email"
+          name="email"
+          type="email"
+          defaultValue={student.email}
+          placeholder="Enter email address"
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="edit-studentId">Student ID</Label>
+        <Input
+          id="edit-studentId"
+          name="studentId"
+          defaultValue={student.studentId || ''}
+          placeholder="Enter student ID"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="edit-group">Group</Label>
+        <Select name="group" defaultValue={student.group || 'none'}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select group" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">No Group</SelectItem>
+            {groups.map((group) => (
+              <SelectItem key={group._id} value={group.name}>
+                {group.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="edit-status">Status</Label>
+        <Select name="status" defaultValue={student.status}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <DialogFooter>
+        <Button type="submit" disabled={loading}>
+          {loading ? (
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+          ) : (
+            "Update Student"
+          )}
+        </Button>
+      </DialogFooter>
+    </form>
   )
 }
 
