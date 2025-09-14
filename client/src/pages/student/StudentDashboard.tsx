@@ -198,7 +198,7 @@ export function StudentDashboard() {
                   <div key={exam._id} className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border">
                     <div className="space-y-1">
                       <p className="text-sm font-medium">{exam.title}</p>
-                      <p className="text-xs text-muted-foreground">{exam.subject}</p>
+                      <p className="text-xs text-muted-foreground">{exam.subject?.name || 'No Subject'}</p>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Clock className="h-3 w-3" />
                         {exam.duration} minutes
