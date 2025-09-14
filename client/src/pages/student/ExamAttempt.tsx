@@ -484,7 +484,7 @@ export function ExamAttempt() {
       </div>
 
       <div className="pt-20 max-w-7xl mx-auto">
-        <div className={`grid gap-6 ${videoRecordingEnabled ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
+        <div className="grid gap-6 lg:grid-cols-4">
           {/* Question Navigation */}
           <Card className="lg:col-span-1">
             <CardHeader>
@@ -525,20 +525,8 @@ export function ExamAttempt() {
             </CardContent>
           </Card>
 
-          {/* Video Recording (if enabled) */}
-          {videoRecordingEnabled && (
-            <div className="lg:col-span-1">
-              <VideoRecorder 
-                attemptId={attemptId}
-                onRecordingComplete={(videoUrl) => {
-                  console.log('Video recording completed:', videoUrl)
-                }}
-              />
-            </div>
-          )}
-
           {/* Question Content */}
-          <Card className={videoRecordingEnabled ? "lg:col-span-3" : "lg:col-span-3"}>
+          <Card className="lg:col-span-3">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>
@@ -666,6 +654,16 @@ export function ExamAttempt() {
           </Card>
         </div>
       </div>
+      
+      {/* Floating Video Recorder (if enabled) */}
+      {videoRecordingEnabled && (
+        <VideoRecorder 
+          attemptId={attemptId}
+          onRecordingComplete={(videoUrl) => {
+            console.log('Video recording completed:', videoUrl)
+          }}
+        />
+      )}
     </div>
   )
 }

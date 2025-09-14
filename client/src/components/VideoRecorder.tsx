@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { Video, VideoOff, Mic, MicOff, Play, Square, AlertTriangle, CheckCircle } from "lucide-react"
+import { Video, VideoOff, Mic, MicOff, Play, Square, AlertTriangle, CheckCircle, Minimize2, Maximize2, Move } from "lucide-react"
 import { startVideoRecording, uploadVideoRecording } from "@/api/examAttempts"
 import { useToast } from "@/hooks/useToast"
 
@@ -22,10 +22,33 @@ export function VideoRecorder({ attemptId, onRecordingComplete }: VideoRecorderP
   const [recordingTime, setRecordingTime] = useState(0)
   const [hasPermissions, setHasPermissions] = useState(false)
   const [permissionError, setPermissionError] = useState<string>("")
+  
+  // Floating window states
+  const [position, setPosition] = useState({ x: 20, y: 20 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [isMinimized, setIsMinimized] = useState(false)
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
+  const [autoStarted, setAutoStarted] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
   const chunksRef = useRef<Blob[]>([])
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    // Auto-request permissions and start recording when component mounts
+    if (!hasPermissions && !permissionError && !autoStarted) {
+      setAutoStarted(true)
+      requestPermissions().then(() => {
+        // Auto-start recording after a short delay to ensure everything is ready
+        setTimeout(() => {
+          startRecording()
+        }, 1000)
+      }).catch((error) => {
+        console.error('Auto-start failed:', error)
+      })
+    }
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -66,7 +89,7 @@ export function VideoRecorder({ attemptId, onRecordingComplete }: VideoRecorderP
       console.log('Media permissions granted successfully')
       toast({
         title: "Camera & Microphone Access Granted",
-        description: "Ready to start video recording for exam security",
+        description: "Video recording will start automatically for exam security",
       })
 
       return mediaStream
@@ -93,6 +116,43 @@ export function VideoRecorder({ attemptId, onRecordingComplete }: VideoRecorderP
       throw new Error(errorMessage)
     }
   }
+
+  // Drag functionality
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect()
+      setDragOffset({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      })
+      setIsDragging(true)
+    }
+  }
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (isDragging) {
+      setPosition({
+        x: e.clientX - dragOffset.x,
+        y: e.clientY - dragOffset.y
+      })
+    }
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+  }
+
+  // Add event listeners for dragging
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove)
+        document.removeEventListener('mouseup', handleMouseUp)
+      }
+    }
+  }, [isDragging, dragOffset])
 
   const startRecording = async () => {
     try {
@@ -313,84 +373,112 @@ export function VideoRecorder({ attemptId, onRecordingComplete }: VideoRecorderP
   }
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Video className="h-5 w-5" />
-            Exam Security Recording
-          </div>
+    <div
+      ref={containerRef}
+      className={`fixed bg-white border border-gray-200 rounded-lg shadow-lg z-50 ${
+        isDragging ? 'cursor-grabbing' : 'cursor-default'
+      } ${isMinimized ? 'w-64' : 'w-80'}`}
+      style={{
+        left: position.x,
+        top: position.y,
+        maxWidth: '90vw',
+        maxHeight: '90vh'
+      }}
+    >
+      {/* Header with drag handle */}
+      <div
+        className="flex items-center justify-between p-3 bg-gray-50 rounded-t-lg cursor-grab active:cursor-grabbing border-b"
+        onMouseDown={handleMouseDown}
+      >
+        <div className="flex items-center gap-2">
+          <Move className="h-4 w-4 text-gray-500" />
+          <Video className="h-4 w-4" />
+          <span className="text-sm font-medium">Recording</span>
           {getStatusBadge()}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Video Preview */}
-        <div className="relative aspect-video bg-black rounded-lg overflow-hidden">
-          <video
-            ref={videoRef}
-            autoPlay
-            muted
-            playsInline
-            className="w-full h-full object-cover"
-          />
+        </div>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsMinimized(!isMinimized)}
+            className="h-6 w-6 p-0"
+          >
+            {isMinimized ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}
+          </Button>
+        </div>
+      </div>
+
+      {/* Content */}
+      {!isMinimized && (
+        <div className="p-3 space-y-3">
+          {/* Video Preview */}
+          <div className="relative bg-black rounded-md overflow-hidden" style={{ aspectRatio: '16/9' }}>
+            <video
+              ref={videoRef}
+              autoPlay
+              muted
+              playsInline
+              className="w-full h-full object-cover"
+            />
+            {isRecording && (
+              <div className="absolute top-1 right-1 flex items-center gap-1 bg-red-600 text-white px-2 py-1 rounded text-xs">
+                <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
+                REC {formatTime(recordingTime)}
+              </div>
+            )}
+          </div>
+
+          {/* Controls - Only show stop button if auto-recording */}
           {isRecording && (
-            <div className="absolute top-2 right-2 flex items-center gap-2 bg-red-600 text-white px-2 py-1 rounded-md text-sm">
-              <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-              REC {formatTime(recordingTime)}
+            <div className="flex items-center justify-center">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm" className="gap-1">
+                    <Square className="h-3 w-3" />
+                    Stop Recording
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Stop Recording?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to stop the video recording? The recording will be automatically uploaded for exam security.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Continue Recording</AlertDialogCancel>
+                    <AlertDialogAction onClick={stopRecording}>
+                      Stop & Upload
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           )}
-        </div>
 
-        {/* Controls */}
-        <div className="flex items-center justify-center gap-4">
-          {!isRecording ? (
-            <Button 
-              onClick={startRecording} 
-              disabled={recordingStatus === 'uploading' || recordingStatus === 'completed'}
-              className="gap-2"
-            >
-              <Play className="h-4 w-4" />
-              Start Recording
-            </Button>
-          ) : (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" className="gap-2">
-                  <Square className="h-4 w-4" />
-                  Stop Recording
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Stop Recording?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to stop the video recording? The recording will be automatically uploaded for exam security.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Continue Recording</AlertDialogCancel>
-                  <AlertDialogAction onClick={stopRecording}>
-                    Stop & Upload
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
+          {/* Status Information */}
+          <div className="text-xs text-center text-gray-600">
+            {recordingStatus === 'recording' && (
+              <p>Recording active for exam security</p>
+            )}
+            {recordingStatus === 'uploading' && (
+              <p>Uploading video...</p>
+            )}
+            {recordingStatus === 'completed' && (
+              <p className="text-green-600">Recording completed ✓</p>
+            )}
+          </div>
         </div>
+      )}
 
-        {/* Status Information */}
-        <div className="text-xs text-center text-muted-foreground space-y-1">
-          {recordingStatus === 'recording' && (
-            <p>Recording in progress... Do not close this tab.</p>
-          )}
-          {recordingStatus === 'uploading' && (
-            <p>Uploading video for security review...</p>
-          )}
-          {recordingStatus === 'completed' && (
-            <p>Video security recording completed successfully.</p>
-          )}
+      {/* Minimized view */}
+      {isMinimized && (
+        <div className="px-3 py-2 text-xs text-center text-gray-600">
+          {recordingStatus === 'recording' && `Recording: ${formatTime(recordingTime)}`}
+          {recordingStatus === 'uploading' && 'Uploading...'}
+          {recordingStatus === 'completed' && 'Completed ✓'}
         </div>
-      </CardContent>
-    </Card>
+      )}
+    </div>
   )
 }
