@@ -14,7 +14,8 @@ const userSchema = new mongoose.Schema({
     unique: true,
     lowercase: true,
     trim: true,
-    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
+    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email'],
+    index: true
   },
   password: {
     type: String,
@@ -33,9 +34,6 @@ const userSchema = new mongoose.Schema({
   timestamps: true,
   versionKey: false
 });
-
-// Index for better query performance
-userSchema.index({ email: 1 });
 
 const User = mongoose.model('User', userSchema);
 

@@ -52,6 +52,7 @@ connectDB().then(() => {
   app.use('/api/auth', require('./routes/authRoutes.js'));
   app.use('/api/users', require('./routes/userRoutes.js'));
   app.use('/api/seed', require('./routes/seedRoutes.js'));
+  app.use('/api/database', require('./routes/databaseRoutes.js'));
   app.use('/api/exams', require('./routes/examRoutes.js'));
   app.use('/api/questions', require('./routes/questionRoutes.js'));
   app.use('/api/exam-attempts', require('./routes/examAttemptRoutes.js'));

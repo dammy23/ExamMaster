@@ -94,6 +94,24 @@ class UserService {
       return userResponse;
     } catch (error) {
       console.error(`UserService: Error creating user ${userData.email}:`, error.message);
+      console.error(`UserService: Full error:`, error);
+      
+      // Handle specific MongoDB errors
+      if (error.code === 11000) {
+        throw new Error('User with this email already exists');
+      }
+      
+      if (error.name === 'ValidationError') {
+        const validationErrors = Object.values(error.errors).map(err => err.message);
+        throw new Error(validationErrors.join(', '));
+      }
+      
+      // Handle database connection errors
+      if (error.message && error.message.includes('db already exists with different case')) {
+        console.error('UserService: Database case mismatch error detected');
+        throw new Error('Database configuration error. Please check database name casing.');
+      }
+      
       // Re-throw the original error to preserve validation details
       throw error;
     }

@@ -3,17 +3,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Users, UserCheck, Database, CheckCircle, AlertCircle } from "lucide-react"
+import { Loader2, Users, UserCheck, Database, CheckCircle, AlertCircle, Trash2, RefreshCw } from "lucide-react"
 import { seedAdmin, seedStudents } from "@/api/seed"
+import { getDatabaseStatus, cleanupDatabase, resetDatabase } from "@/api/database"
 import { useToast } from "@/hooks/useToast"
 
 export function DatabaseSeeding() {
   const [adminLoading, setAdminLoading] = useState(false)
   const [studentsLoading, setStudentsLoading] = useState(false)
+  const [cleanupLoading, setCleanupLoading] = useState(false)
+  const [resetLoading, setResetLoading] = useState(false)
   const [adminSeeded, setAdminSeeded] = useState(false)
   const [studentsSeeded, setStudentsSeeded] = useState(false)
   const [adminUser, setAdminUser] = useState<any>(null)
   const [studentUsers, setStudentUsers] = useState<any[]>([])
+  const [dbStatus, setDbStatus] = useState<any>(null)
   const { toast } = useToast()
 
   const handleSeedAdmin = async () => {
@@ -88,6 +92,90 @@ export function DatabaseSeeding() {
     }
   }
 
+  const handleCleanupDatabase = async () => {
+    setCleanupLoading(true)
+    try {
+      console.log('Cleaning up database...')
+      const response = await cleanupDatabase()
+      
+      console.log('Database cleanup response:', response)
+      
+      // Reset UI state
+      setAdminSeeded(false)
+      setStudentsSeeded(false)
+      setAdminUser(null)
+      setStudentUsers([])
+      setDbStatus(null)
+      
+      toast({
+        title: "Success",
+        description: response.message || "Database cleaned up successfully",
+      })
+    } catch (error: any) {
+      console.error('Error cleaning up database:', error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to clean up database",
+        variant: "destructive"
+      })
+    } finally {
+      setCleanupLoading(false)
+    }
+  }
+
+  const handleResetDatabase = async () => {
+    setResetLoading(true)
+    try {
+      console.log('Resetting database...')
+      const response = await resetDatabase()
+      
+      console.log('Database reset response:', response)
+      
+      // Reset UI state
+      setAdminSeeded(false)
+      setStudentsSeeded(false)
+      setAdminUser(null)
+      setStudentUsers([])
+      setDbStatus(null)
+      
+      toast({
+        title: "Success",
+        description: response.message || "Database reset successfully",
+      })
+    } catch (error: any) {
+      console.error('Error resetting database:', error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reset database",
+        variant: "destructive"
+      })
+    } finally {
+      setResetLoading(false)
+    }
+  }
+
+  const handleGetDatabaseStatus = async () => {
+    try {
+      console.log('Getting database status...')
+      const response = await getDatabaseStatus()
+      
+      console.log('Database status response:', response)
+      setDbStatus(response.data)
+      
+      toast({
+        title: "Info",
+        description: "Database status retrieved successfully",
+      })
+    } catch (error: any) {
+      console.error('Error getting database status:', error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to get database status",
+        variant: "destructive"
+      })
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -105,6 +193,80 @@ export function DatabaseSeeding() {
           This page allows you to create initial users in the database. Run this once to set up admin and student accounts for testing.
         </AlertDescription>
       </Alert>
+
+      {/* Database Management Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Database className="h-5 w-5" />
+            Database Management
+          </CardTitle>
+          <CardDescription>
+            Manage database state and troubleshoot issues
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {dbStatus && (
+            <Alert>
+              <Database className="h-4 w-4" />
+              <AlertDescription>
+                <div className="space-y-1 text-sm">
+                  <p><strong>Connected:</strong> {dbStatus.connected ? 'Yes' : 'No'}</p>
+                  <p><strong>Database:</strong> {dbStatus.name}</p>
+                  <p><strong>Collections:</strong> {dbStatus.collectionsCount || 0}</p>
+                  <p><strong>Users:</strong> {dbStatus.userCount || 0}</p>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          <div className="flex flex-wrap gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleGetDatabaseStatus}
+            >
+              <Database className="mr-2 h-4 w-4" />
+              Check Status
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleCleanupDatabase} 
+              disabled={cleanupLoading}
+            >
+              {cleanupLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="mr-2 h-4 w-4" />
+              )}
+              Cleanup DB
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleResetDatabase} 
+              disabled={resetLoading}
+            >
+              {resetLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-2 h-4 w-4" />
+              )}
+              Reset DB
+            </Button>
+          </div>
+          
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Troubleshooting:</strong> If you're experiencing database errors, try "Cleanup DB" first, then seed users again.
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Admin User Seeding */}
