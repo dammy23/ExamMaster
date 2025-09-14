@@ -14,8 +14,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ArrowLeft, Save, Clock, Settings } from "lucide-react"
+import { ArrowLeft, Save, Clock, Settings, Users } from "lucide-react"
 import { getExamById, updateExam } from "@/api/exams"
+import { getStudentGroups, type StudentGroup } from "@/api/students"
 import { useToast } from "@/hooks/useToast"
 
 interface ExamFormData {
@@ -34,6 +35,7 @@ interface ExamFormData {
   randomizeOptions: boolean
   negativeMarking: boolean
   negativeMarkingValue: number
+  assignedGroups: string[]
 }
 
 export function EditExam() {
@@ -42,6 +44,8 @@ export function EditExam() {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [fetchingExam, setFetchingExam] = useState(true)
+  const [studentGroups, setStudentGroups] = useState<StudentGroup[]>([])
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([])
 
   const {
     register,
@@ -57,8 +61,24 @@ export function EditExam() {
   useEffect(() => {
     if (id) {
       fetchExam()
+      fetchStudentGroups()
     }
   }, [id])
+
+  const fetchStudentGroups = async () => {
+    try {
+      console.log('Fetching student groups for exam editing...')
+      const response = await getStudentGroups()
+      setStudentGroups(response.groups)
+    } catch (error: any) {
+      console.error('Error fetching student groups:', error)
+      toast({
+        title: "Warning",
+        description: "Failed to load student groups",
+        variant: "destructive"
+      })
+    }
+  }
 
   const fetchExam = async () => {
     try {
@@ -85,8 +105,12 @@ export function EditExam() {
         randomizeQuestions: exam.randomizeQuestions,
         randomizeOptions: exam.randomizeOptions,
         negativeMarking: exam.negativeMarking,
-        negativeMarkingValue: exam.negativeMarkingValue
+        negativeMarkingValue: exam.negativeMarkingValue,
+        assignedGroups: exam.assignedGroups || []
       })
+
+      // Set selected groups
+      setSelectedGroups(exam.assignedGroups || [])
     } catch (error: any) {
       console.error('Error fetching exam:', error)
       toast({
@@ -111,7 +135,8 @@ export function EditExam() {
         duration: Number(data.duration),
         totalMarks: Number(data.totalMarks),
         passingMarks: Number(data.passingMarks),
-        negativeMarkingValue: Number(data.negativeMarkingValue)
+        negativeMarkingValue: Number(data.negativeMarkingValue),
+        assignedGroups: selectedGroups
       }
       
       console.log('Converted exam data:', examData)
@@ -318,8 +343,79 @@ export function EditExam() {
           </Card>
         </div>
 
+        {/* Student Groups */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Student Groups Assignment
+            </CardTitle>
+            <CardDescription>
+              Select student groups that will have access to this exam
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Assigned Groups</Label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {studentGroups.map((group) => (
+                    <div
+                      key={group._id}
+                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                        selectedGroups.includes(group._id)
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border hover:border-primary/50'
+                      }`}
+                      onClick={() => {
+                        if (selectedGroups.includes(group._id)) {
+                          setSelectedGroups(selectedGroups.filter(id => id !== group._id))
+                        } else {
+                          setSelectedGroups([...selectedGroups, group._id])
+                        }
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium text-sm">{group.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {group.studentCount} students
+                          </div>
+                        </div>
+                        <div
+                          className={`w-4 h-4 border rounded ${
+                            selectedGroups.includes(group._id)
+                              ? 'bg-primary border-primary'
+                              : 'border-muted-foreground'
+                          }`}
+                        >
+                          {selectedGroups.includes(group._id) && (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <div className="w-2 h-2 bg-white rounded-full"></div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {studentGroups.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No student groups available</p>
+                    <p className="text-sm">Create groups in Student Management first</p>
+                  </div>
+                )}
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Selected {selectedGroups.length} of {studentGroups.length} groups
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Exam Settings */}
-        <Card>
+        <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />

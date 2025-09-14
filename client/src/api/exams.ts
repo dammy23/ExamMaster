@@ -20,6 +20,8 @@ export interface Exam {
   negativeMarking: boolean;
   negativeMarkingValue: number;
   assignedStudents: string[];
+  assignedGroups: string[];
+  questions: string[];
   createdAt: string;
   updatedAt: string;
 }

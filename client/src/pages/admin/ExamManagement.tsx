@@ -39,7 +39,8 @@ import {
   Eye,
   Users,
   Clock,
-  FileText
+  FileText,
+  HelpCircle
 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { getExams, deleteExam, type Exam } from "@/api/exams"
@@ -216,6 +217,12 @@ export function ExamManagement() {
                               <DropdownMenuItem>
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit Exam
+                              </DropdownMenuItem>
+                            </Link>
+                            <Link to={`/admin/exams/${exam._id}/questions`}>
+                              <DropdownMenuItem>
+                                <HelpCircle className="mr-2 h-4 w-4" />
+                                Questions
                               </DropdownMenuItem>
                             </Link>
                             <DropdownMenuSeparator />

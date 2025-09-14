@@ -18,6 +18,7 @@ import { ExamAttempt } from "./pages/student/ExamAttempt"
 import { StudentResults } from "./pages/student/StudentResults"
 import { CreateExam } from "./pages/admin/CreateExam"
 import { EditExam } from "./pages/admin/EditExam"
+import { ExamQuestions } from "./pages/admin/ExamQuestions"
 import { DatabaseSeeding } from "./pages/admin/DatabaseSeeding"
 
 function App() {
@@ -36,6 +37,7 @@ function App() {
             <Route path="admin/exams" element={<ExamManagement />} />
             <Route path="admin/exams/create" element={<CreateExam />} />
             <Route path="admin/exams/edit/:id" element={<EditExam />} />
+            <Route path="admin/exams/:examId/questions" element={<ExamQuestions />} />
             <Route path="admin/questions" element={<QuestionManagement />} />
             <Route path="admin/students" element={<StudentManagement />} />
             <Route path="admin/reports" element={<Reports />} />
