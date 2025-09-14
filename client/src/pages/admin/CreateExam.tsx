@@ -18,6 +18,7 @@ import { Separator } from "@/components/ui/separator"
 import { ArrowLeft, Save, Clock, Settings, Users } from "lucide-react"
 import { createExam } from "@/api/exams"
 import { getStudentGroups, type StudentGroup } from "@/api/students"
+import { getActiveSubjects, type Subject } from "@/api/subjects"
 import { useToast } from "@/hooks/useToast"
 
 interface ExamFormData {
@@ -44,6 +45,7 @@ export function CreateExam() {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [studentGroups, setStudentGroups] = useState<StudentGroup[]>([])
+  const [subjects, setSubjects] = useState<Subject[]>([])
   const [selectedGroups, setSelectedGroups] = useState<string[]>([])
 
   const {
@@ -66,6 +68,7 @@ export function CreateExam() {
 
   useEffect(() => {
     fetchStudentGroups()
+    fetchSubjects()
   }, [])
 
   const fetchStudentGroups = async () => {
@@ -78,6 +81,21 @@ export function CreateExam() {
       toast({
         title: "Warning",
         description: "Failed to load student groups",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const fetchSubjects = async () => {
+    try {
+      console.log('Fetching subjects for exam creation...')
+      const response = await getActiveSubjects() as any
+      setSubjects(response.subjects)
+    } catch (error: any) {
+      console.error('Error fetching subjects:', error)
+      toast({
+        title: "Warning",
+        description: "Failed to load subjects",
         variant: "destructive"
       })
     }
@@ -186,15 +204,18 @@ export function CreateExam() {
                     <SelectValue placeholder="Select subject" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="mathematics">Mathematics</SelectItem>
-                    <SelectItem value="physics">Physics</SelectItem>
-                    <SelectItem value="chemistry">Chemistry</SelectItem>
-                    <SelectItem value="biology">Biology</SelectItem>
-                    <SelectItem value="computer-science">Computer Science</SelectItem>
-                    <SelectItem value="english">English</SelectItem>
-                    <SelectItem value="history">History</SelectItem>
+                    {subjects.map((subject) => (
+                      <SelectItem key={subject._id} value={subject._id}>
+                        {subject.name} ({subject.code})
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+                {subjects.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    No active subjects found. Please create subjects first.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">

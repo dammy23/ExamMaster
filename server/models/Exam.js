@@ -14,10 +14,9 @@ const examSchema = new mongoose.Schema({
     maxlength: [1000, 'Description cannot exceed 1000 characters']
   },
   subject: {
-    type: String,
-    required: true,
-    trim: true,
-    maxlength: [100, 'Subject cannot exceed 100 characters']
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Subject',
+    required: true
   },
   duration: {
     type: Number,

@@ -4,7 +4,12 @@ export interface Exam {
   _id: string;
   title: string;
   description: string;
-  subject: string;
+  subject: {
+    _id: string;
+    name: string;
+    code: string;
+    description?: string;
+  };
   duration: number;
   startDate: string;
   endDate: string;

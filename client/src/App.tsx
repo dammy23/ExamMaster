@@ -12,6 +12,7 @@ import { AdminDashboard } from "./pages/admin/AdminDashboard"
 import { StudentDashboard } from "./pages/student/StudentDashboard"
 import { ExamManagement } from "./pages/admin/ExamManagement"
 import { QuestionManagement } from "./pages/admin/QuestionManagement"
+import { Subjects } from "./pages/admin/Subjects"
 import { StudentManagement } from "./pages/admin/StudentManagement"
 import { Reports } from "./pages/admin/Reports"
 import { ExamAttempt } from "./pages/student/ExamAttempt"
@@ -41,6 +42,7 @@ function App() {
             <Route path="admin/exams/:id/details" element={<ExamDetails />} />
             <Route path="admin/exams/:examId/questions" element={<ExamQuestions />} />
             <Route path="admin/questions" element={<QuestionManagement />} />
+            <Route path="admin/subjects" element={<Subjects />} />
             <Route path="admin/students" element={<StudentManagement />} />
             <Route path="admin/reports" element={<Reports />} />
             <Route path="admin/seeding" element={<DatabaseSeeding />} />

@@ -15,7 +15,8 @@ import {
   BookOpen,
   ClipboardList,
   TrendingUp,
-  Database
+  Database,
+  Bookmark
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 
@@ -45,6 +46,11 @@ const adminNavItems = [
     title: "Questions",
     href: "/admin/questions",
     icon: BookOpen,
+  },
+  {
+    title: "Subjects",
+    href: "/admin/subjects",
+    icon: Bookmark,
   },
   {
     title: "Students",

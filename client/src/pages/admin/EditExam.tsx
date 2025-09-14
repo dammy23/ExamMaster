@@ -17,6 +17,7 @@ import {
 import { ArrowLeft, Save, Clock, Settings, Users } from "lucide-react"
 import { getExamById, updateExam } from "@/api/exams"
 import { getStudentGroups, type StudentGroup } from "@/api/students"
+import { getActiveSubjects, type Subject } from "@/api/subjects"
 import { useToast } from "@/hooks/useToast"
 
 interface ExamFormData {
@@ -45,6 +46,7 @@ export function EditExam() {
   const [loading, setLoading] = useState(false)
   const [fetchingExam, setFetchingExam] = useState(true)
   const [studentGroups, setStudentGroups] = useState<StudentGroup[]>([])
+  const [subjects, setSubjects] = useState<Subject[]>([])
   const [selectedGroups, setSelectedGroups] = useState<string[]>([])
 
   const {
@@ -62,6 +64,7 @@ export function EditExam() {
     if (id) {
       fetchExam()
       fetchStudentGroups()
+      fetchSubjects()
     }
   }, [id])
 
@@ -80,6 +83,21 @@ export function EditExam() {
     }
   }
 
+  const fetchSubjects = async () => {
+    try {
+      console.log('Fetching subjects for exam editing...')
+      const response = await getActiveSubjects() as any
+      setSubjects(response.subjects)
+    } catch (error: any) {
+      console.error('Error fetching subjects:', error)
+      toast({
+        title: "Warning",
+        description: "Failed to load subjects",
+        variant: "destructive"
+      })
+    }
+  }
+
   const fetchExam = async () => {
     try {
       console.log('Fetching exam for edit:', id)
@@ -93,7 +111,7 @@ export function EditExam() {
       reset({
         title: exam.title,
         description: exam.description || '',
-        subject: exam.subject,
+        subject: typeof exam.subject === 'string' ? exam.subject : exam.subject._id,
         duration: exam.duration,
         startDate,
         endDate,
@@ -229,15 +247,18 @@ export function EditExam() {
                     <SelectValue placeholder="Select subject" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="mathematics">Mathematics</SelectItem>
-                    <SelectItem value="physics">Physics</SelectItem>
-                    <SelectItem value="chemistry">Chemistry</SelectItem>
-                    <SelectItem value="biology">Biology</SelectItem>
-                    <SelectItem value="computer-science">Computer Science</SelectItem>
-                    <SelectItem value="english">English</SelectItem>
-                    <SelectItem value="history">History</SelectItem>
+                    {subjects.map((subject) => (
+                      <SelectItem key={subject._id} value={subject._id}>
+                        {subject.name} ({subject.code})
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+                {subjects.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    No active subjects found. Please create subjects first.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">

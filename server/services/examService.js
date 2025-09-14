@@ -26,6 +26,7 @@ class ExamService {
       
       const exams = await Exam.find(query)
         .populate('createdBy', 'name email')
+        .populate('subject', 'name code description')
         .sort({ createdAt: -1 });
       
       console.log(`ExamService: Found ${exams.length} exams`);
@@ -47,6 +48,7 @@ class ExamService {
       
       const exam = await Exam.findById(examId)
         .populate('createdBy', 'name email')
+        .populate('subject', 'name code description')
         .populate('assignedStudents', 'name email');
       
       if (!exam) {
@@ -99,7 +101,8 @@ class ExamService {
       
       // Populate the created exam
       const populatedExam = await Exam.findById(savedExam._id)
-        .populate('createdBy', 'name email');
+        .populate('createdBy', 'name email')
+        .populate('subject', 'name code description');
       
       console.log('ExamService: Exam created successfully with ID:', savedExam._id);
       return populatedExam;
@@ -161,7 +164,8 @@ class ExamService {
         examId,
         { ...examData, updatedAt: new Date() },
         { new: true, runValidators: true }
-      ).populate('createdBy', 'name email');
+      ).populate('createdBy', 'name email')
+       .populate('subject', 'name code description');
 
       console.log('ExamService: Exam updated successfully');
       return updatedExam;
