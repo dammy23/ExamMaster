@@ -209,10 +209,12 @@ export function ExamManagement() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem>
-                              <Eye className="mr-2 h-4 w-4" />
-                              View Details
-                            </DropdownMenuItem>
+                            <Link to={`/admin/exams/${exam._id}/details`}>
+                              <DropdownMenuItem>
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Details
+                              </DropdownMenuItem>
+                            </Link>
                             <Link to={`/admin/exams/edit/${exam._id}`}>
                               <DropdownMenuItem>
                                 <Edit className="mr-2 h-4 w-4" />

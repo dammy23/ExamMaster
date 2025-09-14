@@ -122,7 +122,6 @@ router.post('/bulk-upload', requireUser, upload.single('file'), async (req, res)
               password: normalizedData.password || normalizedData.defaultpassword || 'defaultpass123',
               role: normalizedData.role || 'student',
               studentId: normalizedData.studentid || normalizedData.id,
-              applicationNo: normalizedData.applicationno || normalizedData.appno,
               group: normalizedData.group || normalizedData.class,
               enrollmentDate: normalizedData.enrollmentdate || normalizedData.joindate,
               status: normalizedData.status || 'active'
@@ -190,7 +189,7 @@ router.post('/students', requireUser, async (req, res) => {
       });
     }
 
-    const { name, email, password, studentId, applicationNo, group } = req.body;
+    const { name, email, password, studentId, group } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({
@@ -205,7 +204,6 @@ router.post('/students', requireUser, async (req, res) => {
       password: password,
       role: 'student',
       studentId: studentId ? studentId.trim() : null,
-      applicationNo: applicationNo ? applicationNo.trim() : null,
       group: group ? group.trim() : null,
       status: 'active'
     };

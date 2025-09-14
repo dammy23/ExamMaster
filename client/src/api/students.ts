@@ -6,7 +6,6 @@ export interface Student {
   email: string;
   role: string;
   studentId?: string;
-  applicationNo?: string;
   group?: string;
   enrollmentDate?: string;
   status: 'active' | 'inactive';
@@ -96,14 +95,13 @@ export const createStudentGroup = async (groupData: { name: string; description:
 
 // Description: Create a new student
 // Endpoint: POST /api/users/students
-// Request: { name: string, email: string, password: string, studentId?: string, applicationNo?: string, group?: string }
+// Request: { name: string, email: string, password: string, studentId?: string, group?: string }
 // Response: { success: boolean, data: { student: Student } }
 export const createStudent = async (studentData: { 
   name: string; 
   email: string; 
   password: string; 
   studentId?: string; 
-  applicationNo?: string; 
   group?: string; 
 }) => {
   try {

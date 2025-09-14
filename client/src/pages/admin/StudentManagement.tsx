@@ -99,16 +99,15 @@ export function StudentManagement() {
         'email',
         'password',
         'studentId',
-        'applicationNo',
         'group'
       ]
       
       const csvContent = [
         csvHeaders.join(','),
         // Add sample row with example data
-        'John Doe,john.doe@example.com,password123,STU001,APP001,2025/2026',
-        'Jane Smith,jane.smith@example.com,password456,STU002,APP002,2025/2026',
-        'Bob Johnson,bob.johnson@example.com,password789,STU003,APP003,2024/2025'
+        'John Doe,john.doe@example.com,password123,STU001,2025/2026',
+        'Jane Smith,jane.smith@example.com,password456,STU002,2025/2026',
+        'Bob Johnson,bob.johnson@example.com,password789,STU003,2024/2025'
       ].join('\n')
 
       // Create and download file
@@ -152,8 +151,7 @@ export function StudentManagement() {
   const filteredStudents = students.filter(student => {
     const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (student.studentId && student.studentId.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                         (student.applicationNo && student.applicationNo.toLowerCase().includes(searchTerm.toLowerCase()))
+                         (student.studentId && student.studentId.toLowerCase().includes(searchTerm.toLowerCase()))
     const matchesGroup = filterGroup === "all" || student.group === filterGroup
     const matchesStatus = filterStatus === "all" || student.status === filterStatus
 
@@ -330,7 +328,6 @@ export function StudentManagement() {
                 <TableRow>
                   <TableHead>Student</TableHead>
                   <TableHead>Student ID</TableHead>
-                  <TableHead>Application No</TableHead>
                   <TableHead>Group</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Exams Taken</TableHead>
@@ -351,7 +348,6 @@ export function StudentManagement() {
                         </div>
                       </TableCell>
                       <TableCell className="font-mono">{student.studentId || 'N/A'}</TableCell>
-                      <TableCell className="font-mono">{student.applicationNo || 'N/A'}</TableCell>
                       <TableCell>{student.group || 'Not assigned'}</TableCell>
                       <TableCell>{getStatusBadge(student.status)}</TableCell>
                       <TableCell>{(student as any).totalExamsAttempted || 0}</TableCell>
@@ -394,7 +390,7 @@ export function StudentManagement() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8">
+                    <TableCell colSpan={9} className="text-center py-8">
                       <div className="text-muted-foreground">
                         {searchTerm || filterGroup !== "all" || filterStatus !== "all"
                           ? "No students found matching your filters."
@@ -495,7 +491,6 @@ function AddStudentForm({ groups, onSuccess }: { groups: StudentGroup[]; onSucce
       email: formData.get('email') as string,
       password: formData.get('password') as string,
       studentId: formData.get('studentId') as string || undefined,
-      applicationNo: formData.get('applicationNo') as string || undefined,
       group: selectedGroup === "none" ? undefined : selectedGroup || undefined
     }
 
@@ -556,24 +551,13 @@ function AddStudentForm({ groups, onSuccess }: { groups: StudentGroup[]; onSucce
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="studentId">Student ID</Label>
-          <Input
-            id="studentId"
-            name="studentId"
-            placeholder="e.g., STU001"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="applicationNo">Application No</Label>
-          <Input
-            id="applicationNo"
-            name="applicationNo"
-            placeholder="e.g., APP001"
-          />
-        </div>
+      <div className="space-y-2">
+        <Label htmlFor="studentId">Student ID</Label>
+        <Input
+          id="studentId"
+          name="studentId"
+          placeholder="e.g., STU001"
+        />
       </div>
 
       <div className="space-y-2">
@@ -677,7 +661,7 @@ function BulkUploadForm({ onSuccess }: { onSuccess: () => void }) {
           required
         />
         <p className="text-sm text-muted-foreground">
-          Upload a CSV file with columns: name, email, password, studentId, applicationNo, group
+          Upload a CSV file with columns: name, email, password, studentId, group
         </p>
       </div>
 
