@@ -46,7 +46,6 @@ export function ExamQuestions() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
-  const [filterSubject, setFilterSubject] = useState("all")
   const [filterDifficulty, setFilterDifficulty] = useState("all")
 
   useEffect(() => {
@@ -162,10 +161,9 @@ export function ExamQuestions() {
 
   const filteredQuestions = questions.filter(question => {
     const matchesSearch = question.question.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesSubject = filterSubject === "all" || question.subject === filterSubject
     const matchesDifficulty = filterDifficulty === "all" || question.difficulty === filterDifficulty
     
-    return matchesSearch && matchesSubject && matchesDifficulty
+    return matchesSearch && matchesDifficulty
   })
 
   const totalMarks = selectedQuestions.reduce((total, questionId) => {
@@ -302,18 +300,6 @@ export function ExamQuestions() {
                 className="pl-8"
               />
             </div>
-            <Select value={filterSubject} onValueChange={setFilterSubject}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Subject" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Subjects</SelectItem>
-                <SelectItem value="mathematics">Mathematics</SelectItem>
-                <SelectItem value="physics">Physics</SelectItem>
-                <SelectItem value="chemistry">Chemistry</SelectItem>
-                <SelectItem value="biology">Biology</SelectItem>
-              </SelectContent>
-            </Select>
             <Select value={filterDifficulty} onValueChange={setFilterDifficulty}>
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Difficulty" />
@@ -362,7 +348,6 @@ export function ExamQuestions() {
                   <TableHead className="w-12">Select</TableHead>
                   <TableHead>Question</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead>Subject</TableHead>
                   <TableHead>Difficulty</TableHead>
                   <TableHead>Marks</TableHead>
                 </TableRow>
@@ -398,7 +383,6 @@ export function ExamQuestions() {
                         </div>
                       </TableCell>
                       <TableCell>{getTypeBadge(question.type)}</TableCell>
-                      <TableCell className="capitalize">{question.subject}</TableCell>
                       <TableCell>{getDifficultyBadge(question.difficulty)}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{question.marks}</Badge>
@@ -407,9 +391,9 @@ export function ExamQuestions() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
+                    <TableCell colSpan={5} className="text-center py-8">
                       <div className="text-muted-foreground">
-                        {searchTerm || filterSubject !== "all" || filterDifficulty !== "all"
+                        {searchTerm || filterDifficulty !== "all"
                           ? "No questions found matching your filters."
                           : "No questions available."}
                       </div>

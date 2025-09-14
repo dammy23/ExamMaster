@@ -38,8 +38,7 @@ const subjectSchema = new mongoose.Schema({
 });
 
 // Index for better query performance
-subjectSchema.index({ name: 1 });
-subjectSchema.index({ code: 1 });
+// Note: name and code indexes are already created by unique: true
 subjectSchema.index({ isActive: 1 });
 subjectSchema.index({ createdBy: 1 });
 
