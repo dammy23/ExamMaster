@@ -29,6 +29,26 @@ const userSchema = new mongoose.Schema({
       message: 'Role must be either admin or student'
     },
     required: [true, 'Role is required']
+  },
+  // Additional fields for student users
+  studentId: {
+    type: String,
+    trim: true,
+    sparse: true, // Allows null values but ensures uniqueness when present
+    index: true
+  },
+  group: {
+    type: String,
+    trim: true
+  },
+  enrollmentDate: {
+    type: Date,
+    default: Date.now
+  },
+  status: {
+    type: String,
+    enum: ['active', 'inactive'],
+    default: 'active'
   }
 }, {
   timestamps: true,

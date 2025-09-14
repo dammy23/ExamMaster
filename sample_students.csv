@@ -1,0 +1,6 @@
+name,email,password,role,studentId,group,enrollmentDate,status
+John Doe,john.doe@example.com,password123,student,STU001,Computer Science A,2024-01-15,active
+Jane Smith,jane.smith@example.com,password123,student,STU002,Computer Science A,2024-01-15,active
+Mike Johnson,mike.johnson@example.com,password123,student,STU003,Mathematics B,2024-01-20,active
+Sarah Wilson,sarah.wilson@example.com,password123,student,STU004,Computer Science A,2024-01-18,active
+David Brown,david.brown@example.com,password123,student,STU005,Mathematics B,2024-01-22,inactive

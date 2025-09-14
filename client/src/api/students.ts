@@ -4,12 +4,11 @@ export interface Student {
   _id: string;
   name: string;
   email: string;
-  studentId: string;
-  group: string;
-  enrollmentDate: string;
+  role: string;
+  studentId?: string;
+  group?: string;
+  enrollmentDate?: string;
   status: 'active' | 'inactive';
-  totalExamsAttempted: number;
-  averageScore: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -23,60 +22,52 @@ export interface StudentGroup {
 }
 
 // Description: Get all students
-// Endpoint: GET /api/students
+// Endpoint: GET /api/users/students
 // Request: {}
-// Response: { students: Student[] }
-export const getStudents = () => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        students: [
-          {
-            _id: 'student1',
-            name: 'John Doe',
-            email: 'john.doe@example.com',
-            studentId: 'STU001',
-            group: 'Computer Science A',
-            enrollmentDate: '2024-01-01',
-            status: 'active',
-            totalExamsAttempted: 5,
-            averageScore: 85.2,
-            createdAt: '2024-01-01T00:00:00Z',
-            updatedAt: '2024-01-01T00:00:00Z'
-          },
-          {
-            _id: 'student2',
-            name: 'Jane Smith',
-            email: 'jane.smith@example.com',
-            studentId: 'STU002',
-            group: 'Computer Science A',
-            enrollmentDate: '2024-01-01',
-            status: 'active',
-            totalExamsAttempted: 4,
-            averageScore: 92.5,
-            createdAt: '2024-01-01T00:00:00Z',
-            updatedAt: '2024-01-01T00:00:00Z'
-          },
-          {
-            _id: 'student3',
-            name: 'Mike Johnson',
-            email: 'mike.johnson@example.com',
-            studentId: 'STU003',
-            group: 'Mathematics B',
-            enrollmentDate: '2024-01-02',
-            status: 'inactive',
-            totalExamsAttempted: 2,
-            averageScore: 78.0,
-            createdAt: '2024-01-02T00:00:00Z',
-            updatedAt: '2024-01-02T00:00:00Z'
-          }
-        ]
-      });
-    }, 500);
-  });
+// Response: { success: boolean, data: { students: Student[] } }
+export const getStudents = async () => {
+  try {
+    const response = await api.get('/api/users/students');
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(error?.response?.data?.error || error.message);
+  }
 };
 
-// Description: Get student groups
+// Description: Get all users (admin only)
+// Endpoint: GET /api/users
+// Request: {}
+// Response: { success: boolean, data: { users: Student[] } }
+export const getAllUsers = async () => {
+  try {
+    const response = await api.get('/api/users');
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(error?.response?.data?.error || error.message);
+  }
+};
+
+// Description: Bulk upload students from CSV file
+// Endpoint: POST /api/users/bulk-upload
+// Request: FormData with CSV file
+// Response: { success: boolean, data: { imported: number, errors?: string[] } }
+export const bulkUploadStudents = async (file: File) => {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await api.post('/api/users/bulk-upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(error?.response?.data?.error || error.message);
+  }
+};
+
+// Description: Get student groups (mock data for now)
 // Endpoint: GET /api/students/groups
 // Request: {}
 // Response: { groups: StudentGroup[] }
@@ -105,7 +96,7 @@ export const getStudentGroups = () => {
   });
 };
 
-// Description: Create student group
+// Description: Create student group (mock data for now)
 // Endpoint: POST /api/students/groups
 // Request: { name: string, description: string }
 // Response: { success: boolean, group: StudentGroup }

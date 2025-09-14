@@ -86,29 +86,20 @@ export const deleteQuestion = async (id: string) => {
   }
 };
 
-// Description: Bulk upload questions
+// Description: Bulk upload questions from CSV file
 // Endpoint: POST /api/questions/bulk-upload
-// Request: { questions: Question[] }
+// Request: FormData with CSV file
 // Response: { success: boolean, data: { imported: number, errors?: string[] } }
 export const bulkUploadQuestions = async (file: File) => {
-  // For now, we'll simulate parsing the file and sending the data
-  // In a real implementation, you'd parse the CSV/Excel file here
   try {
-    // This is a simplified version - you'd need to implement actual file parsing
-    const mockQuestions = [
-      {
-        type: 'multiple-choice',
-        question: 'Sample question from file',
-        options: ['Option 1', 'Option 2', 'Option 3', 'Option 4'],
-        correctAnswers: ['Option 1'],
-        explanation: 'Sample explanation',
-        subject: 'mathematics',
-        difficulty: 'easy',
-        marks: 2
-      }
-    ];
+    const formData = new FormData();
+    formData.append('file', file);
     
-    const response = await api.post('/api/questions/bulk-upload', { questions: mockQuestions });
+    const response = await api.post('/api/questions/bulk-upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data.data;
   } catch (error: any) {
     throw new Error(error?.response?.data?.error || error.message);

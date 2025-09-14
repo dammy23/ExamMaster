@@ -185,6 +185,115 @@ class UserService {
       return false;
     }
   }
+
+  // Bulk create users from CSV data
+  static async bulkCreateUsers(usersData) {
+    try {
+      console.log(`UserService: Bulk creating users, count: ${usersData.length}`);
+      
+      const results = {
+        imported: 0,
+        errors: [],
+        users: []
+      };
+
+      for (let i = 0; i < usersData.length; i++) {
+        const userData = usersData[i];
+        try {
+          console.log(`UserService: Processing user ${i + 1}/${usersData.length}: ${userData.email}`);
+          
+          // Check required fields
+          if (!userData.name || !userData.email || !userData.password || !userData.role) {
+            results.errors.push(`Row ${i + 1}: Missing required fields (name, email, password, role)`);
+            continue;
+          }
+
+          // Validate role
+          if (!['admin', 'student'].includes(userData.role)) {
+            results.errors.push(`Row ${i + 1}: Invalid role '${userData.role}'. Must be 'admin' or 'student'`);
+            continue;
+          }
+
+          // Check if user already exists
+          const existingUser = await User.findOne({ email: userData.email.toLowerCase() });
+          if (existingUser) {
+            results.errors.push(`Row ${i + 1}: User with email '${userData.email}' already exists`);
+            continue;
+          }
+
+          // For student users, generate studentId if not provided
+          if (userData.role === 'student' && !userData.studentId) {
+            userData.studentId = `STU${Date.now()}${Math.floor(Math.random() * 1000)}`;
+          }
+
+          // Hash password
+          const hashedPassword = await hashPassword(userData.password);
+          
+          const user = new User({
+            name: userData.name,
+            email: userData.email.toLowerCase(),
+            password: hashedPassword,
+            role: userData.role,
+            studentId: userData.studentId,
+            group: userData.group,
+            enrollmentDate: userData.enrollmentDate ? new Date(userData.enrollmentDate) : new Date(),
+            status: userData.status || 'active'
+          });
+
+          const savedUser = await user.save();
+          
+          // Return user without password
+          const userResponse = {
+            _id: savedUser._id,
+            name: savedUser.name,
+            email: savedUser.email,
+            role: savedUser.role,
+            studentId: savedUser.studentId,
+            group: savedUser.group,
+            enrollmentDate: savedUser.enrollmentDate,
+            status: savedUser.status,
+            createdAt: savedUser.createdAt,
+            updatedAt: savedUser.updatedAt
+          };
+
+          results.users.push(userResponse);
+          results.imported++;
+          
+          console.log(`UserService: User ${i + 1} created successfully: ${savedUser.email}`);
+        } catch (error) {
+          console.error(`UserService: Error creating user ${i + 1}:`, error.message);
+          
+          if (error.code === 11000) {
+            results.errors.push(`Row ${i + 1}: User with email '${userData.email}' already exists`);
+          } else if (error.name === 'ValidationError') {
+            const validationErrors = Object.values(error.errors).map(err => err.message);
+            results.errors.push(`Row ${i + 1}: ${validationErrors.join(', ')}`);
+          } else {
+            results.errors.push(`Row ${i + 1}: ${error.message}`);
+          }
+        }
+      }
+
+      console.log(`UserService: Bulk creation completed. Imported: ${results.imported}, Errors: ${results.errors.length}`);
+      return results;
+    } catch (error) {
+      console.error('UserService: Error in bulk user creation:', error.message);
+      throw new Error(`Failed to bulk create users: ${error.message}`);
+    }
+  }
+
+  // Get all students (users with role 'student')
+  static async getAllStudents() {
+    try {
+      console.log('UserService: Getting all students...');
+      const students = await User.find({ role: 'student' }).select('-password').sort({ createdAt: -1 });
+      console.log(`UserService: Found ${students.length} students`);
+      return students;
+    } catch (error) {
+      console.error('UserService: Error getting students:', error.message);
+      throw new Error('Failed to retrieve students');
+    }
+  }
 }
 
 module.exports = UserService;
