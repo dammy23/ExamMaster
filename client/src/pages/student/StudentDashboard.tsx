@@ -209,10 +209,10 @@ export function StudentDashboard() {
                     </div>
                     <div className="text-right space-y-2">
                       <Badge variant="secondary">Available</Badge>
-                      <Link to={`/student/exam/${exam._id}`}>
+                      <Link to={`/student/exam/${exam._id}/instructions`}>
                         <Button size="sm" className="gap-1">
                           <Play className="h-3 w-3" />
-                          Start
+                          View Details
                         </Button>
                       </Link>
                     </div>

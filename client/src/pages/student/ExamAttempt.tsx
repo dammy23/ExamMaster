@@ -53,6 +53,8 @@ export function ExamAttempt() {
   const [loading, setLoading] = useState(true)
   const [isFullScreen, setIsFullScreen] = useState(false)
   const [tabSwitchCount, setTabSwitchCount] = useState(0)
+  const [securityWarnings, setSecurityWarnings] = useState<string[]>([])
+  const [focusLostCount, setFocusLostCount] = useState(0)
 
   useEffect(() => {
     if (id) {
@@ -61,10 +63,24 @@ export function ExamAttempt() {
   }, [id])
 
   useEffect(() => {
+    if (!attemptId) return
+
     // Enable fullscreen
     const enterFullScreen = () => {
-      document.documentElement.requestFullscreen?.()
-      setIsFullScreen(true)
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen()
+          .then(() => {
+            setIsFullScreen(true)
+            console.log('Exam: Fullscreen mode activated')
+            logExamActivity(attemptId, 'fullscreen_enabled')
+          })
+          .catch(err => {
+            console.error('Failed to enable fullscreen:', err)
+            const warning = 'Failed to enable fullscreen mode'
+            setSecurityWarnings(prev => [...prev, warning])
+            logExamActivity(attemptId, 'fullscreen_failed')
+          })
+      }
     }
 
     enterFullScreen()
@@ -73,19 +89,160 @@ export function ExamAttempt() {
     const handleVisibilityChange = () => {
       if (document.hidden && attemptId) {
         setTabSwitchCount(prev => prev + 1)
+        const warning = `Tab switch detected at ${new Date().toLocaleTimeString()}`
+        setSecurityWarnings(prev => [...prev, warning])
         logExamActivity(attemptId, 'tab_switch')
+        console.log('Exam Security: Tab switch detected')
         toast({
-          title: "Warning",
-          description: "Tab switching detected. This activity is being logged.",
+          title: "Security Warning",
+          description: "Tab switching detected and logged. Multiple violations may result in exam termination.",
           variant: "destructive"
         })
       }
     }
 
-    document.addEventListener('visibilitychange', handleVisibilityChange)
+    // Handle window focus loss
+    const handleFocusLoss = () => {
+      if (attemptId) {
+        setFocusLostCount(prev => prev + 1)
+        const warning = `Window focus lost at ${new Date().toLocaleTimeString()}`
+        setSecurityWarnings(prev => [...prev, warning])
+        logExamActivity(attemptId, 'focus_lost')
+        console.log('Exam Security: Window focus lost')
+      }
+    }
 
+    // Handle fullscreen exit
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement && attemptId) {
+        setIsFullScreen(false)
+        const warning = `Fullscreen mode exited at ${new Date().toLocaleTimeString()}`
+        setSecurityWarnings(prev => [...prev, warning])
+        logExamActivity(attemptId, 'fullscreen_exit')
+        console.log('Exam Security: Fullscreen mode exited')
+        toast({
+          title: "Security Alert",
+          description: "Fullscreen mode was exited. Please return to fullscreen.",
+          variant: "destructive"
+        })
+        
+        // Try to re-enable fullscreen after a short delay
+        setTimeout(() => {
+          if (document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen().catch(() => {
+              // Ignore errors, user might have dismissed the request
+            })
+          }
+        }, 1000)
+      }
+    }
+
+    // Handle right-click context menu (disable)
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault()
+      if (attemptId) {
+        logExamActivity(attemptId, 'right_click_attempt')
+        console.log('Exam Security: Right-click attempt blocked')
+      }
+      return false
+    }
+
+    // Handle keyboard shortcuts that might be used for cheating
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Disable common developer tools shortcuts
+      if (
+        (e.ctrlKey || e.metaKey) && 
+        (e.key === 'i' || e.key === 'I' || // DevTools
+         e.key === 'j' || e.key === 'J' || // Console
+         e.key === 'u' || e.key === 'U' || // View Source
+         e.key === 's' || e.key === 'S' || // Save page
+         e.key === 'a' || e.key === 'A' || // Select all
+         e.key === 'c' || e.key === 'C' || // Copy
+         e.key === 'v' || e.key === 'V' || // Paste
+         e.key === 'x' || e.key === 'X')   // Cut
+      ) {
+        e.preventDefault()
+        if (attemptId) {
+          logExamActivity(attemptId, `blocked_shortcut_${e.key.toLowerCase()}`)
+          console.log(`Exam Security: Blocked keyboard shortcut Ctrl+${e.key}`)
+        }
+        return false
+      }
+
+      // Disable F12 (DevTools)
+      if (e.key === 'F12') {
+        e.preventDefault()
+        if (attemptId) {
+          logExamActivity(attemptId, 'f12_attempt')
+          console.log('Exam Security: F12 attempt blocked')
+        }
+        return false
+      }
+
+      // Alt+Tab detection
+      if (e.altKey && e.key === 'Tab') {
+        e.preventDefault()
+        if (attemptId) {
+          logExamActivity(attemptId, 'alt_tab_attempt')
+          console.log('Exam Security: Alt+Tab attempt blocked')
+        }
+        return false
+      }
+    }
+
+    // Handle print screen attempts
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'PrintScreen' && attemptId) {
+        logExamActivity(attemptId, 'print_screen_attempt')
+        console.log('Exam Security: Print screen attempt detected')
+        toast({
+          title: "Security Warning",
+          description: "Screenshot attempt detected and logged.",
+          variant: "destructive"
+        })
+      }
+    }
+
+    // Disable text selection to prevent copying
+    const handleSelectStart = (e: Event) => {
+      e.preventDefault()
+      return false
+    }
+
+    // Disable drag and drop
+    const handleDragStart = (e: DragEvent) => {
+      e.preventDefault()
+      return false
+    }
+
+    // Add event listeners
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('blur', handleFocusLoss)
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    document.addEventListener('contextmenu', handleContextMenu)
+    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('keyup', handleKeyUp)
+    document.addEventListener('selectstart', handleSelectStart)
+    document.addEventListener('dragstart', handleDragStart)
+
+    // Disable selection via CSS
+    document.body.style.userSelect = 'none'
+    document.body.style.webkitUserSelect = 'none'
+
+    // Cleanup function
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('blur', handleFocusLoss)
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+      document.removeEventListener('contextmenu', handleContextMenu)
+      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('keyup', handleKeyUp)
+      document.removeEventListener('selectstart', handleSelectStart)
+      document.removeEventListener('dragstart', handleDragStart)
+      
+      // Re-enable selection
+      document.body.style.userSelect = ''
+      document.body.style.webkitUserSelect = ''
     }
   }, [attemptId, toast])
 
@@ -249,12 +406,36 @@ export function ExamAttempt() {
               </span>
             </div>
 
-            {tabSwitchCount > 0 && (
-              <Badge variant="destructive" className="gap-1">
-                <AlertTriangle className="h-3 w-3" />
-                {tabSwitchCount} warnings
-              </Badge>
-            )}
+            {/* Security Status Indicators */}
+            <div className="flex items-center gap-2">
+              {!isFullScreen && (
+                <Badge variant="destructive" className="gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  Not Fullscreen
+                </Badge>
+              )}
+              
+              {tabSwitchCount > 0 && (
+                <Badge variant="destructive" className="gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {tabSwitchCount} tab switches
+                </Badge>
+              )}
+              
+              {focusLostCount > 0 && (
+                <Badge variant="destructive" className="gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {focusLostCount} focus lost
+                </Badge>
+              )}
+
+              {securityWarnings.length > 0 && (
+                <Badge variant="destructive" className="gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {securityWarnings.length} violations
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
       </div>

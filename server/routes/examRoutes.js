@@ -60,6 +60,9 @@ router.get('/:id', requireUser, async (req, res) => {
         error: 'You are not authorized to view this exam'
       });
     }
+    
+    // For students, they can view exams that are active and within the time window
+    // Additional access control can be added here for assigned students/groups if needed
 
     console.log(`Found exam: ${exam.title} for user: ${req.user.email}`);
     return res.status(200).json({

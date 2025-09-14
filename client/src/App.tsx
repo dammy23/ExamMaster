@@ -16,6 +16,7 @@ import { Subjects } from "./pages/admin/Subjects"
 import { StudentManagement } from "./pages/admin/StudentManagement"
 import { Reports } from "./pages/admin/Reports"
 import { ExamAttempt } from "./pages/student/ExamAttempt"
+import { ExamInstructions } from "./pages/student/ExamInstructions"
 import { StudentResults } from "./pages/student/StudentResults"
 import { CreateExam } from "./pages/admin/CreateExam"
 import { EditExam } from "./pages/admin/EditExam"
@@ -46,6 +47,7 @@ function App() {
             <Route path="admin/students" element={<StudentManagement />} />
             <Route path="admin/reports" element={<Reports />} />
             <Route path="admin/seeding" element={<DatabaseSeeding />} />
+            <Route path="student/exam/:id/instructions" element={<ExamInstructions />} />
             <Route path="student/exam/:id" element={<ExamAttempt />} />
             <Route path="student/results" element={<StudentResults />} />
           </Route>

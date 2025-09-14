@@ -15,37 +15,68 @@ class ExamAttemptService {
       }
 
       // Check if exam exists and is active
-      const exam = await Exam.findById(examId);
+      const exam = await Exam.findById(examId).populate('assignedStudents assignedGroups');
       if (!exam) {
         throw new Error('Exam not found');
       }
 
-      if (exam.status !== 'active') {
-        throw new Error('Exam is not currently active');
+      // Comprehensive exam validation
+      if (exam.status !== 'active' && exam.status !== 'draft') {
+        throw new Error('Exam is not currently available for attempts');
       }
 
       // Check if exam is within the allowed time window
       const now = new Date();
-      if (now < exam.startDate || now > exam.endDate) {
-        throw new Error('Exam is not available at this time');
+      if (now < exam.startDate) {
+        const timeDiff = exam.startDate.getTime() - now.getTime();
+        const hoursUntilStart = Math.ceil(timeDiff / (1000 * 60 * 60));
+        throw new Error(`Exam has not started yet. It will begin in ${hoursUntilStart} hour(s).`);
+      }
+      
+      if (now > exam.endDate) {
+        throw new Error('Exam time has expired and is no longer available');
       }
 
-      // Check if student already has an active attempt
-      const existingAttempt = await ExamAttempt.findOne({
+      // Check if student is assigned to this exam (if assignment lists exist)
+      // For now, we'll allow all students to attempt any active exam
+      // TODO: Implement proper student assignment validation
+      
+      // Validate exam has questions
+      if (!exam.questions || exam.questions.length === 0) {
+        throw new Error('This exam has no questions assigned and cannot be attempted');
+      }
+
+      // Check duration is valid
+      if (!exam.duration || exam.duration <= 0) {
+        throw new Error('Invalid exam duration. Please contact administrator');
+      }
+
+      console.log(`Exam validation passed for exam: ${exam.title}`);
+
+      // Check if student already has any attempt for this exam
+      const existingAttempts = await ExamAttempt.find({
         examId,
-        studentId,
-        status: 'in-progress'
+        studentId
       });
 
-      if (existingAttempt) {
+      // Check for active (in-progress) attempt
+      const activeAttempt = existingAttempts.find(attempt => attempt.status === 'in-progress');
+      if (activeAttempt) {
+        console.log(`Student has existing active attempt: ${activeAttempt._id}`);
         // Return existing attempt with questions
         const questions = await Question.find({ _id: { $in: exam.questions || [] } })
           .select('_id type question options marks');
         
         return {
-          attemptId: existingAttempt._id.toString(),
+          attemptId: activeAttempt._id.toString(),
           questions: questions
         };
+      }
+
+      // Check for completed attempts (prevent multiple attempts for now)
+      const completedAttempt = existingAttempts.find(attempt => attempt.status === 'completed');
+      if (completedAttempt) {
+        throw new Error('You have already completed this exam. Multiple attempts are not allowed.');
       }
 
       // Create new attempt
