@@ -285,11 +285,11 @@ export function ExamAttempt() {
       setVideoRecordingEnabled(attemptData.videoRecording || false)
       setAttemptNumber(attemptData.attemptNumber || 1)
       setMaxAttempts(attemptData.maxAttempts || 1)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error initializing exam:', error)
       toast({
         title: "Error",
-        description: "Failed to start exam",
+        description: error.message || "Failed to start exam",
         variant: "destructive"
       })
       navigate('/student')
@@ -303,8 +303,13 @@ export function ExamAttempt() {
 
     try {
       await saveExamAnswer(attemptId, questionId, answer)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving answer:', error)
+      toast({
+        title: "Warning", 
+        description: "Failed to save answer. Please try again.",
+        variant: "destructive"
+      })
     }
   }
 
@@ -329,8 +334,13 @@ export function ExamAttempt() {
         description: "Your exam has been automatically submitted.",
       })
       navigate('/student/results')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error auto-submitting exam:', error)
+      toast({
+        title: "Submission Error",
+        description: error.message || "Failed to auto-submit exam. Please submit manually.",
+        variant: "destructive"
+      })
     }
   }
 
@@ -345,11 +355,11 @@ export function ExamAttempt() {
         description: `Your score: ${result.score}/${exam.totalMarks} (${result.percentage}%)`,
       })
       navigate('/student/results')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting exam:', error)
       toast({
         title: "Error",
-        description: "Failed to submit exam",
+        description: error.message || "Failed to submit exam",
         variant: "destructive"
       })
     }
