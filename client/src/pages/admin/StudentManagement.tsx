@@ -101,7 +101,7 @@ export function StudentManagement() {
   const filteredStudents = students.filter(student => {
     const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         student.studentId.toLowerCase().includes(searchTerm.toLowerCase())
+                         (student.studentId && student.studentId.toLowerCase().includes(searchTerm.toLowerCase()))
     const matchesGroup = filterGroup === "all" || student.group === filterGroup
     const matchesStatus = filterStatus === "all" || student.status === filterStatus
 
@@ -248,14 +248,19 @@ export function StudentManagement() {
                           <div className="text-sm text-muted-foreground">{student.email}</div>
                         </div>
                       </TableCell>
-                      <TableCell className="font-mono">{student.studentId}</TableCell>
-                      <TableCell>{student.group}</TableCell>
+                      <TableCell className="font-mono">{student.studentId || 'N/A'}</TableCell>
+                      <TableCell>{student.group || 'Not assigned'}</TableCell>
                       <TableCell>{getStatusBadge(student.status)}</TableCell>
-                      <TableCell>{student.totalExamsAttempted}</TableCell>
-                      <TableCell>{student.averageScore.toFixed(1)}%</TableCell>
-                      <TableCell>{getPerformanceBadge(student.averageScore)}</TableCell>
+                      <TableCell>{(student as any).totalExamsAttempted || 0}</TableCell>
                       <TableCell>
-                        {new Date(student.enrollmentDate).toLocaleDateString()}
+                        {(student as any).averageScore ? `${((student as any).averageScore).toFixed(1)}%` : 'N/A'}
+                      </TableCell>
+                      <TableCell>
+                        {(student as any).averageScore ? getPerformanceBadge((student as any).averageScore) : 
+                         <Badge variant="secondary">No data</Badge>}
+                      </TableCell>
+                      <TableCell>
+                        {student.enrollmentDate ? new Date(student.enrollmentDate).toLocaleDateString() : 'N/A'}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
