@@ -15,7 +15,7 @@ class ExamAttemptService {
       }
 
       // Check if exam exists and is active
-      const exam = await Exam.findById(examId).populate('assignedStudents assignedGroups');
+      const exam = await Exam.findById(examId).populate('assignedStudents assignedGroups questions');
       if (!exam) {
         throw new Error('Exam not found');
       }
@@ -41,11 +41,10 @@ class ExamAttemptService {
       // For now, we'll allow all students to attempt any active exam
       // TODO: Implement proper student assignment validation
       
-      // Note: Question validation is relaxed to allow mock questions for testing
-      // When question assignment system is fully implemented, this can be uncommented:
-      // if (!exam.questions || exam.questions.length === 0) {
-      //   throw new Error('This exam has no questions assigned and cannot be attempted');
-      // }
+      // Validate exam has questions assigned
+      if (!exam.questions || exam.questions.length === 0) {
+        throw new Error('This exam has no questions assigned and cannot be attempted');
+      }
 
       // Check duration is valid
       if (!exam.duration || exam.duration <= 0) {
@@ -64,14 +63,21 @@ class ExamAttemptService {
       const activeAttempt = existingAttempts.find(attempt => attempt.status === 'in-progress');
       if (activeAttempt) {
         console.log(`Student has existing active attempt: ${activeAttempt._id}`);
-        // Return existing attempt with questions
-        const questions = await Question.find({ _id: { $in: exam.questions || [] } })
-          .select('_id type question options marks');
+        // Return existing attempt with questions (already populated from the exam query above)
+        const questions = exam.questions.map(question => ({
+          _id: question._id,
+          type: question.type,
+          question: question.question,
+          options: question.options || [],
+          marks: question.marks
+        }));
         
         return {
           attemptId: activeAttempt._id.toString(),
           questions: questions,
-          videoRecording: exam.videoRecording
+          videoRecording: exam.videoRecording,
+          attemptNumber: activeAttempt.attemptNumber,
+          maxAttempts: exam.maxAttempts
         };
       }
 
@@ -111,35 +117,21 @@ class ExamAttemptService {
 
       const savedAttempt = await attempt.save();
 
-      // Get questions for this exam (for now, we'll use mock questions since question assignment isn't implemented yet)
-      // TODO: Replace with actual exam questions when question assignment is implemented
-      const mockQuestions = [
-        {
-          _id: new mongoose.Types.ObjectId(),
-          type: 'multiple-choice',
-          question: 'What is the derivative of x²?',
-          options: ['2x', 'x²', '2', 'x'],
-          marks: 2
-        },
-        {
-          _id: new mongoose.Types.ObjectId(),
-          type: 'true-false',
-          question: 'The speed of light is approximately 3 × 10⁸ m/s.',
-          marks: 1
-        },
-        {
-          _id: new mongoose.Types.ObjectId(),
-          type: 'short-answer',
-          question: 'Explain the concept of photosynthesis in plants.',
-          marks: 5
-        }
-      ];
+      // Get questions for this exam (already populated from the exam query above)
+      const questions = exam.questions.map(question => ({
+        _id: question._id,
+        type: question.type,
+        question: question.question,
+        options: question.options || [],
+        marks: question.marks
+      }));
 
       console.log('ExamAttemptService: Exam attempt started successfully with ID:', savedAttempt._id);
+      console.log(`ExamAttemptService: Loaded ${questions.length} questions for exam attempt`);
       
       return {
         attemptId: savedAttempt._id.toString(),
-        questions: mockQuestions,
+        questions: questions,
         videoRecording: exam.videoRecording,
         attemptNumber: nextAttemptNumber,
         maxAttempts: exam.maxAttempts
@@ -212,27 +204,52 @@ class ExamAttemptService {
       const endTime = new Date();
       const timeSpentMinutes = Math.round((endTime - attempt.startTime) / (1000 * 60));
 
-      // Calculate score (mock calculation for now)
-      // TODO: Implement proper scoring based on correct answers when question system is complete
-      const totalQuestions = 3; // Mock value
-      const answeredQuestions = attempt.answers.size;
-      const mockScore = Math.round((answeredQuestions / totalQuestions) * attempt.examId.totalMarks * 0.85);
-      const percentage = (mockScore / attempt.examId.totalMarks) * 100;
+      // Calculate score based on actual questions
+      let totalScore = 0;
+      const exam = await Exam.findById(attempt.examId).populate('questions');
+      
+      if (exam && exam.questions) {
+        for (const question of exam.questions) {
+          const studentAnswer = attempt.answers.get(question._id.toString());
+          if (studentAnswer) {
+            // Simple scoring logic - can be enhanced later for partial marks
+            if (question.type === 'multiple-choice' || question.type === 'true-false') {
+              const correctAnswers = question.correctAnswers || [];
+              if (Array.isArray(studentAnswer)) {
+                // Multiple selection - check if arrays match
+                const isCorrect = correctAnswers.length === studentAnswer.length &&
+                  correctAnswers.every(ans => studentAnswer.includes(ans));
+                if (isCorrect) totalScore += question.marks;
+              } else {
+                // Single selection
+                if (correctAnswers.includes(studentAnswer)) {
+                  totalScore += question.marks;
+                }
+              }
+            } else if (question.type === 'short-answer') {
+              // For short answers, award half marks for any attempt (manual review needed)
+              totalScore += question.marks * 0.5;
+            }
+          }
+        }
+      }
+      
+      const percentage = exam ? (totalScore / exam.totalMarks) * 100 : 0;
 
       // Update attempt
       attempt.endTime = endTime;
       attempt.timeSpent = timeSpentMinutes;
-      attempt.score = mockScore;
+      attempt.score = totalScore;
       attempt.percentage = Math.round(percentage * 100) / 100; // Round to 2 decimal places
       attempt.status = 'completed';
 
       await attempt.save();
 
-      console.log('ExamAttemptService: Exam attempt submitted successfully with score:', mockScore);
+      console.log('ExamAttemptService: Exam attempt submitted successfully with score:', totalScore);
       
       return {
         success: true,
-        score: mockScore,
+        score: totalScore,
         percentage: attempt.percentage
       };
     } catch (error) {

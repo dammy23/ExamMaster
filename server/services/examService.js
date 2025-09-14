@@ -1,4 +1,5 @@
 const Exam = require('../models/Exam.js');
+const Question = require('../models/Question.js');
 const mongoose = require('mongoose');
 
 class ExamService {
@@ -200,6 +201,137 @@ class ExamService {
       return { message: 'Exam deleted successfully' };
     } catch (error) {
       console.error('ExamService: Error deleting exam:', error.message);
+      throw error;
+    }
+  }
+
+  // Get questions for an exam
+  static async getExamQuestions(examId, userId) {
+    try {
+      console.log('ExamService: Getting questions for exam:', examId);
+
+      if (!mongoose.Types.ObjectId.isValid(examId)) {
+        throw new Error('Invalid exam ID format');
+      }
+
+      const exam = await Exam.findById(examId).populate('questions');
+      if (!exam) {
+        throw new Error('Exam not found');
+      }
+
+      // For admin users, check authorization
+      if (userId && exam.createdBy.toString() !== userId.toString()) {
+        throw new Error('You are not authorized to view questions for this exam');
+      }
+
+      console.log(`ExamService: Found ${exam.questions.length} questions for exam`);
+      return exam.questions;
+    } catch (error) {
+      console.error('ExamService: Error getting exam questions:', error.message);
+      throw error;
+    }
+  }
+
+  // Assign questions to an exam
+  static async assignQuestions(examId, questionIds, userId) {
+    try {
+      console.log('ExamService: Assigning questions to exam:', examId, 'questions:', questionIds);
+
+      if (!mongoose.Types.ObjectId.isValid(examId)) {
+        throw new Error('Invalid exam ID format');
+      }
+
+      // Validate question IDs
+      for (const questionId of questionIds) {
+        if (!mongoose.Types.ObjectId.isValid(questionId)) {
+          throw new Error(`Invalid question ID format: ${questionId}`);
+        }
+      }
+
+      const exam = await Exam.findById(examId);
+      if (!exam) {
+        throw new Error('Exam not found');
+      }
+
+      // Check authorization
+      if (exam.createdBy.toString() !== userId.toString()) {
+        throw new Error('You are not authorized to modify this exam');
+      }
+
+      // Verify all questions exist
+      const questions = await Question.find({ _id: { $in: questionIds } });
+      if (questions.length !== questionIds.length) {
+        const foundIds = questions.map(q => q._id.toString());
+        const missingIds = questionIds.filter(id => !foundIds.includes(id));
+        throw new Error(`Questions not found: ${missingIds.join(', ')}`);
+      }
+
+      // Add questions to exam (avoid duplicates)
+      const existingQuestionIds = exam.questions.map(id => id.toString());
+      const newQuestionIds = questionIds.filter(id => !existingQuestionIds.includes(id));
+      
+      exam.questions.push(...newQuestionIds);
+      
+      // Update totalQuestions count
+      exam.totalQuestions = exam.questions.length;
+      
+      await exam.save();
+
+      console.log(`ExamService: Successfully assigned ${newQuestionIds.length} new questions to exam`);
+      return {
+        message: `Successfully assigned ${newQuestionIds.length} new questions to exam`,
+        questionsCount: exam.questions.length
+      };
+    } catch (error) {
+      console.error('ExamService: Error assigning questions to exam:', error.message);
+      throw error;
+    }
+  }
+
+  // Remove questions from an exam
+  static async removeQuestions(examId, questionIds, userId) {
+    try {
+      console.log('ExamService: Removing questions from exam:', examId, 'questions:', questionIds);
+
+      if (!mongoose.Types.ObjectId.isValid(examId)) {
+        throw new Error('Invalid exam ID format');
+      }
+
+      // Validate question IDs
+      for (const questionId of questionIds) {
+        if (!mongoose.Types.ObjectId.isValid(questionId)) {
+          throw new Error(`Invalid question ID format: ${questionId}`);
+        }
+      }
+
+      const exam = await Exam.findById(examId);
+      if (!exam) {
+        throw new Error('Exam not found');
+      }
+
+      // Check authorization
+      if (exam.createdBy.toString() !== userId.toString()) {
+        throw new Error('You are not authorized to modify this exam');
+      }
+
+      // Remove questions from exam
+      const questionIdsToRemove = questionIds.map(id => id.toString());
+      exam.questions = exam.questions.filter(questionId => 
+        !questionIdsToRemove.includes(questionId.toString())
+      );
+
+      // Update totalQuestions count
+      exam.totalQuestions = exam.questions.length;
+      
+      await exam.save();
+
+      console.log(`ExamService: Successfully removed ${questionIds.length} questions from exam`);
+      return {
+        message: `Successfully removed ${questionIds.length} questions from exam`,
+        questionsCount: exam.questions.length
+      };
+    } catch (error) {
+      console.error('ExamService: Error removing questions from exam:', error.message);
       throw error;
     }
   }

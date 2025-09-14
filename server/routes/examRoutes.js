@@ -224,4 +224,163 @@ router.delete('/:id', requireUser, async (req, res) => {
   }
 });
 
+// Get questions for an exam
+router.get('/:id/questions', requireUser, async (req, res) => {
+  try {
+    const examId = req.params.id;
+    console.log(`Getting questions for exam ${examId} by user: ${req.user.email}`);
+
+    const questions = await ExamService.getExamQuestions(examId, req.user._id);
+
+    console.log(`Found ${questions.length} questions for exam ${examId}`);
+    return res.status(200).json({
+      success: true,
+      questions: questions
+    });
+  } catch (error) {
+    console.error(`Error getting questions for exam ${req.params.id} by user ${req.user.email}:`, error.message);
+
+    if (error.message === 'Exam not found' || error.message === 'Invalid exam ID format') {
+      return res.status(404).json({
+        success: false,
+        error: error.message
+      });
+    }
+
+    if (error.message.includes('not authorized')) {
+      return res.status(403).json({
+        success: false,
+        error: error.message
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Assign questions to an exam
+router.post('/:id/questions', requireUser, async (req, res) => {
+  try {
+    const examId = req.params.id;
+    const { questionIds } = req.body;
+    console.log(`Assigning ${questionIds?.length || 0} questions to exam ${examId} by user: ${req.user.email}`);
+
+    // Only admin users can assign questions to exams
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only admin users can assign questions to exams'
+      });
+    }
+
+    if (!questionIds || !Array.isArray(questionIds)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Question IDs array is required'
+      });
+    }
+
+    const result = await ExamService.assignQuestions(examId, questionIds, req.user._id);
+
+    console.log(`Successfully assigned questions to exam ${examId} by user: ${req.user.email}`);
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      questionsCount: result.questionsCount
+    });
+  } catch (error) {
+    console.error(`Error assigning questions to exam ${req.params.id} by user ${req.user.email}:`, error.message);
+
+    if (error.message === 'Exam not found' || error.message === 'Invalid exam ID format') {
+      return res.status(404).json({
+        success: false,
+        error: error.message
+      });
+    }
+
+    if (error.message.includes('not authorized')) {
+      return res.status(403).json({
+        success: false,
+        error: error.message
+      });
+    }
+
+    if (error.message.includes('not found') || error.message.includes('invalid')) {
+      return res.status(400).json({
+        success: false,
+        error: error.message
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Remove questions from an exam
+router.delete('/:id/questions', requireUser, async (req, res) => {
+  try {
+    const examId = req.params.id;
+    const { questionIds } = req.body;
+    console.log(`Removing ${questionIds?.length || 0} questions from exam ${examId} by user: ${req.user.email}`);
+
+    // Only admin users can remove questions from exams
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only admin users can remove questions from exams'
+      });
+    }
+
+    if (!questionIds || !Array.isArray(questionIds)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Question IDs array is required'
+      });
+    }
+
+    const result = await ExamService.removeQuestions(examId, questionIds, req.user._id);
+
+    console.log(`Successfully removed questions from exam ${examId} by user: ${req.user.email}`);
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      questionsCount: result.questionsCount
+    });
+  } catch (error) {
+    console.error(`Error removing questions from exam ${req.params.id} by user ${req.user.email}:`, error.message);
+
+    if (error.message === 'Exam not found' || error.message === 'Invalid exam ID format') {
+      return res.status(404).json({
+        success: false,
+        error: error.message
+      });
+    }
+
+    if (error.message.includes('not authorized')) {
+      return res.status(403).json({
+        success: false,
+        error: error.message
+      });
+    }
+
+    if (error.message.includes('not found') || error.message.includes('invalid')) {
+      return res.status(400).json({
+        success: false,
+        error: error.message
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

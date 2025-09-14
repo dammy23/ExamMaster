@@ -95,3 +95,42 @@ export const getExamById = async (id: string) => {
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
+
+// Description: Get questions for an exam
+// Endpoint: GET /api/exams/:id/questions
+// Request: {}
+// Response: { success: boolean, questions: Question[] }
+export const getExamQuestions = async (examId: string) => {
+  try {
+    const response = await api.get(`/api/exams/${examId}/questions`);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error?.response?.data?.error || error.message);
+  }
+};
+
+// Description: Assign questions to an exam
+// Endpoint: POST /api/exams/:id/questions
+// Request: { questionIds: string[] }
+// Response: { success: boolean, message: string, questionsCount: number }
+export const assignQuestionsToExam = async (examId: string, questionIds: string[]) => {
+  try {
+    const response = await api.post(`/api/exams/${examId}/questions`, { questionIds });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error?.response?.data?.error || error.message);
+  }
+};
+
+// Description: Remove questions from an exam
+// Endpoint: DELETE /api/exams/:id/questions
+// Request: { questionIds: string[] }
+// Response: { success: boolean, message: string, questionsCount: number }
+export const removeQuestionsFromExam = async (examId: string, questionIds: string[]) => {
+  try {
+    const response = await api.delete(`/api/exams/${examId}/questions`, { data: { questionIds } });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error?.response?.data?.error || error.message);
+  }
+};

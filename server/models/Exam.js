@@ -91,6 +91,10 @@ const examSchema = new mongoose.Schema({
     type: String,
     trim: true
   }],
+  questions: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Question'
+  }],
   maxAttempts: {
     type: Number,
     default: 1,
