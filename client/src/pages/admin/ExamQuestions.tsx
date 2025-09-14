@@ -231,7 +231,7 @@ export function ExamQuestions() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold capitalize">{exam.subject}</div>
+            <div className="text-2xl font-bold capitalize">{exam.subject?.name || 'No Subject'}</div>
           </CardContent>
         </Card>
 
