@@ -60,10 +60,31 @@ export function ExamAttempt() {
   const [videoRecordingEnabled, setVideoRecordingEnabled] = useState(false)
   const [attemptNumber, setAttemptNumber] = useState(1)
   const [maxAttempts, setMaxAttempts] = useState(1)
+  const [isFullscreenMode, setIsFullscreenMode] = useState(false)
 
   useEffect(() => {
     if (id) {
       initializeExam()
+    }
+    
+    // Check if we're in fullscreen mode (opened from new window)
+    const isInFullscreenWindow = window.location.pathname.startsWith('/exam-fullscreen')
+    setIsFullscreenMode(isInFullscreenWindow)
+    
+    console.log('ExamAttempt: Fullscreen mode detected:', isInFullscreenWindow)
+    
+    // Add beforeunload event to warn about closing the exam window
+    if (isInFullscreenWindow) {
+      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+        e.preventDefault()
+        e.returnValue = ''
+        return 'Are you sure you want to leave? Your exam progress may be lost.'
+      }
+      
+      window.addEventListener('beforeunload', handleBeforeUnload)
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload)
+      }
     }
   }, [id])
 
@@ -333,7 +354,16 @@ export function ExamAttempt() {
         title: "Time's Up!",
         description: "Your exam has been automatically submitted.",
       })
-      navigate('/student/results')
+      
+      if (isFullscreenMode) {
+        console.log('Closing exam window after auto-submit')
+        // Small delay to ensure toast is visible before closing
+        setTimeout(() => {
+          window.close()
+        }, 2000)
+      } else {
+        navigate('/student/results')
+      }
     } catch (error: any) {
       console.error('Error auto-submitting exam:', error)
       toast({
@@ -354,7 +384,16 @@ export function ExamAttempt() {
         title: "Exam Submitted",
         description: `Your score: ${result.score}/${exam.totalMarks} (${result.percentage}%)`,
       })
-      navigate('/student/results')
+      
+      if (isFullscreenMode) {
+        console.log('Closing exam window after manual submit')
+        // Small delay to ensure toast is visible before closing
+        setTimeout(() => {
+          window.close()
+        }, 2000)
+      } else {
+        navigate('/student/results')
+      }
     } catch (error: any) {
       console.error('Error submitting exam:', error)
       toast({

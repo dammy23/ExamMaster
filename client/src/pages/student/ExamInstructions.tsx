@@ -131,8 +131,48 @@ export function ExamInstructions() {
       return
     }
     
-    console.log('Starting exam:', id)
-    navigate(`/student/exam/${id}`)
+    console.log('Starting exam in new fullscreen window:', id)
+    
+    // Open exam in new window with fullscreen
+    const examUrl = `/exam-fullscreen/${id}`
+    const examWindow = window.open(
+      examUrl, 
+      'examWindow', 
+      'fullscreen=yes,scrollbars=no,resizable=no,toolbar=no,menubar=no,location=no,status=no'
+    )
+    
+    if (examWindow) {
+      // Try to maximize the window
+      examWindow.moveTo(0, 0)
+      examWindow.resizeTo(screen.width, screen.height)
+      
+      // Focus on the new window
+      examWindow.focus()
+      
+      toast({
+        title: "Exam Window Opened",
+        description: "Your exam has opened in a new fullscreen window. Complete your exam in that window.",
+      })
+      
+      // Listen for window close to refresh current page
+      const checkClosed = setInterval(() => {
+        if (examWindow.closed) {
+          clearInterval(checkClosed)
+          console.log('Exam window closed, refreshing dashboard')
+          toast({
+            title: "Exam Window Closed",
+            description: "Returning to dashboard...",
+          })
+          navigate('/student')
+        }
+      }, 1000)
+    } else {
+      toast({
+        title: "Pop-up Blocked",
+        description: "Please allow pop-ups for this site and try again.",
+        variant: "destructive"
+      })
+    }
   }
 
   if (loading) {

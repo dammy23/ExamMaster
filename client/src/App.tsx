@@ -33,6 +33,12 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/seeding" element={<DatabaseSeeding />} />
+          {/* Fullscreen exam route without layout/sidebar */}
+          <Route path="/exam-fullscreen/:id" element={
+            <ProtectedRoute>
+              <ExamAttempt />
+            </ProtectedRoute>
+          } />
           <Route path="/" element={<ProtectedRoute> <Layout /> </ProtectedRoute>}>
             <Route index element={<RoleDashboard />} />
             <Route path="admin" element={<AdminDashboard />} />
