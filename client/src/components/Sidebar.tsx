@@ -16,7 +16,8 @@ import {
   ClipboardList,
   TrendingUp,
   Database,
-  Bookmark
+  Bookmark,
+  MessageSquare
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 
@@ -61,6 +62,11 @@ const adminNavItems = [
     title: "Reports",
     href: "/admin/reports",
     icon: BarChart3,
+  },
+  {
+    title: "AI Chat",
+    href: "/admin/ai-chat",
+    icon: MessageSquare,
   },
   {
     title: "Settings",

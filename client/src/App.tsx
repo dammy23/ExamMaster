@@ -24,6 +24,7 @@ import { ExamDetails } from "./pages/admin/ExamDetails"
 import { ExamQuestions } from "./pages/admin/ExamQuestions"
 import { DatabaseSeeding } from "./pages/admin/DatabaseSeeding"
 import { SettingsPage } from "./pages/admin/SettingsPage"
+import { AIChat } from "./pages/admin/AIChat"
 
 function App() {
   return (
@@ -53,6 +54,7 @@ function App() {
             <Route path="admin/subjects" element={<Subjects />} />
             <Route path="admin/students" element={<StudentManagement />} />
             <Route path="admin/reports" element={<Reports />} />
+            <Route path="admin/ai-chat" element={<AIChat />} />
             <Route path="admin/settings" element={<SettingsPage />} />
             <Route path="admin/seeding" element={<DatabaseSeeding />} />
             <Route path="student/exam/:id/instructions" element={<ExamInstructions />} />
