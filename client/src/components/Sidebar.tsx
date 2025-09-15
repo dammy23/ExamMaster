@@ -63,6 +63,11 @@ const adminNavItems = [
     icon: BarChart3,
   },
   {
+    title: "Settings",
+    href: "/admin/settings",
+    icon: Settings,
+  },
+  {
     title: "Database Seeding",
     href: "/admin/seeding",
     icon: Database,
