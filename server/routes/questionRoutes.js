@@ -90,6 +90,38 @@ router.post('/', requireUser, async (req, res) => {
         error: 'Missing required fields: question, type, difficulty, marks'
       });
     }
+
+    // Additional validation for multiple choice questions
+    if (questionData.type === 'multiple-choice') {
+      if (!questionData.options || !Array.isArray(questionData.options)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Multiple choice questions must have options array'
+        });
+      }
+      
+      const validOptions = questionData.options.filter(opt => opt && opt.trim());
+      if (validOptions.length < 4) {
+        return res.status(400).json({
+          success: false,
+          error: 'Multiple choice questions must have at least 4 options'
+        });
+      }
+      
+      if (validOptions.length > 6) {
+        return res.status(400).json({
+          success: false,
+          error: 'Multiple choice questions can have at most 6 options'
+        });
+      }
+      
+      if (!questionData.correctAnswers || questionData.correctAnswers.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Multiple choice questions must have at least one correct answer'
+        });
+      }
+    }
     
     const question = await questionService.createQuestion(questionData, req.user._id);
     

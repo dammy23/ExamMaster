@@ -1,6 +1,7 @@
-type,question,subject,difficulty,marks,option1,option2,option3,option4,correctAnswers,explanation
-multiple-choice,"What is the capital of France?",geography,easy,1,"Paris","London","Berlin","Madrid","Paris","Paris is the capital city of France."
-multiple-choice,"Which of the following are programming languages?",computer-science,medium,2,"Python","Java","HTML","JavaScript","Python,Java,JavaScript","Python and Java are programming languages, JavaScript is also a programming language, while HTML is a markup language."
-true-false,"The Earth is flat.",science,easy,1,,,,,False,"The Earth is approximately spherical in shape."
-short-answer,"What is the formula for the area of a circle?",mathematics,medium,3,,,,,πr²,"The area of a circle is calculated using π (pi) multiplied by the radius squared."
-multiple-choice,"What is 2 + 2?",mathematics,easy,1,"3","4","5","6","4","Basic addition: 2 + 2 = 4"
+type,question,difficulty,marks,option1,option2,option3,option4,option5,option6,correctAnswers,explanation
+multiple-choice,"What is the capital of France?",easy,1,"Paris","London","Berlin","Madrid","","","Paris","Paris is the capital city of France."
+multiple-choice,"Which are programming languages?",medium,2,"Python","Java","HTML","CSS","JavaScript","TypeScript","Python,Java,JavaScript,TypeScript","Programming languages vs markup/styling languages."
+multiple-choice,"What is 2 + 2?",easy,1,"1","2","3","4","5","6","4","Basic addition: 2 + 2 = 4"
+multiple-choice,"Which are web technologies?",medium,3,"HTML","CSS","Python","JavaScript","React","Bootstrap","HTML,CSS,JavaScript,React,Bootstrap","Various web development technologies"
+true-false,"The Earth is flat.",easy,1,"","","","","","","false","The Earth is approximately spherical in shape."
+short-answer,"What is the formula for the area of a circle?",medium,3,"","","","","","","πr²","The area of a circle is calculated using π (pi) multiplied by the radius squared."

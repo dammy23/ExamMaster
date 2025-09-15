@@ -180,23 +180,29 @@ export function QuestionManagement() {
     try {
       console.log('Downloading questions CSV template...')
       
-      // Create CSV content
+      // Create CSV content with separate columns for each option
       const csvHeaders = [
         'type',
         'question', 
         'difficulty',
         'marks',
-        'options',
+        'option1',
+        'option2',
+        'option3',
+        'option4',
+        'option5',
+        'option6',
         'correctAnswers',
         'explanation'
       ]
       
       const csvContent = [
         csvHeaders.join(','),
-        // Add sample row with example data
-        'multiple-choice,"What is 2 + 2?",easy,1,"A) 1|B) 2|C) 3|D) 4","D) 4","Basic arithmetic operation"',
-        'true-false,"The Earth is round",easy,1,"","true","Basic geography fact"',
-        'short-answer,"Name the capital of France",easy,2,"","Paris","Basic geography knowledge"'
+        // Add sample rows with example data showing the new format
+        'multiple-choice,"What is 2 + 2?",easy,1,"1","2","3","4","","","4","Basic arithmetic operation"',
+        'multiple-choice,"Which are programming languages?",medium,2,"Python","Java","HTML","CSS","JavaScript","TypeScript","Python,Java,JavaScript,TypeScript","Programming languages vs markup/styling"',
+        'true-false,"The Earth is round",easy,1,"","","","","","","true","Basic geography fact"',
+        'short-answer,"Name the capital of France",easy,2,"","","","","","","Paris","Basic geography knowledge"'
       ].join('\n')
 
       // Create and download file
@@ -623,7 +629,7 @@ function QuestionDetailsView({ question }: { question: Question }) {
 
 function CreateQuestionForm({ onSuccess }: { onSuccess: () => void }) {
   const [questionType, setQuestionType] = useState<'multiple-choice' | 'true-false' | 'short-answer'>('multiple-choice')
-  const [options, setOptions] = useState(['', '', '', ''])
+  const [options, setOptions] = useState(['', '', '', '', '', ''])
   const [correctAnswers, setCorrectAnswers] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({})
@@ -645,8 +651,11 @@ function CreateQuestionForm({ onSuccess }: { onSuccess: () => void }) {
 
     if (questionType === 'multiple-choice') {
       const validOptions = options.filter(opt => opt.trim())
-      if (validOptions.length < 2) {
-        errors.options = 'Multiple choice questions must have at least 2 options'
+      if (validOptions.length < 4) {
+        errors.options = 'Multiple choice questions must have at least 4 options'
+      }
+      if (validOptions.length > 6) {
+        errors.options = 'Multiple choice questions can have at most 6 options'
       }
       if (correctAnswers.length === 0) {
         errors.correctAnswers = 'Please select at least one correct answer'
@@ -783,33 +792,40 @@ function CreateQuestionForm({ onSuccess }: { onSuccess: () => void }) {
 
       {questionType === 'multiple-choice' && (
         <div className="space-y-2">
-          <Label>Options *</Label>
+          <Label>Options * (Minimum 4, Maximum 6)</Label>
           {options.map((option, index) => (
             <div key={index} className="flex items-center gap-2">
               <Input
-                placeholder={`Option ${index + 1}`}
+                placeholder={`Option ${index + 1}${index < 4 ? ' (Required)' : ' (Optional)'}`}
                 value={option}
                 onChange={(e) => {
                   const newOptions = [...options]
                   newOptions[index] = e.target.value
                   setOptions(newOptions)
                 }}
+                className={index < 4 ? "border-blue-200" : ""}
               />
               <input
                 type="checkbox"
-                checked={correctAnswers.includes(option)}
+                checked={correctAnswers.includes(option) && option.trim() !== ''}
                 onChange={(e) => {
+                  if (option.trim() === '') return // Don't allow selecting empty options
+                  
                   if (e.target.checked) {
                     setCorrectAnswers([...correctAnswers, option])
                   } else {
                     setCorrectAnswers(correctAnswers.filter(ans => ans !== option))
                   }
                 }}
+                disabled={option.trim() === ''}
                 className="w-4 h-4"
               />
               <Label className="text-xs">Correct</Label>
             </div>
           ))}
+          <p className="text-sm text-muted-foreground">
+            Fill at least 4 options (first 4 are required). You can add up to 6 options total.
+          </p>
           {validationErrors.options && (
             <p className="text-sm text-red-500">{validationErrors.options}</p>
           )}
@@ -875,7 +891,15 @@ function CreateQuestionForm({ onSuccess }: { onSuccess: () => void }) {
 
 function EditQuestionForm({ question, onSuccess }: { question: Question, onSuccess: () => void }) {
   const [questionType, setQuestionType] = useState(question.type)
-  const [options, setOptions] = useState(question.options || ['', '', '', ''])
+  const [options, setOptions] = useState(() => {
+    const defaultOptions = ['', '', '', '', '', '']
+    if (question.options) {
+      question.options.forEach((opt, index) => {
+        if (index < 6) defaultOptions[index] = opt
+      })
+    }
+    return defaultOptions
+  })
   const [correctAnswers, setCorrectAnswers] = useState<string[]>(question.correctAnswers || [])
   const [loading, setLoading] = useState(false)
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({})
@@ -978,32 +1002,40 @@ function EditQuestionForm({ question, onSuccess }: { question: Question, onSucce
 
       {questionType === 'multiple-choice' && (
         <div className="space-y-2">
-          <Label>Options *</Label>
+          <Label>Options * (Minimum 4, Maximum 6)</Label>
           {options.map((option, index) => (
             <div key={index} className="flex items-center gap-2">
               <Input
+                placeholder={`Option ${index + 1}${index < 4 ? ' (Required)' : ' (Optional)'}`}
                 value={option}
                 onChange={(e) => {
                   const newOptions = [...options]
                   newOptions[index] = e.target.value
                   setOptions(newOptions)
                 }}
+                className={index < 4 ? "border-blue-200" : ""}
               />
               <input
                 type="checkbox"
-                checked={correctAnswers.includes(option)}
+                checked={correctAnswers.includes(option) && option.trim() !== ''}
                 onChange={(e) => {
+                  if (option.trim() === '') return // Don't allow selecting empty options
+                  
                   if (e.target.checked) {
                     setCorrectAnswers([...correctAnswers, option])
                   } else {
                     setCorrectAnswers(correctAnswers.filter(ans => ans !== option))
                   }
                 }}
+                disabled={option.trim() === ''}
                 className="w-4 h-4"
               />
               <Label className="text-xs">Correct</Label>
             </div>
           ))}
+          <p className="text-sm text-muted-foreground">
+            Fill at least 4 options (first 4 are required). You can add up to 6 options total.
+          </p>
         </div>
       )}
 

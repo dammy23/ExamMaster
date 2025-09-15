@@ -49,8 +49,11 @@ const questionSchema = new mongoose.Schema({
 // Validation for multiple choice questions
 questionSchema.pre('save', function(next) {
   if (this.type === 'multiple-choice') {
-    if (!this.options || this.options.length < 2) {
-      return next(new Error('Multiple choice questions must have at least 2 options'));
+    if (!this.options || this.options.length < 4) {
+      return next(new Error('Multiple choice questions must have at least 4 options'));
+    }
+    if (this.options.length > 6) {
+      return next(new Error('Multiple choice questions can have at most 6 options'));
     }
     if (!this.correctAnswers || this.correctAnswers.length === 0) {
       return next(new Error('Multiple choice questions must have at least one correct answer'));
