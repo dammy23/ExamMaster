@@ -231,12 +231,46 @@ router.post('/bulk-upload', requireUser, upload.single('file'), async (req, res)
                   }
                 });
                 
-                // Get correct answers
-                const correctAnswers = normalizedData.correctanswers || normalizedData.correctanswer || '';
-                if (correctAnswers) {
-                  questionData.correctAnswers = correctAnswers.split(',').map(ans => ans.trim());
+                // Get correct answers - prioritize option numbers format
+                const correctAnswer = normalizedData.correctanswer || normalizedData.correctanswers || '';
+                if (correctAnswer) {
+                  // Check if the correctAnswer contains numbers (new format)
+                  const answerValue = correctAnswer.trim();
+                  const isNumericFormat = /^[1-6](,[1-6])*$/.test(answerValue);
+                  
+                  if (isNumericFormat) {
+                    // New format: option numbers (1,2,3,4,5,6)
+                    console.log('Processing correctAnswer in numeric format:', answerValue);
+                    const optionNumbers = answerValue.split(',').map(num => parseInt(num.trim()));
+                    
+                    // Validate option numbers
+                    const invalidNumbers = optionNumbers.filter(num => num < 1 || num > 6);
+                    const outOfRangeNumbers = optionNumbers.filter(num => num > questionData.options.length);
+                    
+                    if (invalidNumbers.length > 0) {
+                      console.error(`Invalid option numbers found: ${invalidNumbers.join(', ')} - must be between 1-6 for question: ${questionData.question?.substring(0, 50)}...`);
+                    }
+                    
+                    if (outOfRangeNumbers.length > 0) {
+                      console.error(`Option numbers ${outOfRangeNumbers.join(', ')} exceed available options (${questionData.options.length}) for question: ${questionData.question?.substring(0, 50)}...`);
+                    }
+                    
+                    // Convert option numbers to actual text values - only use valid numbers
+                    const validNumbers = optionNumbers.filter(num => num >= 1 && num <= Math.min(6, questionData.options.length));
+                    questionData.correctAnswers = validNumbers
+                      .map(num => questionData.options[num - 1])
+                      .filter(Boolean);
+                      
+                    if (questionData.correctAnswers.length === 0) {
+                      console.error(`No valid correct answers found for question: ${questionData.question?.substring(0, 50)}... - skipping this question`);
+                    }
+                  } else {
+                    // Legacy format: actual text values
+                    console.log('Processing correctAnswer in text format (legacy):', answerValue);
+                    questionData.correctAnswers = answerValue.split(',').map(ans => ans.trim());
+                  }
                 } else {
-                  // Fallback: check for correct option numbers
+                  // Fallback: check for correct option numbers (legacy field names)
                   const correctOptions = normalizedData.correctoptions || normalizedData.correctoption || '';
                   if (correctOptions) {
                     const optionNumbers = correctOptions.split(',').map(num => parseInt(num.trim()) - 1);
@@ -252,9 +286,11 @@ router.post('/bulk-upload', requireUser, upload.single('file'), async (req, res)
                 questionData.correctAnswers = correctAnswers ? correctAnswers.split(',').map(ans => ans.trim()) : [];
               }
 
-              // Only add if we have required fields
-              if (questionData.question && questionData.type) {
+              // Only add if we have required fields and valid correct answers
+              if (questionData.question && questionData.type && questionData.correctAnswers && questionData.correctAnswers.length > 0) {
                 questions.push(questionData);
+              } else {
+                console.warn(`Skipping invalid question: missing required fields or valid correct answers`);
               }
             })
             .on('end', () => {

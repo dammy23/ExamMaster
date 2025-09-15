@@ -192,15 +192,15 @@ export function QuestionManagement() {
         'option4',
         'option5',
         'option6',
-        'correctAnswers',
+        'correctAnswer',
         'explanation'
       ]
       
       const csvContent = [
         csvHeaders.join(','),
-        // Add sample rows with example data showing the new format
+        // Add sample rows with example data showing the new format using option numbers
         'multiple-choice,"What is 2 + 2?",easy,1,"1","2","3","4","","","4","Basic arithmetic operation"',
-        'multiple-choice,"Which are programming languages?",medium,2,"Python","Java","HTML","CSS","JavaScript","TypeScript","Python,Java,JavaScript,TypeScript","Programming languages vs markup/styling"',
+        'multiple-choice,"Which are programming languages?",medium,2,"Python","Java","HTML","CSS","JavaScript","TypeScript","1,2,5,6","Programming languages vs markup/styling"',
         'true-false,"The Earth is round",easy,1,"","","","","","","true","Basic geography fact"',
         'short-answer,"Name the capital of France",easy,2,"","","","","","","Paris","Basic geography knowledge"'
       ].join('\n')

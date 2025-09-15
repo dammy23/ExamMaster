@@ -1,0 +1,7 @@
+type,question,difficulty,marks,option1,option2,option3,option4,option5,option6,correctAnswer,explanation
+multiple-choice,"Valid question with option 6",easy,1,"A","B","C","D","E","F","6","Should work - option 6 exists"
+multiple-choice,"Question with invalid option 7",easy,1,"A","B","C","D","","","7","Should be invalid - option 7 doesn't exist"
+multiple-choice,"Question with invalid option 0",easy,1,"A","B","C","D","","","0","Should be invalid - option 0 doesn't exist"
+multiple-choice,"Question with multiple valid options",medium,2,"A","B","C","D","E","F","2,4,6","Should work - multiple valid options"
+multiple-choice,"Question with mixed valid/invalid options",medium,2,"A","B","C","D","","","2,7,3","Should partially work - options 2,3 valid, 7 invalid"
+multiple-choice,"Question with only 4 options but correct answer 6",easy,1,"A","B","C","D","","","6","Should be invalid - only 4 options but answer is 6"

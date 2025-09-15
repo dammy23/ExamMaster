@@ -1,0 +1,6 @@
+type,question,difficulty,marks,option1,option2,option3,option4,option5,option6,correctAnswer,explanation
+multiple-choice,"What is the capital of Japan?",easy,1,"Tokyo","Kyoto","Osaka","Hiroshima","","","1","Tokyo is the capital and largest city of Japan."
+multiple-choice,"Which of these are programming languages?",medium,2,"Python","HTML","JavaScript","CSS","Java","TypeScript","1,3,5,6","Python, JavaScript, Java and TypeScript are programming languages, while HTML and CSS are markup/styling languages."
+multiple-choice,"What is 5 + 3?",easy,1,"6","7","8","9","10","11","3","Basic arithmetic: 5 + 3 = 8"
+true-false,"JavaScript is a compiled language",easy,1,"","","","","","","false","JavaScript is an interpreted language, not compiled."
+short-answer,"What does CPU stand for?",medium,2,"","","","","","","Central Processing Unit","CPU is the acronym for Central Processing Unit."
