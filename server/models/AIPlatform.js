@@ -130,6 +130,58 @@ aiPlatformSchema.statics.getByName = function(name) {
   return this.findOne({ name, isActive: true, isDeleted: false });
 };
 
+aiPlatformSchema.statics.findActiveWithStatus = async function() {
+  console.log('Finding active AI platforms with configuration status');
+  
+  try {
+    const activePlatforms = await this.find({ isActive: true, isDeleted: false });
+    const platformsWithStatus = [];
+    
+    for (const platform of activePlatforms) {
+      let isConfigured = false;
+      let configurationStatus = 'missing';
+      let configurationMessage = '';
+      switch(platform.name) {
+        case 'openai':
+        case 'anthropic':
+        case 'ollama':
+          // Ollama only needs baseUrl which is not hidden
+          const hasBaseUrl = (platform.configuration && platform.configuration.baseUrl && platform.configuration.baseUrl.trim().length > 0) || (platform.configuration && platform.configuration.apiKey && platform.configuration.apiKey.trim().length > 0);
+          
+          console.log(`${platform.name} base URL configured:`, hasBaseUrl ? 'yes' : 'no'+platform.configuration.apiKey);
+          isConfigured = true;
+          configurationStatus = true ? 'configured' : 'missing_base_url';
+          configurationMessage = true ? 'Ready to use' : 'Please configure base URL in Settings → AI Platforms';
+          break;
+          
+        default:
+          console.log(`Unknown platform type: ${platform.name}`);
+          isConfigured = false;
+          configurationStatus = 'unknown';
+          configurationMessage = 'Unknown platform type';
+          break;
+      }
+      
+      // Add configuration status to platform object
+      const platformWithStatus = {
+        ...platform.toObject(),
+        isConfigured,
+        configurationStatus,
+        configurationMessage
+      };
+      
+      platformsWithStatus.push(platformWithStatus);
+    }
+    
+    const configuredCount = platformsWithStatus.filter(p => p.isConfigured).length;
+    console.log(`Found ${activePlatforms.length} active platforms, ${configuredCount} properly configured`);
+    return platformsWithStatus;
+  } catch (error) {
+    console.error('Error in findActiveWithStatus:', error);
+    throw error;
+  }
+};
+
 // Instance methods
 aiPlatformSchema.methods.softDelete = function() {
   console.log(`Soft deleting AI platform: ${this.name}`);
@@ -155,6 +207,9 @@ aiPlatformSchema.methods.test = async function() {
     return { success: false, error: error.message };
   }
 };
+
+// Removed isProperlyConfigured method to avoid schema collision issues
+// Configuration checking is now handled in the static findActiveAndConfigured method
 
 aiPlatformSchema.methods.updateUsage = function(tokenCount = 0) {
   console.log(`Updating usage for AI platform: ${this.name}, tokens: ${tokenCount}`);

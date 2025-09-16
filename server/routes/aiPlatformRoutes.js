@@ -44,16 +44,30 @@ router.get('/active', requireUser, async (req, res) => {
   console.log('AI Platform Routes - GET /active');
   
   try {
-    const platforms = await AIPlatform.findActive()
-      .select('name displayName description configuration.model isDefault')
-      .sort({ isDefault: -1, displayName: 1 });
+    // Get all active platforms with their configuration status
+    const platformsWithStatus = await AIPlatform.findActiveWithStatus();
     
-    console.log(`AI Platform Routes - Retrieved ${platforms.length} active platforms`);
+    // Transform platforms for frontend (hide sensitive data but include status)
+    const safePlatforms = platformsWithStatus.map(platform => ({
+      _id: platform._id,
+      name: platform.name,
+      displayName: platform.displayName,
+      description: platform.description,
+      configuration: {
+        model: platform.configuration.model
+      },
+      isDefault: platform.isDefault,
+      isConfigured: platform.isConfigured,
+      configurationStatus: platform.configurationStatus,
+      configurationMessage: platform.configurationMessage
+    }));
+    
+    console.log(`AI Platform Routes - Retrieved ${platformsWithStatus.length} active platforms (${platformsWithStatus.filter(p => p.isConfigured).length} configured)`);
     
     res.json({
       success: true,
       data: {
-        platforms
+        platforms: safePlatforms
       }
     });
     
