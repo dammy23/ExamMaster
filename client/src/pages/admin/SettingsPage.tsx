@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
+import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Dialog,
   DialogContent,
@@ -38,9 +41,24 @@ import {
   Trash2,
   Database,
   Save,
-  X
+  X,
+  Bot,
+  TestTube,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Star,
+  Eye,
+  EyeOff
 } from "lucide-react"
 import { getSettings, createSetting, updateSetting, deleteSetting } from "@/api/settings"
+import { 
+  getAIPlatforms, 
+  updateAIPlatform, 
+  testAIPlatform, 
+  setDefaultAIPlatform,
+  initializeAIPlatforms 
+} from "@/api/aiPlatform"
 import { useToast } from "@/hooks/useToast"
 
 interface Setting {
@@ -52,14 +70,49 @@ interface Setting {
   updatedAt: string
 }
 
+interface AIPlatform {
+  _id: string
+  name: string
+  displayName: string
+  description: string
+  configuration: {
+    apiKey?: string
+    baseUrl?: string
+    model: string
+    temperature: number
+    maxTokens: number
+    topP?: number
+    presencePenalty?: number
+    frequencyPenalty?: number
+  }
+  isActive: boolean
+  isDefault: boolean
+  lastTested?: string
+  testStatus: 'success' | 'failed' | 'not_tested'
+  testError?: string
+  usage: {
+    totalRequests: number
+    totalTokens: number
+    lastUsed?: string
+  }
+  createdAt: string
+  updatedAt: string
+}
+
 export function SettingsPage() {
   const [settings, setSettings] = useState<Setting[]>([])
+  const [platforms, setPlatforms] = useState<AIPlatform[]>([])
   const [loading, setLoading] = useState(true)
+  const [platformsLoading, setPlatformsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [selectedSetting, setSelectedSetting] = useState<Setting | null>(null)
+  const [selectedPlatform, setSelectedPlatform] = useState<AIPlatform | null>(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [activeTab, setActiveTab] = useState("general")
+  const [testingPlatform, setTestingPlatform] = useState<string | null>(null)
+  const [showApiKeys, setShowApiKeys] = useState<{ [key: string]: boolean }>({})
   
   // Form state
   const [formData, setFormData] = useState({
@@ -67,12 +120,28 @@ export function SettingsPage() {
     value: "",
     description: ""
   })
+  const [platformFormData, setPlatformFormData] = useState({
+    displayName: "",
+    description: "",
+    configuration: {
+      apiKey: "",
+      baseUrl: "",
+      model: "",
+      temperature: 0.7,
+      maxTokens: 4096,
+      topP: 1,
+      presencePenalty: 0,
+      frequencyPenalty: 0
+    },
+    isActive: true
+  })
   const [submitting, setSubmitting] = useState(false)
   
   const { toast } = useToast()
 
   useEffect(() => {
     fetchSettings()
+    fetchPlatforms()
   }, [])
 
   const fetchSettings = async () => {
@@ -89,6 +158,24 @@ export function SettingsPage() {
       })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchPlatforms = async () => {
+    try {
+      console.log('Fetching AI platforms...')
+      const response = await getAIPlatforms() as any
+      setPlatforms(response.data.platforms)
+      console.log('AI platforms loaded:', response.data.platforms.length)
+    } catch (error: any) {
+      console.error('Error fetching AI platforms:', error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load AI platforms",
+        variant: "destructive"
+      })
+    } finally {
+      setPlatformsLoading(false)
     }
   }
 
@@ -221,6 +308,125 @@ export function SettingsPage() {
     setShowCreateDialog(true)
   }
 
+  // AI Platform Management Functions
+  const handleUpdatePlatform = async (platform: AIPlatform, updates: any) => {
+    try {
+      setSubmitting(true)
+      await updateAIPlatform(platform._id, updates)
+      
+      await fetchPlatforms()
+      
+      toast({
+        title: "Success",
+        description: "AI platform updated successfully"
+      })
+    } catch (error: any) {
+      console.error("Update AI platform error:", error.message)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to update AI platform"
+      })
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleTestPlatform = async (platform: AIPlatform) => {
+    try {
+      setTestingPlatform(platform._id)
+      const response = await testAIPlatform(platform._id) as any
+      
+      await fetchPlatforms()
+      
+      if (response.data.testResult.success) {
+        toast({
+          title: "Test Successful",
+          description: `${platform.displayName} is working correctly`
+        })
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Test Failed",
+          description: response.data.testResult.error || "Platform test failed"
+        })
+      }
+    } catch (error: any) {
+      console.error("Test AI platform error:", error.message)
+      toast({
+        variant: "destructive",
+        title: "Test Failed",
+        description: error.message || "Failed to test AI platform"
+      })
+    } finally {
+      setTestingPlatform(null)
+    }
+  }
+
+  const handleSetDefault = async (platform: AIPlatform) => {
+    try {
+      setSubmitting(true)
+      await setDefaultAIPlatform(platform._id)
+      
+      await fetchPlatforms()
+      
+      toast({
+        title: "Success",
+        description: `${platform.displayName} set as default platform`
+      })
+    } catch (error: any) {
+      console.error("Set default platform error:", error.message)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to set default platform"
+      })
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleInitializePlatforms = async () => {
+    try {
+      setSubmitting(true)
+      await initializeAIPlatforms()
+      
+      await fetchPlatforms()
+      
+      toast({
+        title: "Success",
+        description: "Default AI platforms initialized successfully"
+      })
+    } catch (error: any) {
+      console.error("Initialize platforms error:", error.message)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to initialize platforms"
+      })
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const toggleApiKeyVisibility = (platformId: string) => {
+    setShowApiKeys(prev => ({
+      ...prev,
+      [platformId]: !prev[platformId]
+    }))
+  }
+
+  const getTestStatusIcon = (status: string) => {
+    switch (status) {
+      case 'success':
+        return <CheckCircle className="h-4 w-4 text-green-500" />
+      case 'failed':
+        return <XCircle className="h-4 w-4 text-red-500" />
+      default:
+        return <AlertCircle className="h-4 w-4 text-gray-400" />
+    }
+  }
+
   const filteredSettings = settings.filter(setting => {
     return (
       setting.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -242,7 +448,7 @@ export function SettingsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-          <p className="text-muted-foreground">Manage system configuration settings</p>
+          <p className="text-muted-foreground">Manage system configuration and AI platform settings</p>
         </div>
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger asChild>
@@ -326,7 +532,14 @@ export function SettingsPage() {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="general">General Settings</TabsTrigger>
+          <TabsTrigger value="ai-platforms">AI Platforms</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="general" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -465,6 +678,292 @@ export function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="ai-platforms" className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold">AI Platform Configuration</h2>
+              <p className="text-sm text-muted-foreground">
+                Configure OpenAI, Anthropic, and Ollama AI platforms for the chat system
+              </p>
+            </div>
+            <Button onClick={handleInitializePlatforms} disabled={submitting} variant="outline">
+              <Bot className="mr-2 h-4 w-4" />
+              Initialize Platforms
+            </Button>
+          </div>
+
+          {platformsLoading ? (
+            <div className="flex items-center justify-center h-32">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Active Platforms
+                    </CardTitle>
+                    <Bot className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{platforms.filter(p => p.isActive).length}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Available AI platforms
+                    </p>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Total Usage
+                    </CardTitle>
+                    <Database className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {platforms.reduce((sum, p) => sum + p.usage.totalRequests, 0)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Total requests processed
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Default Platform
+                    </CardTitle>
+                    <Star className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {platforms.find(p => p.isDefault)?.displayName || "None"}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Currently selected default
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="space-y-4">
+                {platforms.map((platform) => (
+                  <Card key={platform._id}>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <CardTitle className="flex items-center gap-2">
+                            <Bot className="h-5 w-5" />
+                            {platform.displayName}
+                            {platform.isDefault && (
+                              <Badge variant="default" className="gap-1">
+                                <Star className="h-3 w-3" />
+                                Default
+                              </Badge>
+                            )}
+                          </CardTitle>
+                          <div className="flex items-center gap-2">
+                            {getTestStatusIcon(platform.testStatus)}
+                            <Switch
+                              checked={platform.isActive}
+                              onCheckedChange={(checked) => 
+                                handleUpdatePlatform(platform, { isActive: checked })
+                              }
+                              disabled={submitting}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleTestPlatform(platform)}
+                            disabled={testingPlatform === platform._id || !platform.isActive}
+                          >
+                            {testingPlatform === platform._id ? (
+                              <>
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary mr-2"></div>
+                                Testing...
+                              </>
+                            ) : (
+                              <>
+                                <TestTube className="mr-2 h-3 w-3" />
+                                Test
+                              </>
+                            )}
+                          </Button>
+                          {!platform.isDefault && platform.isActive && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleSetDefault(platform)}
+                              disabled={submitting}
+                            >
+                              <Star className="mr-2 h-3 w-3" />
+                              Set Default
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      <CardDescription>
+                        {platform.description}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div className="space-y-3">
+                          <div className="space-y-2">
+                            <Label htmlFor={`${platform.name}-model`}>Model</Label>
+                            <Input
+                              id={`${platform.name}-model`}
+                              value={platform.configuration.model}
+                              onChange={(e) => 
+                                handleUpdatePlatform(platform, {
+                                  configuration: { ...platform.configuration, model: e.target.value }
+                                })
+                              }
+                              disabled={submitting}
+                              placeholder="Model name"
+                            />
+                          </div>
+                          
+                          {(platform.name === 'openai' || platform.name === 'anthropic') && (
+                            <div className="space-y-2">
+                              <Label htmlFor={`${platform.name}-apikey`}>API Key</Label>
+                              <div className="flex items-center space-x-2">
+                                <Input
+                                  id={`${platform.name}-apikey`}
+                                  type={showApiKeys[platform._id] ? "text" : "password"}
+                                  value={platform.configuration.apiKey || ""}
+                                  onChange={(e) => 
+                                    handleUpdatePlatform(platform, {
+                                      configuration: { ...platform.configuration, apiKey: e.target.value }
+                                    })
+                                  }
+                                  disabled={submitting}
+                                  placeholder="Enter API key"
+                                />
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => toggleApiKeyVisibility(platform._id)}
+                                  className="shrink-0"
+                                >
+                                  {showApiKeys[platform._id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {platform.name === 'ollama' && (
+                            <div className="space-y-2">
+                              <Label htmlFor={`${platform.name}-baseurl`}>Base URL</Label>
+                              <Input
+                                id={`${platform.name}-baseurl`}
+                                value={platform.configuration.baseUrl || ""}
+                                onChange={(e) => 
+                                  handleUpdatePlatform(platform, {
+                                    configuration: { ...platform.configuration, baseUrl: e.target.value }
+                                  })
+                                }
+                                disabled={submitting}
+                                placeholder="http://localhost:11434"
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="space-y-2">
+                            <Label htmlFor={`${platform.name}-temperature`}>Temperature</Label>
+                            <Input
+                              id={`${platform.name}-temperature`}
+                              type="number"
+                              min="0"
+                              max="2"
+                              step="0.1"
+                              value={platform.configuration.temperature}
+                              onChange={(e) => 
+                                handleUpdatePlatform(platform, {
+                                  configuration: { ...platform.configuration, temperature: parseFloat(e.target.value) }
+                                })
+                              }
+                              disabled={submitting}
+                            />
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor={`${platform.name}-maxtokens`}>Max Tokens</Label>
+                            <Input
+                              id={`${platform.name}-maxtokens`}
+                              type="number"
+                              min="1"
+                              max="100000"
+                              value={platform.configuration.maxTokens}
+                              onChange={(e) => 
+                                handleUpdatePlatform(platform, {
+                                  configuration: { ...platform.configuration, maxTokens: parseInt(e.target.value) }
+                                })
+                              }
+                              disabled={submitting}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="pt-3 border-t">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                          <div>
+                            <div className="font-medium text-muted-foreground">Requests</div>
+                            <div className="text-lg font-bold">{platform.usage.totalRequests}</div>
+                          </div>
+                          <div>
+                            <div className="font-medium text-muted-foreground">Tokens</div>
+                            <div className="text-lg font-bold">{platform.usage.totalTokens.toLocaleString()}</div>
+                          </div>
+                          <div>
+                            <div className="font-medium text-muted-foreground">Last Used</div>
+                            <div className="text-lg font-bold">
+                              {platform.usage.lastUsed 
+                                ? new Date(platform.usage.lastUsed).toLocaleDateString() 
+                                : "Never"}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="font-medium text-muted-foreground">Last Tested</div>
+                            <div className="text-lg font-bold">
+                              {platform.lastTested 
+                                ? new Date(platform.lastTested).toLocaleDateString() 
+                                : "Never"}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {platform.testError && (
+                        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                          <div className="flex items-start">
+                            <XCircle className="h-4 w-4 text-red-500 mt-0.5 mr-2 shrink-0" />
+                            <div>
+                              <div className="font-medium text-red-800 text-sm">Test Error</div>
+                              <div className="text-red-700 text-sm mt-1">{platform.testError}</div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </>
+          )}
+        </TabsContent>
+      </Tabs>
 
       {/* Edit Setting Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>

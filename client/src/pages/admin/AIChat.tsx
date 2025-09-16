@@ -20,7 +20,8 @@ import {
   Brain,
   Settings
 } from "lucide-react"
-import { sendChatMessage, getChatHistory, getAIModels, getAIAgents, uploadChatFile } from "@/api/aiChat"
+import { sendChatMessage, getChatHistory, getAIAgents, uploadChatFile } from "@/api/aiChat"
+import { getActiveAIPlatforms } from "@/api/aiPlatform"
 
 interface ChatMessage {
   _id: string
@@ -33,11 +34,15 @@ interface ChatMessage {
   isBot?: boolean
 }
 
-interface AIModel {
+interface AIPlatform {
   _id: string
   name: string
+  displayName: string
   description: string
-  isActive: boolean
+  configuration: {
+    model: string
+  }
+  isDefault: boolean
 }
 
 interface AIAgent {
@@ -52,9 +57,9 @@ export function AIChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [newMessage, setNewMessage] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [selectedModel, setSelectedModel] = useState("")
+  const [selectedPlatform, setSelectedPlatform] = useState("")
   const [selectedAgent, setSelectedAgent] = useState("")
-  const [models, setModels] = useState<AIModel[]>([])
+  const [platforms, setPlatforms] = useState<AIPlatform[]>([])
   const [agents, setAgents] = useState<AIAgent[]>([])
   const [attachedFile, setAttachedFile] = useState<File | null>(null)
   const [loadingHistory, setLoadingHistory] = useState(true)
@@ -74,28 +79,28 @@ export function AIChat() {
     const fetchInitialData = async () => {
       try {
         console.log('AI Chat - Fetching initial data...')
-        const [modelsResponse, agentsResponse, historyResponse] = await Promise.all([
-          getAIModels(),
+        const [platformsResponse, agentsResponse, historyResponse] = await Promise.all([
+          getActiveAIPlatforms(),
           getAIAgents(),
           getChatHistory()
         ])
 
-        const modelsData = (modelsResponse as any).models
+        const platformsData = (platformsResponse as any).platforms
         const agentsData = (agentsResponse as any).agents
         const historyData = (historyResponse as any).messages
 
-        console.log('AI Chat - Models received:', modelsData)
+        console.log('AI Chat - Platforms received:', platformsData)
         console.log('AI Chat - Agents received:', agentsData)
         console.log('AI Chat - History received:', historyData)
 
-        setModels(modelsData || [])
+        setPlatforms(platformsData || [])
         setAgents(agentsData || [])
         
         // Set default selections
-        const defaultModel = modelsData?.find((m: AIModel) => m.isActive) || modelsData?.[0]
+        const defaultPlatform = platformsData?.find((p: AIPlatform) => p.isDefault) || platformsData?.[0]
         const defaultAgent = agentsData?.find((a: AIAgent) => a.isActive) || agentsData?.[0]
         
-        if (defaultModel) setSelectedModel(defaultModel._id)
+        if (defaultPlatform) setSelectedPlatform(defaultPlatform._id)
         if (defaultAgent) setSelectedAgent(defaultAgent._id)
 
         // Transform history to display format
@@ -158,10 +163,10 @@ export function AIChat() {
   const handleSendMessage = async () => {
     if (!newMessage.trim() || isLoading) return
 
-    if (!selectedModel || !selectedAgent) {
+    if (!selectedPlatform || !selectedAgent) {
       toast({
         title: "Selection Required",
-        description: "Please select both an AI model and agent",
+        description: "Please select both an AI platform and agent",
         variant: "destructive"
       })
       return
@@ -169,7 +174,7 @@ export function AIChat() {
 
     const userMessage = newMessage.trim()
     console.log('AI Chat - Sending message:', userMessage)
-    console.log('AI Chat - Selected model:', selectedModel)
+    console.log('AI Chat - Selected platform:', selectedPlatform)
     console.log('AI Chat - Selected agent:', selectedAgent)
     console.log('AI Chat - Attached file:', attachedFile?.name)
 
@@ -179,7 +184,7 @@ export function AIChat() {
       message: userMessage,
       response: "",
       timestamp: new Date(),
-      modelId: selectedModel,
+      modelId: selectedPlatform,
       agentId: selectedAgent,
       isUser: true,
       isBot: false
@@ -192,7 +197,7 @@ export function AIChat() {
     try {
       const response = await sendChatMessage({
         message: userMessage,
-        modelId: selectedModel,
+        modelId: selectedPlatform,
         agentId: selectedAgent,
         fileAttachment: attachedFile || undefined
       })
@@ -206,7 +211,7 @@ export function AIChat() {
         message: responseData.response,
         response: responseData.response,
         timestamp: new Date(),
-        modelId: selectedModel,
+        modelId: selectedPlatform,
         agentId: selectedAgent,
         isUser: false,
         isBot: true
@@ -243,7 +248,7 @@ export function AIChat() {
     }
   }
 
-  const selectedModelInfo = models.find(m => m._id === selectedModel)
+  const selectedPlatformInfo = platforms.find(p => p._id === selectedPlatform)
   const selectedAgentInfo = agents.find(a => a._id === selectedAgent)
 
   return (
@@ -272,31 +277,38 @@ export function AIChat() {
               <Settings className="h-4 w-4" />
               Configuration
             </CardTitle>
-            <CardDescription>Select AI model and agent</CardDescription>
+            <CardDescription>Select AI platform and agent</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* AI Model Selection */}
+            {/* AI Platform Selection */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">AI Model</label>
-              <Select value={selectedModel} onValueChange={setSelectedModel}>
+              <label className="text-sm font-medium">AI Platform</label>
+              <Select value={selectedPlatform} onValueChange={setSelectedPlatform}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select AI model" />
+                  <SelectValue placeholder="Select AI platform" />
                 </SelectTrigger>
                 <SelectContent>
-                  {models.filter(m => m.isActive).map((model) => (
-                    <SelectItem key={model._id} value={model._id}>
+                  {platforms.map((platform) => (
+                    <SelectItem key={platform._id} value={platform._id}>
                       <div className="flex flex-col">
-                        <span className="font-medium">{model.name}</span>
-                        <span className="text-xs text-muted-foreground">{model.description}</span>
+                        <span className="font-medium">{platform.displayName}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {platform.configuration.model} • {platform.description}
+                        </span>
                       </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {selectedModelInfo && (
-                <p className="text-xs text-muted-foreground">
-                  {selectedModelInfo.description}
-                </p>
+              {selectedPlatformInfo && (
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">
+                    {selectedPlatformInfo.description}
+                  </p>
+                  <p className="text-xs font-mono bg-muted px-2 py-1 rounded">
+                    Model: {selectedPlatformInfo.configuration.model}
+                  </p>
+                </div>
               )}
             </div>
 
@@ -454,7 +466,7 @@ export function AIChat() {
                 />
                 <Button
                   onClick={handleSendMessage}
-                  disabled={!newMessage.trim() || isLoading || !selectedModel || !selectedAgent}
+                  disabled={!newMessage.trim() || isLoading || !selectedPlatform || !selectedAgent}
                   className="shrink-0"
                 >
                   {isLoading ? (
@@ -465,9 +477,9 @@ export function AIChat() {
                 </Button>
               </div>
               
-              {(!selectedModel || !selectedAgent) && (
+              {(!selectedPlatform || !selectedAgent) && (
                 <p className="text-xs text-muted-foreground mt-2">
-                  Please select an AI model and agent to start chatting
+                  Please select an AI platform and agent to start chatting
                 </p>
               )}
             </div>

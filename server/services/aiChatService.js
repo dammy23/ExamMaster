@@ -1,5 +1,6 @@
 const AIChat = require('../models/AIChat');
-const { AIModel, AIAgent } = require('../models/AIConfig');
+const { AIAgent } = require('../models/AIConfig');
+const AIPlatform = require('../models/AIPlatform');
 
 console.log('Loading AI Chat Service...');
 
@@ -10,19 +11,19 @@ class AIChatService {
     const { message, modelId, agentId, fileAttachment } = messageData;
     
     console.log(`AI Chat Service - Processing message for user ${userId}`);
-    console.log(`AI Chat Service - Model: ${modelId}, Agent: ${agentId}`);
+    console.log(`AI Chat Service - Platform: ${modelId}, Agent: ${agentId}`);
     console.log(`AI Chat Service - Message length: ${message.length} characters`);
     
     try {
-      // Validate model and agent exist and are active
-      const [model, agent] = await Promise.all([
-        AIModel.findOne({ modelId, isActive: true, isDeleted: false }),
+      // Validate platform and agent exist and are active
+      const [platform, agent] = await Promise.all([
+        AIPlatform.findById(modelId).select('+configuration.apiKey'),
         AIAgent.findOne({ agentId, isActive: true, isDeleted: false })
       ]);
       
-      if (!model) {
-        console.error(`AI Chat Service - Model ${modelId} not found or inactive`);
-        throw new Error(`AI model '${modelId}' not found or inactive`);
+      if (!platform || !platform.isActive || platform.isDeleted) {
+        console.error(`AI Chat Service - Platform ${modelId} not found or inactive`);
+        throw new Error(`AI platform not found or inactive`);
       }
       
       if (!agent) {
@@ -30,14 +31,17 @@ class AIChatService {
         throw new Error(`AI agent '${agentId}' not found or inactive`);
       }
       
-      console.log(`AI Chat Service - Using model: ${model.name}`);
+      console.log(`AI Chat Service - Using platform: ${platform.displayName} (${platform.name})`);
       console.log(`AI Chat Service - Using agent: ${agent.name}`);
       
       const startTime = Date.now();
       
-      // Simulate AI response processing
+      // Process AI request using configured platform
       // In a real implementation, this would call the actual AI API
-      const aiResponse = await this.processAIRequest(message, model, agent, fileAttachment);
+      const aiResponse = await this.processAIRequest(message, platform, agent, fileAttachment);
+      
+      // Update platform usage statistics
+      await platform.updateUsage(aiResponse.tokenCount.input + aiResponse.tokenCount.output);
       
       const processingTime = Date.now() - startTime;
       console.log(`AI Chat Service - Processing completed in ${processingTime}ms`);
@@ -47,7 +51,7 @@ class AIChatService {
         userId,
         message: message.trim(),
         response: aiResponse.response,
-        modelId,
+        modelId, // This is actually platformId now
         agentId,
         fileAttachment: fileAttachment ? {
           fileName: fileAttachment.fileName,
@@ -78,9 +82,9 @@ class AIChatService {
     }
   }
   
-  // Simulate AI request processing
-  static async processAIRequest(message, model, agent, fileAttachment) {
-    console.log(`AI Chat Service - Processing AI request with ${model.name} and ${agent.name}`);
+  // Process AI request using configured platform
+  static async processAIRequest(message, platform, agent, fileAttachment) {
+    console.log(`AI Chat Service - Processing AI request with ${platform.displayName} (${platform.configuration.model}) and ${agent.name}`);
     
     // Simulate processing delay
     await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
@@ -105,10 +109,12 @@ class AIChatService {
       response += `\n\nI've reviewed the uploaded file "${fileAttachment.fileName}". `;
     }
     
-    // Simulate token usage and cost
+    // Simulate token usage based on platform configuration
     const inputTokens = Math.ceil(message.length / 4);
     const outputTokens = Math.ceil(response.length / 4);
-    const cost = ((inputTokens * model.pricing.inputTokenPrice) + (outputTokens * model.pricing.outputTokenPrice)) / 1000;
+    const cost = 0; // Cost calculation would be platform-specific
+    
+    console.log(`AI Chat Service - Tokens used - Input: ${inputTokens}, Output: ${outputTokens}`);
     
     return {
       response,
@@ -209,24 +215,24 @@ class AIChatService {
     }
   }
   
-  // Get available AI models
+  // Get available AI platforms (for backwards compatibility)
   static async getModels() {
-    console.log('AI Chat Service - Getting available AI models');
+    console.log('AI Chat Service - Getting available AI platforms (models)');
     
     try {
-      const models = await AIModel.findActive();
-      console.log(`AI Chat Service - Retrieved ${models.length} AI models`);
+      const platforms = await AIPlatform.findActive();
+      console.log(`AI Chat Service - Retrieved ${platforms.length} AI platforms`);
       
       return {
-        models: models.map(model => ({
-          _id: model.modelId,
-          name: model.name,
-          description: model.description,
-          isActive: model.isActive
+        models: platforms.map(platform => ({
+          _id: platform._id,
+          name: `${platform.displayName} (${platform.configuration.model})`,
+          description: platform.description,
+          isActive: platform.isActive
         }))
       };
     } catch (error) {
-      console.error('AI Chat Service - Error getting models:', error);
+      console.error('AI Chat Service - Error getting platforms:', error);
       throw error;
     }
   }

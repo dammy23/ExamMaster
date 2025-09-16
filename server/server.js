@@ -60,6 +60,7 @@ connectDB().then(() => {
   app.use('/api/exam-attempts', require('./routes/examAttemptRoutes.js'));
   app.use('/api/reports', require('./routes/reportRoutes.js'));
   app.use('/api/settings', require('./routes/settingRoutes.js'));
+  app.use('/api/ai-platforms', require('./routes/aiPlatformRoutes.js'));
   app.use('/api/ai-chat', require('./routes/aiChatRoutes.js'));
   app.use('/', require('./routes/index.js'));
 

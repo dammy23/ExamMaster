@@ -49,6 +49,40 @@ const requireUser = async (req, res, next) => {
   }
 };
 
+const requireAdmin = async (req, res, next) => {
+  try {
+    // First, check if user is authenticated
+    await requireUser(req, res, () => {});
+    
+    if (!req.user) {
+      console.log('Auth middleware - User not authenticated');
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Authentication required' 
+      });
+    }
+
+    // Check if user has admin role
+    if (req.user.role !== 'admin') {
+      console.log('Auth middleware - User is not admin. Role:', req.user.role);
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Admin access required' 
+      });
+    }
+
+    console.log('Auth middleware - Admin access granted for user:', req.user.email);
+    next();
+  } catch (error) {
+    console.error('Auth middleware - Admin check failed:', error.message);
+    return res.status(403).json({ 
+      success: false, 
+      error: 'Admin access denied' 
+    });
+  }
+};
+
 module.exports = {
-  requireUser
+  requireUser,
+  requireAdmin
 };
