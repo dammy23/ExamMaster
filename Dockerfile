@@ -3,7 +3,7 @@
     FROM node:18-alpine AS frontend-builder
     WORKDIR /app/client
     COPY client/package*.json ./
-    RUN npm ci
+    RUN npm install
     COPY client/ .
     RUN npm run build
     
@@ -14,7 +14,7 @@
     # Copy backend package files and install
     COPY server/package*.json ./server/
     WORKDIR /app/server
-    RUN npm ci
+    RUN npm install
     
     # Copy backend code
     COPY server/ ./ 
