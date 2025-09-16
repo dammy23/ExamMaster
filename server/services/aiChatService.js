@@ -1,6 +1,7 @@
 const AIChat = require('../models/AIChat');
 const { AIAgent } = require('../models/AIConfig');
 const AIPlatform = require('../models/AIPlatform');
+const llmService = require('./llmService');
 
 console.log('Loading AI Chat Service...');
 
@@ -86,44 +87,213 @@ class AIChatService {
   static async processAIRequest(message, platform, agent, fileAttachment) {
     console.log(`AI Chat Service - Processing AI request with ${platform.displayName} (${platform.configuration.model}) and ${agent.name}`);
     
-    // Simulate processing delay
-    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
-    
-    let response = '';
-    
-    // Generate contextual response based on agent type and message content
-    if (agent.agentId === 'exam-assistant') {
-      response = this.generateExamAssistantResponse(message, fileAttachment);
-    } else if (agent.agentId === 'student-support') {
-      response = this.generateStudentSupportResponse(message, fileAttachment);
-    } else if (agent.agentId === 'content-creator') {
-      response = this.generateContentCreatorResponse(message, fileAttachment);
-    } else if (agent.agentId === 'data-analyst') {
-      response = this.generateDataAnalystResponse(message, fileAttachment);
-    } else {
-      response = this.generateGeneralResponse(message, fileAttachment);
+    try {
+      // Validate platform has required configuration
+      if (!platform.configuration.apiKey && platform.name !== 'ollama') {
+        throw new Error(`API key not configured for ${platform.displayName}`);
+      }
+      
+      if (platform.name === 'ollama' && !platform.configuration.baseUrl) {
+        throw new Error(`Base URL not configured for ${platform.displayName}`);
+      }
+      
+      // Build system prompt using agent configuration
+      const systemPrompt = this.buildSystemPrompt(agent, fileAttachment);
+      
+      // Combine system prompt with user message
+      const fullMessage = `${systemPrompt}\n\nUser: ${message}`;
+      
+      console.log(`AI Chat Service - Sending request to ${platform.name} with model ${platform.configuration.model}`);
+      console.log(`AI Chat Service - Message length: ${fullMessage.length} characters`);
+      
+      let response;
+      let inputTokens = 0;
+      let outputTokens = 0;
+      
+      if (platform.name === 'ollama') {
+        // Handle Ollama separately as it uses different API
+        response = await this.processOllamaRequest(message, platform, systemPrompt);
+        // Estimate tokens for Ollama (no exact count available)
+        inputTokens = Math.ceil(fullMessage.length / 4);
+        outputTokens = Math.ceil(response.length / 4);
+      } else {
+        // Use existing LLM service for OpenAI and Anthropic
+        const options = {
+          maxTokens: platform.configuration.maxTokens || 4096,
+          temperature: platform.configuration.temperature || 0.7,
+          topP: platform.configuration.topP || 1.0,
+          presencePenalty: platform.configuration.presencePenalty || 0,
+          frequencyPenalty: platform.configuration.frequencyPenalty || 0
+        };
+        
+        const llmResponse = await llmService.sendLLMRequest(
+          platform.name,
+          platform.configuration.model,
+          fullMessage,
+          options
+        );
+        
+        response = llmResponse.content;
+        
+        // Use real token counts if available, otherwise estimate
+        if (llmResponse.usage) {
+          inputTokens = llmResponse.usage.prompt_tokens || llmResponse.usage.input_tokens || 0;
+          outputTokens = llmResponse.usage.completion_tokens || llmResponse.usage.output_tokens || 0;
+          console.log(`AI Chat Service - Real token usage from ${platform.name}: input=${inputTokens}, output=${outputTokens}`);
+        } else {
+          // Fallback to estimation if no usage data available
+          inputTokens = Math.ceil(fullMessage.length / 4);
+          outputTokens = Math.ceil(response.length / 4);
+          console.log(`AI Chat Service - Estimated token usage: input=${inputTokens}, output=${outputTokens}`);
+        }
+      }
+      
+      // Calculate estimated cost based on platform pricing
+      const cost = this.calculateCost(platform, inputTokens, outputTokens);
+      
+      console.log(`AI Chat Service - Response received from ${platform.name}`);
+      console.log(`AI Chat Service - Tokens used - Input: ${inputTokens}, Output: ${outputTokens}, Cost: $${cost}`);
+      
+      return {
+        response: response.trim(),
+        tokenCount: {
+          input: inputTokens,
+          output: outputTokens
+        },
+        cost: Math.round(cost * 100) / 100 // round to 2 decimal places
+      };
+      
+    } catch (error) {
+      console.error(`AI Chat Service - Error processing request with ${platform.name}:`, error);
+      
+      // Provide fallback response if AI service fails
+      const fallbackResponse = this.generateFallbackResponse(agent.agentId, message, error.message);
+      
+      return {
+        response: fallbackResponse,
+        tokenCount: {
+          input: Math.ceil(message.length / 4),
+          output: Math.ceil(fallbackResponse.length / 4)
+        },
+        cost: 0 // No cost for fallback response
+      };
     }
+  }
+  
+  // Build system prompt using agent configuration
+  static buildSystemPrompt(agent, fileAttachment) {
+    let systemPrompt = agent.systemPrompt || `You are ${agent.name}, ${agent.description}`;
     
+    // Add ExamMaster context
+    systemPrompt += `\n\nYou are working within ExamMaster, a comprehensive Computer-Based Examination (CBE) platform. The system includes:
+- Exam creation and management
+- Question banks with multiple question types (MCQ, True/False, Short Answer)
+- Student management and group organization
+- Automated grading and manual review for subjective questions
+- Real-time monitoring and proctoring features
+- Performance analytics and reporting
+- AI-powered assistance for various tasks
+
+Your capabilities include: ${agent.capabilities.join(', ')}.`;
+
     // Add file attachment context if present
     if (fileAttachment) {
-      response += `\n\nI've reviewed the uploaded file "${fileAttachment.fileName}". `;
+      systemPrompt += `\n\nNote: The user has attached a file "${fileAttachment.fileName}" (${fileAttachment.mimeType}). Consider this file in your response if relevant to their question.`;
     }
     
-    // Simulate token usage based on platform configuration
-    const inputTokens = Math.ceil(message.length / 4);
-    const outputTokens = Math.ceil(response.length / 4);
-    const cost = 0; // Cost calculation would be platform-specific
+    systemPrompt += `\n\nProvide helpful, accurate, and detailed responses. Format your responses clearly with markdown when appropriate.`;
     
-    console.log(`AI Chat Service - Tokens used - Input: ${inputTokens}, Output: ${outputTokens}`);
+    console.log(`AI Chat Service - Built system prompt for agent ${agent.agentId}, length: ${systemPrompt.length} characters`);
+    return systemPrompt;
+  }
+  
+  // Process Ollama request (different API structure)
+  static async processOllamaRequest(message, platform, systemPrompt) {
+    console.log(`AI Chat Service - Processing Ollama request to ${platform.configuration.baseUrl}`);
     
-    return {
-      response,
-      tokenCount: {
-        input: inputTokens,
-        output: outputTokens
+    try {
+      const axios = require('axios');
+      const response = await axios.post(`${platform.configuration.baseUrl}/api/generate`, {
+        model: platform.configuration.model,
+        prompt: `${systemPrompt}\n\nUser: ${message}\n\nAssistant:`,
+        stream: false,
+        options: {
+          temperature: platform.configuration.temperature || 0.7,
+          top_p: platform.configuration.topP || 1.0,
+          num_predict: platform.configuration.maxTokens || 4096
+        }
+      }, {
+        timeout: 60000 // 60 second timeout
+      });
+      
+      if (response.data && response.data.response) {
+        console.log(`AI Chat Service - Received response from Ollama: ${response.data.response.length} characters`);
+        return response.data.response;
+      } else {
+        throw new Error('Invalid response format from Ollama');
+      }
+    } catch (error) {
+      console.error(`AI Chat Service - Ollama request failed:`, error);
+      if (error.code === 'ECONNREFUSED') {
+        throw new Error(`Cannot connect to Ollama server at ${platform.configuration.baseUrl}. Please ensure Ollama is running.`);
+      }
+      throw new Error(`Ollama request failed: ${error.message}`);
+    }
+  }
+  
+  // Calculate cost based on platform pricing
+  static calculateCost(platform, inputTokens, outputTokens) {
+    // Default pricing per 1000 tokens (in dollars)
+    const pricing = {
+      openai: {
+        'gpt-4': { input: 0.03, output: 0.06 },
+        'gpt-4-turbo': { input: 0.01, output: 0.03 },
+        'gpt-3.5-turbo': { input: 0.0005, output: 0.0015 },
+        'gpt-3.5-turbo-16k': { input: 0.003, output: 0.004 }
       },
-      cost: Math.round(cost * 100) / 100 // round to 2 decimal places
+      anthropic: {
+        'claude-3-opus-20240229': { input: 0.015, output: 0.075 },
+        'claude-3-sonnet-20240229': { input: 0.003, output: 0.015 },
+        'claude-3-haiku-20240307': { input: 0.00025, output: 0.00125 }
+      },
+      ollama: { default: { input: 0, output: 0 } } // Ollama is free
     };
+    
+    const platformPricing = pricing[platform.name];
+    if (!platformPricing) {
+      console.log(`AI Chat Service - No pricing info for platform ${platform.name}, assuming free`);
+      return 0;
+    }
+    
+    const modelPricing = platformPricing[platform.configuration.model] || platformPricing['default'];
+    if (!modelPricing) {
+      console.log(`AI Chat Service - No pricing info for model ${platform.configuration.model}, assuming free`);
+      return 0;
+    }
+    
+    const inputCost = (inputTokens / 1000) * modelPricing.input;
+    const outputCost = (outputTokens / 1000) * modelPricing.output;
+    const totalCost = inputCost + outputCost;
+    
+    console.log(`AI Chat Service - Cost calculation: ${inputTokens} input tokens ($${inputCost.toFixed(4)}) + ${outputTokens} output tokens ($${outputCost.toFixed(4)}) = $${totalCost.toFixed(4)}`);
+    return totalCost;
+  }
+  
+  // Generate fallback response when AI service fails
+  static generateFallbackResponse(agentId, message, errorMessage) {
+    console.log(`AI Chat Service - Generating fallback response for agent ${agentId}, error: ${errorMessage}`);
+    
+    const fallbackResponses = {
+      'exam-assistant': `I'm sorry, but I'm currently experiencing technical difficulties connecting to the AI service. However, I can still help you with ExamMaster features:\n\n• For exam creation, go to Exam Management → Create Exam\n• For question management, visit the Questions section\n• For student management, check the Students panel\n• For reports, visit the Reports section\n\nPlease try again in a few moments, or contact support if the issue persists.\n\nError: ${errorMessage}`,
+      
+      'student-support': `I apologize, but I'm temporarily unable to access the AI service. You can still:\n\n• View student performance in the Reports section\n• Manage student groups in Student Management\n• Export data using the available export options\n• Contact technical support for immediate assistance\n\nPlease try again shortly.\n\nError: ${errorMessage}`,
+      
+      'content-creator': `I'm currently having trouble connecting to the AI service, but you can still:\n\n• Create questions manually in the Questions section\n• Import questions using CSV/Excel templates\n• Browse existing question banks\n• Use the built-in question templates\n\nI'll be back online shortly. Please try again.\n\nError: ${errorMessage}`,
+      
+      'data-analyst': `The AI service is temporarily unavailable, but you can still access:\n\n• Pre-built reports in the Reports section\n• Export raw data for external analysis\n• View basic statistics in the Dashboard\n• Generate standard performance reports\n\nPlease retry your request in a few moments.\n\nError: ${errorMessage}`
+    };
+    
+    return fallbackResponses[agentId] || `I apologize, but I'm currently experiencing technical difficulties. The AI service is temporarily unavailable. Please try again in a few moments.\n\nError: ${errorMessage}`;
   }
   
   static generateExamAssistantResponse(message, fileAttachment) {
