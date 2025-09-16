@@ -186,18 +186,16 @@ aiPlatformSchema.pre('save', async function(next) {
 
 // Validation middleware
 aiPlatformSchema.pre('save', function(next) {
-  // Validate required API key for cloud providers
-  if ((this.name === 'openai' || this.name === 'anthropic') && !this.configuration.apiKey) {
-    const error = new Error(`API key is required for ${this.name}`);
-    console.error('AI Platform validation error:', error.message);
-    return next(error);
+  // Only validate API key when platform is active
+  if (this.isActive && (this.name === 'openai' || this.name === 'anthropic') && !this.configuration.apiKey) {
+    console.warn(`AI Platform warning: API key missing for active platform ${this.name}`);
+    // Don't block saving, just warn - allow creation without API key
   }
   
-  // Validate base URL for Ollama
-  if (this.name === 'ollama' && !this.configuration.baseUrl) {
-    const error = new Error('Base URL is required for Ollama');
-    console.error('AI Platform validation error:', error.message);
-    return next(error);
+  // Only validate base URL for Ollama when active
+  if (this.isActive && this.name === 'ollama' && !this.configuration.baseUrl) {
+    console.warn('AI Platform warning: Base URL missing for active Ollama platform');
+    // Don't block saving, just warn
   }
   
   next();
@@ -230,9 +228,11 @@ aiPlatformSchema.statics.createDefaults = async function() {
       configuration: {
         model: 'gpt-3.5-turbo',
         temperature: 0.7,
-        maxTokens: 4096
+        maxTokens: 4096,
+        apiKey: '' // Empty initially, user will configure
       },
-      isDefault: true
+      isActive: false, // Inactive until configured
+      isDefault: false
     },
     {
       name: 'anthropic',
@@ -241,8 +241,10 @@ aiPlatformSchema.statics.createDefaults = async function() {
       configuration: {
         model: 'claude-3-haiku-20240307',
         temperature: 0.7,
-        maxTokens: 4096
-      }
+        maxTokens: 4096,
+        apiKey: '' // Empty initially, user will configure
+      },
+      isActive: false // Inactive until configured
     },
     {
       name: 'ollama',
@@ -253,7 +255,9 @@ aiPlatformSchema.statics.createDefaults = async function() {
         model: 'llama2',
         temperature: 0.7,
         maxTokens: 4096
-      }
+      },
+      isActive: false, // Inactive until configured
+      isDefault: false
     }
   ];
 

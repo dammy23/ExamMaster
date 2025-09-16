@@ -10,7 +10,7 @@ router.get('/', requireUser, async (req, res) => {
   console.log('AI Platform Routes - GET /');
   
   try {
-    const platforms = await AIPlatform.findActive().select('+configuration.apiKey');
+    const platforms = await AIPlatform.find({ isDeleted: { $ne: true } }).select('+configuration.apiKey');
     
     // For security, hide API keys from non-admin users
     const sanitizedPlatforms = platforms.map(platform => {

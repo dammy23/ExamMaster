@@ -281,36 +281,49 @@ export function AIChat() {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* AI Platform Selection */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">AI Platform</label>
-              <Select value={selectedPlatform} onValueChange={setSelectedPlatform}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select AI platform" />
-                </SelectTrigger>
-                <SelectContent>
-                  {platforms.map((platform) => (
-                    <SelectItem key={platform._id} value={platform._id}>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{platform.displayName}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {platform.configuration.model} • {platform.description}
-                        </span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {selectedPlatformInfo && (
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">
-                    {selectedPlatformInfo.description}
-                  </p>
-                  <p className="text-xs font-mono bg-muted px-2 py-1 rounded">
-                    Model: {selectedPlatformInfo.configuration.model}
+            {platforms.length > 0 ? (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">AI Platform</label>
+                <Select value={selectedPlatform} onValueChange={setSelectedPlatform}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select AI platform" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {platforms.map((platform) => (
+                      <SelectItem key={platform._id} value={platform._id}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{platform.displayName}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {platform.configuration.model} • {platform.description}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedPlatformInfo && (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">
+                      {selectedPlatformInfo.description}
+                    </p>
+                    <p className="text-xs font-mono bg-muted px-2 py-1 rounded">
+                      Model: {selectedPlatformInfo.configuration.model}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">AI Platform</label>
+                <div className="p-4 border-2 border-dashed border-muted-foreground/25 rounded-lg text-center">
+                  <Bot className="h-8 w-8 text-muted-foreground/50 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground font-medium">No AI platforms configured</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Go to Settings → AI Platforms to configure OpenAI, Anthropic, or Ollama
                   </p>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* AI Agent Selection */}
             <div className="space-y-2">
