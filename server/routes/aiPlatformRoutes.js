@@ -44,16 +44,27 @@ router.get('/active', requireUser, async (req, res) => {
   console.log('AI Platform Routes - GET /active');
   
   try {
-    const platforms = await AIPlatform.findActive()
-      .select('name displayName description configuration.model isDefault')
-      .sort({ isDefault: -1, displayName: 1 });
+    // Get only properly configured platforms
+    const configuredPlatforms = await AIPlatform.findActiveAndConfigured();
     
-    console.log(`AI Platform Routes - Retrieved ${platforms.length} active platforms`);
+    // Transform platforms for frontend (hide sensitive data)
+    const safePlatforms = configuredPlatforms.map(platform => ({
+      _id: platform._id,
+      name: platform.name,
+      displayName: platform.displayName,
+      description: platform.description,
+      configuration: {
+        model: platform.configuration.model
+      },
+      isDefault: platform.isDefault
+    }));
+    
+    console.log(`AI Platform Routes - Retrieved ${configuredPlatforms.length} properly configured platforms`);
     
     res.json({
       success: true,
       data: {
-        platforms
+        platforms: safePlatforms
       }
     });
     

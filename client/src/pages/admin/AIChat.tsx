@@ -384,10 +384,30 @@ export function AIChat() {
                   {messages.length === 0 ? (
                     <div className="text-center text-muted-foreground py-8">
                       <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p className="text-lg font-medium mb-2">Welcome to AI Chat!</p>
-                      <p className="text-sm">
-                        Ask me anything about ExamMaster features, exam creation, or student management.
-                      </p>
+                      {platforms.length === 0 ? (
+                        <>
+                          <p className="text-lg font-medium mb-2">AI Chat Setup Required</p>
+                          <p className="text-sm mb-3">
+                            No AI platforms are currently configured. To enable AI assistance:
+                          </p>
+                          <div className="bg-muted/50 rounded-lg p-4 max-w-md mx-auto">
+                            <p className="text-sm font-medium mb-2">Configuration Steps:</p>
+                            <ol className="text-xs text-left space-y-1">
+                              <li>1. Go to <span className="font-medium">Settings → AI Platforms</span></li>
+                              <li>2. Configure OpenAI, Anthropic, or Ollama</li>
+                              <li>3. Add your API keys or local server URL</li>
+                              <li>4. Return here to start chatting!</li>
+                            </ol>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-lg font-medium mb-2">Welcome to AI Chat!</p>
+                          <p className="text-sm">
+                            Ask me anything about ExamMaster features, exam creation, or student management.
+                          </p>
+                        </>
+                      )}
                     </div>
                   ) : (
                     messages.map((message) => (
@@ -490,7 +510,11 @@ export function AIChat() {
                 </Button>
               </div>
               
-              {(!selectedPlatform || !selectedAgent) && (
+              {platforms.length === 0 ? (
+                <p className="text-xs text-muted-foreground mt-2">
+                  No AI platforms are configured. Please configure AI platforms in Settings → AI Platforms to enable chat functionality.
+                </p>
+              ) : (!selectedPlatform || !selectedAgent) && (
                 <p className="text-xs text-muted-foreground mt-2">
                   Please select an AI platform and agent to start chatting
                 </p>

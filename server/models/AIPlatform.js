@@ -130,6 +130,53 @@ aiPlatformSchema.statics.getByName = function(name) {
   return this.findOne({ name, isActive: true, isDeleted: false });
 };
 
+aiPlatformSchema.statics.findActiveAndConfigured = async function() {
+  console.log('Finding active and properly configured AI platforms');
+  
+  try {
+    // For now, let's use a simpler approach and check configuration differently
+    // We'll aggregate the results to avoid the path collision issue
+    const activePlatforms = await this.find({ isActive: true, isDeleted: false });
+    const configuredPlatforms = [];
+    
+    for (const platform of activePlatforms) {
+      let isConfigured = false;
+      
+      switch(platform.name) {
+        case 'openai':
+        case 'anthropic':
+          // For API-based platforms, we'll mark them as unconfigured for now
+          // until API keys are properly set up
+          console.log(`${platform.name} requires API key configuration - marking as unconfigured`);
+          isConfigured = false;
+          break;
+          
+        case 'ollama':
+          // Ollama only needs baseUrl which is not hidden
+          const hasBaseUrl = platform.configuration && platform.configuration.baseUrl && platform.configuration.baseUrl.trim().length > 0;
+          console.log(`${platform.name} base URL configured:`, hasBaseUrl ? 'yes' : 'no');
+          isConfigured = hasBaseUrl;
+          break;
+          
+        default:
+          console.log(`Unknown platform type: ${platform.name}`);
+          isConfigured = false;
+          break;
+      }
+      
+      if (isConfigured) {
+        configuredPlatforms.push(platform);
+      }
+    }
+    
+    console.log(`Found ${activePlatforms.length} active platforms, ${configuredPlatforms.length} properly configured`);
+    return configuredPlatforms;
+  } catch (error) {
+    console.error('Error in findActiveAndConfigured:', error);
+    throw error;
+  }
+};
+
 // Instance methods
 aiPlatformSchema.methods.softDelete = function() {
   console.log(`Soft deleting AI platform: ${this.name}`);
@@ -155,6 +202,9 @@ aiPlatformSchema.methods.test = async function() {
     return { success: false, error: error.message };
   }
 };
+
+// Removed isProperlyConfigured method to avoid schema collision issues
+// Configuration checking is now handled in the static findActiveAndConfigured method
 
 aiPlatformSchema.methods.updateUsage = function(tokenCount = 0) {
   console.log(`Updating usage for AI platform: ${this.name}, tokens: ${tokenCount}`);

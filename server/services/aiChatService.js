@@ -283,17 +283,38 @@ Your capabilities include: ${agent.capabilities.join(', ')}.`;
   static generateFallbackResponse(agentId, message, errorMessage) {
     console.log(`AI Chat Service - Generating fallback response for agent ${agentId}, error: ${errorMessage}`);
     
-    const fallbackResponses = {
-      'exam-assistant': `I'm sorry, but I'm currently experiencing technical difficulties connecting to the AI service. However, I can still help you with ExamMaster features:\n\n• For exam creation, go to Exam Management → Create Exam\n• For question management, visit the Questions section\n• For student management, check the Students panel\n• For reports, visit the Reports section\n\nPlease try again in a few moments, or contact support if the issue persists.\n\nError: ${errorMessage}`,
-      
-      'student-support': `I apologize, but I'm temporarily unable to access the AI service. You can still:\n\n• View student performance in the Reports section\n• Manage student groups in Student Management\n• Export data using the available export options\n• Contact technical support for immediate assistance\n\nPlease try again shortly.\n\nError: ${errorMessage}`,
-      
-      'content-creator': `I'm currently having trouble connecting to the AI service, but you can still:\n\n• Create questions manually in the Questions section\n• Import questions using CSV/Excel templates\n• Browse existing question banks\n• Use the built-in question templates\n\nI'll be back online shortly. Please try again.\n\nError: ${errorMessage}`,
-      
-      'data-analyst': `The AI service is temporarily unavailable, but you can still access:\n\n• Pre-built reports in the Reports section\n• Export raw data for external analysis\n• View basic statistics in the Dashboard\n• Generate standard performance reports\n\nPlease retry your request in a few moments.\n\nError: ${errorMessage}`
-    };
+    // Determine if this is a configuration issue
+    const isConfigIssue = errorMessage.includes('API key not configured') || 
+                         errorMessage.includes('Base URL') || 
+                         errorMessage.includes('not configured');
     
-    return fallbackResponses[agentId] || `I apologize, but I'm currently experiencing technical difficulties. The AI service is temporarily unavailable. Please try again in a few moments.\n\nError: ${errorMessage}`;
+    if (isConfigIssue) {
+      // Provide specific guidance for configuration issues
+      const fallbackResponses = {
+        'exam-assistant': `I'm currently unavailable because the AI service needs to be configured by your administrator. In the meantime, I can guide you to ExamMaster features:\n\n• **Create Exams**: Go to Exam Management → Create Exam\n• **Manage Questions**: Visit the Questions section\n• **Student Management**: Check the Students panel\n• **View Reports**: Access the Reports section\n\nTo enable AI assistance, please ask your administrator to configure the AI platforms in Settings → AI Platforms.`,
+        
+        'student-support': `I'm currently unavailable due to AI service configuration requirements. You can still access these features directly:\n\n• **Student Performance**: View reports in the Reports section\n• **Group Management**: Manage student groups in Student Management\n• **Data Export**: Use the available export options\n• **Analytics**: Check the Dashboard for basic statistics\n\nFor AI-powered insights, please ask your administrator to configure the AI platforms.`,
+        
+        'content-creator': `I'm currently unavailable because the AI service needs administrator configuration. You can still:\n\n• **Create Questions**: Use the Questions section for manual creation\n• **Import Content**: Upload questions via CSV/Excel templates\n• **Browse Question Banks**: Explore existing question collections\n• **Use Templates**: Access built-in question templates\n\nFor AI-assisted content creation, ask your administrator to set up AI platforms in Settings.`,
+        
+        'data-analyst': `I'm currently unavailable due to AI service configuration needs. You can still access:\n\n• **Standard Reports**: Use pre-built reports in the Reports section\n• **Raw Data**: Export data for external analysis\n• **Dashboard Statistics**: View basic metrics on the Dashboard\n• **Custom Reports**: Generate standard performance reports\n\nFor advanced AI-powered analytics, please have your administrator configure the AI platforms.`
+      };
+      
+      return fallbackResponses[agentId] || `I apologize, but I'm currently unavailable due to AI service configuration requirements. Please ask your administrator to configure the AI platforms in Settings → AI Platforms to enable AI assistance.`;
+    } else {
+      // Generic temporary issue
+      const fallbackResponses = {
+        'exam-assistant': `I'm temporarily experiencing technical difficulties. Please try again in a few moments. In the meantime, you can:\n\n• **Create Exams**: Go to Exam Management → Create Exam\n• **Manage Questions**: Visit the Questions section\n• **Student Management**: Check the Students panel\n• **View Reports**: Access the Reports section\n\nIf this issue persists, please contact support.`,
+        
+        'student-support': `I'm temporarily unavailable due to technical difficulties. You can still:\n\n• **View Performance**: Check the Reports section\n• **Manage Groups**: Use Student Management\n• **Export Data**: Access available export options\n• **Contact Support**: For immediate assistance\n\nPlease try again shortly.`,
+        
+        'content-creator': `I'm currently experiencing technical difficulties. While I recover, you can:\n\n• **Create Questions**: Use the Questions section\n• **Import Content**: Upload via CSV/Excel templates\n• **Browse Questions**: Explore existing question banks\n• **Use Templates**: Access built-in templates\n\nPlease try again in a few moments.`,
+        
+        'data-analyst': `I'm temporarily unavailable due to technical difficulties. You can still:\n\n• **View Reports**: Access the Reports section\n• **Export Data**: Use export options for external analysis\n• **Dashboard**: Check basic statistics\n• **Standard Reports**: Generate performance reports\n\nPlease retry your request shortly.`
+      };
+      
+      return fallbackResponses[agentId] || `I apologize, but I'm currently experiencing technical difficulties. Please try again in a few moments. If this issue persists, please contact support.`;
+    }
   }
   
   static generateExamAssistantResponse(message, fileAttachment) {
