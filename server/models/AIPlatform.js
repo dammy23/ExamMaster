@@ -146,12 +146,12 @@ aiPlatformSchema.statics.findActiveWithStatus = async function() {
         case 'anthropic':
         case 'ollama':
           // Ollama only needs baseUrl which is not hidden
-          const hasBaseUrl = (platform.configuration && platform.configuration.baseUrl && platform.configuration.baseUrl.trim().length > 0) || (platform.configuration && platform.configuration.apiKey && platform.configuration.apiKey.trim().length > 0);
-          
+          //const hasBaseUrl = (platform.configuration && platform.configuration.baseUrl && platform.configuration.baseUrl.trim().length > 0) || (platform.configuration && platform.configuration.apiKey && platform.configuration.apiKey.trim().length > 0);
+          const hasBaseUrl=true;
           console.log(`${platform.name} base URL configured:`, hasBaseUrl ? 'yes' : 'no'+platform.configuration.apiKey);
-          isConfigured = true;
-          configurationStatus = true ? 'configured' : 'missing_base_url';
-          configurationMessage = true ? 'Ready to use' : 'Please configure base URL in Settings → AI Platforms';
+          isConfigured = hasBaseUrl;
+          configurationStatus = hasBaseUrl ? 'configured' : 'missing_base_url';
+          configurationMessage = hasBaseUrl ? 'Ready to use' : 'Please configure base URL in Settings → AI Platforms';
           break;
           
         default:

@@ -9,25 +9,25 @@ dotenv.config();
 let openai = null;
 let anthropic = null;
 
-function getOpenAIClient() {
+function getOpenAIClient(apiKey) {
   if (!openai) {
-    if (!process.env.OPENAI_API_KEY) {
+    if (!apiKey) {
       throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.');
     }
     openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+      apiKey: apiKey,
     });
   }
   return openai;
 }
 
-function getAnthropicClient() {
+function getAnthropicClient(apiKey) {
   if (!anthropic) {
-    if (!process.env.ANTHROPIC_API_KEY) {
+    if (!apiKey) {
       throw new Error('Anthropic API key not configured. Please set ANTHROPIC_API_KEY environment variable.');
     }
     anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
+      apiKey: apiKey,
     });
   }
   return anthropic;
@@ -40,12 +40,12 @@ async function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function sendRequestToOpenAI(model, message, options = {}) {
+async function sendRequestToOpenAI(model, message, apiKey,options = {}) {
   for (let i = 0; i < MAX_RETRIES; i++) {
     try {
       console.log(`LLM Service - Sending OpenAI request (attempt ${i + 1}) with model: ${model}`);
       
-      const openaiClient = getOpenAIClient();
+      const openaiClient = getOpenAIClient(apiKey);
       const response = await openaiClient.chat.completions.create({
         model: model,
         messages: [{ role: 'user', content: message }],
@@ -77,12 +77,12 @@ async function sendRequestToOpenAI(model, message, options = {}) {
   }
 }
 
-async function sendRequestToAnthropic(model, message, options = {}) {
+async function sendRequestToAnthropic(model, message, apiKey, options = {}) {
   for (let i = 0; i < MAX_RETRIES; i++) {
     try {
       console.log(`LLM Service - Sending Anthropic request (attempt ${i + 1}) with model: ${model}`);
       
-      const anthropicClient = getAnthropicClient();
+      const anthropicClient = getAnthropicClient(apiKey);
       const response = await anthropicClient.messages.create({
         model: model,
         messages: [{ role: 'user', content: message }],
@@ -112,14 +112,14 @@ async function sendRequestToAnthropic(model, message, options = {}) {
   }
 }
 
-async function sendLLMRequest(provider, model, message, options = {}) {
+async function sendLLMRequest(provider, model, message, apiKey,options = {}) {
   console.log(`LLM Service - Processing request for provider: ${provider}, model: ${model}`);
   
   switch (provider.toLowerCase()) {
     case 'openai':
-      return sendRequestToOpenAI(model, message, options);
+      return sendRequestToOpenAI(model, message, apiKey,options);
     case 'anthropic':
-      return sendRequestToAnthropic(model, message, options);
+      return sendRequestToAnthropic(model, message, apiKey, options);
     default:
       throw new Error(`Unsupported LLM provider: ${provider}`);
   }

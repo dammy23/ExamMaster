@@ -129,7 +129,7 @@ class AIChatService {
         const llmResponse = await llmService.sendLLMRequest(
           platform.name,
           platform.configuration.model,
-          fullMessage,
+          fullMessage,platform.configuration.apikey,
           options
         );
         
