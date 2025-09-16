@@ -18,7 +18,10 @@ import {
   X,
   Zap,
   Brain,
-  Settings
+  Settings,
+  CheckCircle,
+  AlertCircle,
+  XCircle
 } from "lucide-react"
 import { sendChatMessage, getChatHistory, getAIAgents, uploadChatFile } from "@/api/aiChat"
 import { getActiveAIPlatforms } from "@/api/aiPlatform"
@@ -43,6 +46,9 @@ interface AIPlatform {
     model: string
   }
   isDefault: boolean
+  isConfigured: boolean
+  configurationStatus: string
+  configurationMessage: string
 }
 
 interface AIAgent {
@@ -96,8 +102,9 @@ export function AIChat() {
         setPlatforms(platformsData || [])
         setAgents(agentsData || [])
         
-        // Set default selections
-        const defaultPlatform = platformsData?.find((p: AIPlatform) => p.isDefault) || platformsData?.[0]
+        // Set default selections - only select configured platforms
+        const defaultPlatform = platformsData?.find((p: AIPlatform) => p.isDefault && p.isConfigured) || 
+                               platformsData?.find((p: AIPlatform) => p.isConfigured)
         const defaultAgent = agentsData?.find((a: AIAgent) => a.isActive) || agentsData?.[0]
         
         if (defaultPlatform) setSelectedPlatform(defaultPlatform._id)
@@ -167,6 +174,17 @@ export function AIChat() {
       toast({
         title: "Selection Required",
         description: "Please select both an AI platform and agent",
+        variant: "destructive"
+      })
+      return
+    }
+
+    // Check if selected platform is configured
+    const selectedPlatformData = platforms.find(p => p._id === selectedPlatform)
+    if (selectedPlatformData && !selectedPlatformData.isConfigured) {
+      toast({
+        title: "Platform Not Configured",
+        description: selectedPlatformData.configurationMessage,
         variant: "destructive"
       })
       return
@@ -284,18 +302,53 @@ export function AIChat() {
             {platforms.length > 0 ? (
               <div className="space-y-2">
                 <label className="text-sm font-medium">AI Platform</label>
-                <Select value={selectedPlatform} onValueChange={setSelectedPlatform}>
+                <Select 
+                  value={selectedPlatform} 
+                  onValueChange={(value) => {
+                    const platform = platforms.find(p => p._id === value)
+                    if (platform && platform.isConfigured) {
+                      setSelectedPlatform(value)
+                    } else if (platform && !platform.isConfigured) {
+                      // Show toast if trying to select unconfigured platform
+                      toast({
+                        variant: "destructive",
+                        title: "Platform Not Configured",
+                        description: platform.configurationMessage
+                      })
+                    }
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select AI platform" />
                   </SelectTrigger>
                   <SelectContent>
                     {platforms.map((platform) => (
-                      <SelectItem key={platform._id} value={platform._id}>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{platform.displayName}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {platform.configuration.model} • {platform.description}
-                          </span>
+                      <SelectItem 
+                        key={platform._id} 
+                        value={platform._id}
+                        disabled={!platform.isConfigured}
+                      >
+                        <div className="flex items-center gap-2 w-full">
+                          <div className="flex items-center gap-1">
+                            {platform.isConfigured ? (
+                              <CheckCircle className="h-3 w-3 text-green-500" />
+                            ) : (
+                              <AlertCircle className="h-3 w-3 text-amber-500" />
+                            )}
+                          </div>
+                          <div className="flex flex-col flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className={`font-medium ${!platform.isConfigured ? 'text-muted-foreground' : ''}`}>
+                                {platform.displayName}
+                              </span>
+                              {platform.isDefault && (
+                                <Badge variant="secondary" className="text-xs">Default</Badge>
+                              )}
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              {platform.configuration.model} • {platform.isConfigured ? 'Ready' : 'Needs Setup'}
+                            </span>
+                          </div>
                         </div>
                       </SelectItem>
                     ))}
@@ -303,12 +356,26 @@ export function AIChat() {
                 </Select>
                 {selectedPlatformInfo && (
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">
-                      {selectedPlatformInfo.description}
-                    </p>
-                    <p className="text-xs font-mono bg-muted px-2 py-1 rounded">
-                      Model: {selectedPlatformInfo.configuration.model}
-                    </p>
+                    {selectedPlatformInfo.isConfigured ? (
+                      <>
+                        <p className="text-xs text-muted-foreground">
+                          {selectedPlatformInfo.description}
+                        </p>
+                        <p className="text-xs font-mono bg-muted px-2 py-1 rounded">
+                          Model: {selectedPlatformInfo.configuration.model}
+                        </p>
+                      </>
+                    ) : (
+                      <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                        <div className="flex items-center gap-2 mb-1">
+                          <AlertCircle className="h-3 w-3 text-amber-600" />
+                          <span className="text-xs font-medium text-amber-800">Configuration Required</span>
+                        </div>
+                        <p className="text-xs text-amber-700">
+                          {selectedPlatformInfo.configurationMessage}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -499,7 +566,13 @@ export function AIChat() {
                 />
                 <Button
                   onClick={handleSendMessage}
-                  disabled={!newMessage.trim() || isLoading || !selectedPlatform || !selectedAgent}
+                  disabled={
+                    !newMessage.trim() || 
+                    isLoading || 
+                    !selectedPlatform || 
+                    !selectedAgent ||
+                    !selectedPlatformInfo?.isConfigured
+                  }
                   className="shrink-0"
                 >
                   {isLoading ? (
@@ -514,11 +587,19 @@ export function AIChat() {
                 <p className="text-xs text-muted-foreground mt-2">
                   No AI platforms are configured. Please configure AI platforms in Settings → AI Platforms to enable chat functionality.
                 </p>
-              ) : (!selectedPlatform || !selectedAgent) && (
+              ) : platforms.filter(p => p.isConfigured).length === 0 ? (
+                <p className="text-xs text-muted-foreground mt-2">
+                  AI platforms need configuration. Please set up API keys or connection details in Settings → AI Platforms.
+                </p>
+              ) : (!selectedPlatform || !selectedAgent) ? (
                 <p className="text-xs text-muted-foreground mt-2">
                   Please select an AI platform and agent to start chatting
                 </p>
-              )}
+              ) : (!selectedPlatformInfo?.isConfigured) ? (
+                <p className="text-xs text-amber-600 mt-2">
+                  Selected platform needs configuration. Please set it up in Settings → AI Platforms.
+                </p>
+              ) : null}
             </div>
           </CardContent>
         </Card>

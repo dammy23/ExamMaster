@@ -130,25 +130,28 @@ aiPlatformSchema.statics.getByName = function(name) {
   return this.findOne({ name, isActive: true, isDeleted: false });
 };
 
-aiPlatformSchema.statics.findActiveAndConfigured = async function() {
-  console.log('Finding active and properly configured AI platforms');
+aiPlatformSchema.statics.findActiveWithStatus = async function() {
+  console.log('Finding active AI platforms with configuration status');
   
   try {
-    // For now, let's use a simpler approach and check configuration differently
-    // We'll aggregate the results to avoid the path collision issue
     const activePlatforms = await this.find({ isActive: true, isDeleted: false });
-    const configuredPlatforms = [];
+    const platformsWithStatus = [];
     
     for (const platform of activePlatforms) {
       let isConfigured = false;
+      let configurationStatus = 'missing';
+      let configurationMessage = '';
       
       switch(platform.name) {
         case 'openai':
         case 'anthropic':
-          // For API-based platforms, we'll mark them as unconfigured for now
-          // until API keys are properly set up
-          console.log(`${platform.name} requires API key configuration - marking as unconfigured`);
+          // For API-based platforms, check if they have API keys
+          // Since apiKey is hidden by default, we need to check differently
+          // For now, we'll assume they're not configured unless we can verify
+          console.log(`${platform.name} requires API key configuration`);
           isConfigured = false;
+          configurationStatus = 'missing_api_key';
+          configurationMessage = `Please configure API key in Settings → AI Platforms`;
           break;
           
         case 'ollama':
@@ -156,23 +159,34 @@ aiPlatformSchema.statics.findActiveAndConfigured = async function() {
           const hasBaseUrl = platform.configuration && platform.configuration.baseUrl && platform.configuration.baseUrl.trim().length > 0;
           console.log(`${platform.name} base URL configured:`, hasBaseUrl ? 'yes' : 'no');
           isConfigured = hasBaseUrl;
+          configurationStatus = hasBaseUrl ? 'configured' : 'missing_base_url';
+          configurationMessage = hasBaseUrl ? 'Ready to use' : 'Please configure base URL in Settings → AI Platforms';
           break;
           
         default:
           console.log(`Unknown platform type: ${platform.name}`);
           isConfigured = false;
+          configurationStatus = 'unknown';
+          configurationMessage = 'Unknown platform type';
           break;
       }
       
-      if (isConfigured) {
-        configuredPlatforms.push(platform);
-      }
+      // Add configuration status to platform object
+      const platformWithStatus = {
+        ...platform.toObject(),
+        isConfigured,
+        configurationStatus,
+        configurationMessage
+      };
+      
+      platformsWithStatus.push(platformWithStatus);
     }
     
-    console.log(`Found ${activePlatforms.length} active platforms, ${configuredPlatforms.length} properly configured`);
-    return configuredPlatforms;
+    const configuredCount = platformsWithStatus.filter(p => p.isConfigured).length;
+    console.log(`Found ${activePlatforms.length} active platforms, ${configuredCount} properly configured`);
+    return platformsWithStatus;
   } catch (error) {
-    console.error('Error in findActiveAndConfigured:', error);
+    console.error('Error in findActiveWithStatus:', error);
     throw error;
   }
 };
