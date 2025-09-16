@@ -85,7 +85,7 @@ export function AIChat() {
           getChatHistory()
         ])
 
-        const platformsData = (platformsResponse as any).platforms
+        const platformsData = (platformsResponse as any).data.platforms
         const agentsData = (agentsResponse as any).agents
         const historyData = (historyResponse as any).messages
 
