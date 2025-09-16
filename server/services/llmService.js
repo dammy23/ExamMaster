@@ -10,6 +10,7 @@ let openai = null;
 let anthropic = null;
 
 function getOpenAIClient(apiKey) {
+  console.log("Dami "+apiKey);
   if (!openai) {
     if (!apiKey) {
       throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.');
@@ -113,7 +114,7 @@ async function sendRequestToAnthropic(model, message, apiKey, options = {}) {
 }
 
 async function sendLLMRequest(provider, model, message, apiKey,options = {}) {
-  console.log(`LLM Service - Processing request for provider: ${provider}, model: ${model}`);
+  console.log(`LLM Service - Processing ${apiKey}request for provider: ${provider}, model: ${model}`);
   
   switch (provider.toLowerCase()) {
     case 'openai':

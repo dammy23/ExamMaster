@@ -126,10 +126,12 @@ class AIChatService {
           frequencyPenalty: platform.configuration.frequencyPenalty || 0
         };
         
+        
         const llmResponse = await llmService.sendLLMRequest(
           platform.name,
           platform.configuration.model,
-          fullMessage,platform.configuration.apikey,
+          fullMessage,
+          platform.configuration.apiKey,
           options
         );
         
