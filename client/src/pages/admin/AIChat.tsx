@@ -268,9 +268,9 @@ export function AIChat() {
 
   const selectedPlatformInfo = platforms.find(p => p._id === selectedPlatform)
   const selectedAgentInfo = agents.find(a => a._id === selectedAgent)
-
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col space-y-4">
+    <div className="h-[calc(100dvh-4rem)] w-full flex flex-col space-y-4 overflow-hidden">
+      {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">AI Chat Assistant</h1>
@@ -287,7 +287,7 @@ export function AIChat() {
         </div>
       </div>
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4">
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-4 gap-4">
         {/* Configuration Panel */}
         <Card className="lg:col-span-1">
           <CardHeader>
@@ -301,19 +301,18 @@ export function AIChat() {
             {/* AI Platform Selection */}
             {platforms.length > 0 ? (
               <div className="space-y-2">
-                <label className="text-sm font-medium">AI Platform</label>
-                <Select 
-                  value={selectedPlatform} 
+                <label className="text-sm font-medium">AI Platforms</label>
+                <Select
+                  value={selectedPlatform}
                   onValueChange={(value) => {
-                    const platform = platforms.find(p => p._id === value)
+                    const platform = platforms.find((p) => p._id === value)
                     if (platform && platform.isConfigured) {
                       setSelectedPlatform(value)
                     } else if (platform && !platform.isConfigured) {
-                      // Show toast if trying to select unconfigured platform
                       toast({
                         variant: "destructive",
                         title: "Platform Not Configured",
-                        description: platform.configurationMessage
+                        description: platform.configurationMessage,
                       })
                     }
                   }}
@@ -323,8 +322,8 @@ export function AIChat() {
                   </SelectTrigger>
                   <SelectContent>
                     {platforms.map((platform) => (
-                      <SelectItem 
-                        key={platform._id} 
+                      <SelectItem
+                        key={platform._id}
                         value={platform._id}
                         disabled={!platform.isConfigured}
                       >
@@ -338,15 +337,21 @@ export function AIChat() {
                           </div>
                           <div className="flex flex-col flex-1">
                             <div className="flex items-center gap-2">
-                              <span className={`font-medium ${!platform.isConfigured ? 'text-muted-foreground' : ''}`}>
+                              <span
+                                className={`font-medium ${
+                                  !platform.isConfigured ? "text-muted-foreground" : ""
+                                }`}
+                              >
                                 {platform.displayName}
                               </span>
                               {platform.isDefault && (
-                                <Badge variant="secondary" className="text-xs">Default</Badge>
+                                <Badge variant="secondary" className="text-xs">
+                                  Default
+                                </Badge>
                               )}
                             </div>
                             <span className="text-xs text-muted-foreground">
-                              {platform.configuration.model} • {platform.isConfigured ? 'Ready' : 'Needs Setup'}
+                              {platform.configuration.model} • {platform.isConfigured ? "Ready" : "Needs Setup"}
                             </span>
                           </div>
                         </div>
@@ -354,6 +359,7 @@ export function AIChat() {
                     ))}
                   </SelectContent>
                 </Select>
+
                 {selectedPlatformInfo && (
                   <div className="space-y-1">
                     {selectedPlatformInfo.isConfigured ? (
@@ -369,7 +375,9 @@ export function AIChat() {
                       <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg">
                         <div className="flex items-center gap-2 mb-1">
                           <AlertCircle className="h-3 w-3 text-amber-600" />
-                          <span className="text-xs font-medium text-amber-800">Configuration Required</span>
+                          <span className="text-xs font-medium text-amber-800">
+                            Configuration Required
+                          </span>
                         </div>
                         <p className="text-xs text-amber-700">
                           {selectedPlatformInfo.configurationMessage}
@@ -400,21 +408,21 @@ export function AIChat() {
                   <SelectValue placeholder="Select AI agent" />
                 </SelectTrigger>
                 <SelectContent>
-                  {agents.filter(a => a.isActive).map((agent) => (
-                    <SelectItem key={agent._id} value={agent._id}>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{agent.name}</span>
-                        <span className="text-xs text-muted-foreground">{agent.description}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
+                  {agents
+                    .filter((a) => a.isActive)
+                    .map((agent) => (
+                      <SelectItem key={agent._id} value={agent._id}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{agent.name}</span>
+                          <span className="text-xs text-muted-foreground">{agent.description}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
               {selectedAgentInfo && (
                 <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground">
-                    {selectedAgentInfo.description}
-                  </p>
+                  <p className="text-xs text-muted-foreground">{selectedAgentInfo.description}</p>
                   <div className="flex flex-wrap gap-1">
                     {selectedAgentInfo.capabilities.map((capability, index) => (
                       <Badge key={index} variant="secondary" className="text-xs">
@@ -429,7 +437,7 @@ export function AIChat() {
         </Card>
 
         {/* Chat Interface */}
-        <Card className="lg:col-span-3 flex flex-col">
+        <Card className="lg:col-span-3 flex min-h-0 flex-col">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />
@@ -437,10 +445,11 @@ export function AIChat() {
             </CardTitle>
             <CardDescription>Ask questions and get AI assistance</CardDescription>
           </CardHeader>
-          
-          {/* Messages Area */}
-          <CardContent className="flex-1 flex flex-col p-0">
-            <ScrollArea className="flex-1 p-4">
+
+          {/* Messages + Input */}
+          <CardContent className="flex-1 min-h-0 flex flex-col p-0">
+            {/* Messages Area */}
+            <ScrollArea className="h-full p-4 [scrollbar-gutter:stable] overscroll-y-contain">
               {loadingHistory ? (
                 <div className="flex items-center justify-center h-32">
                   <Loader2 className="h-6 w-6 animate-spin" />
@@ -478,20 +487,33 @@ export function AIChat() {
                     </div>
                   ) : (
                     messages.map((message) => (
-                      <div key={message._id} className={`flex gap-3 ${message.isUser ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`flex gap-3 max-w-[80%] ${message.isUser ? 'flex-row-reverse' : 'flex-row'}`}>
-                          <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                            message.isUser 
-                              ? 'bg-primary text-primary-foreground' 
-                              : 'bg-muted text-muted-foreground'
-                          }`}>
-                            {message.isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+                      <div
+                        key={message._id}
+                        className={`flex gap-3 ${message.isUser ? "justify-end" : "justify-start"}`}
+                      >
+                        <div
+                          className={`flex gap-3 max-w-[80%] ${
+                            message.isUser ? "flex-row-reverse" : "flex-row"
+                          }`}
+                        >
+                          <div
+                            className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                              message.isUser
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted text-muted-foreground"
+                            }`}
+                          >
+                            {message.isUser ? (
+                              <User className="h-4 w-4" />
+                            ) : (
+                              <Bot className="h-4 w-4" />
+                            )}
                           </div>
-                          <div className={`rounded-lg px-4 py-2 ${
-                            message.isUser 
-                              ? 'bg-primary text-primary-foreground' 
-                              : 'bg-muted'
-                          }`}>
+                          <div
+                            className={`rounded-lg px-4 py-2 ${
+                              message.isUser ? "bg-primary text-primary-foreground" : "bg-muted"
+                            }`}
+                          >
                             <p className="text-sm whitespace-pre-wrap">{message.message}</p>
                             <p className="text-xs mt-1 opacity-70">
                               {new Date(message.timestamp).toLocaleTimeString()}
@@ -538,7 +560,7 @@ export function AIChat() {
                   </Button>
                 </div>
               )}
-              
+
               <div className="flex gap-2">
                 <input
                   ref={fileInputRef}
@@ -567,35 +589,33 @@ export function AIChat() {
                 <Button
                   onClick={handleSendMessage}
                   disabled={
-                    !newMessage.trim() || 
-                    isLoading || 
-                    !selectedPlatform || 
+                    !newMessage.trim() ||
+                    isLoading ||
+                    !selectedPlatform ||
                     !selectedAgent ||
                     !selectedPlatformInfo?.isConfigured
                   }
                   className="shrink-0"
                 >
-                  {isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
+                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </Button>
               </div>
-              
+
               {platforms.length === 0 ? (
                 <p className="text-xs text-muted-foreground mt-2">
-                  No AI platforms are configured. Please configure AI platforms in Settings → AI Platforms to enable chat functionality.
+                  No AI platforms are configured. Please configure AI platforms in Settings → AI Platforms to enable chat
+                  functionality.
                 </p>
-              ) : platforms.filter(p => p.isConfigured).length === 0 ? (
+              ) : platforms.filter((p) => p.isConfigured).length === 0 ? (
                 <p className="text-xs text-muted-foreground mt-2">
-                  AI platforms need configuration. Please set up API keys or connection details in Settings → AI Platforms.
+                  AI platforms need configuration. Please set up API keys or connection details in Settings → AI
+                  Platforms.
                 </p>
-              ) : (!selectedPlatform || !selectedAgent) ? (
+              ) : !selectedPlatform || !selectedAgent ? (
                 <p className="text-xs text-muted-foreground mt-2">
                   Please select an AI platform and agent to start chatting
                 </p>
-              ) : (!selectedPlatformInfo?.isConfigured) ? (
+              ) : !selectedPlatformInfo?.isConfigured ? (
                 <p className="text-xs text-amber-600 mt-2">
                   Selected platform needs configuration. Please set it up in Settings → AI Platforms.
                 </p>

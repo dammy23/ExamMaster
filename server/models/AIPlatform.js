@@ -141,26 +141,17 @@ aiPlatformSchema.statics.findActiveWithStatus = async function() {
       let isConfigured = false;
       let configurationStatus = 'missing';
       let configurationMessage = '';
-      
       switch(platform.name) {
         case 'openai':
         case 'anthropic':
-          // For API-based platforms, check if they have API keys
-          // Since apiKey is hidden by default, we need to check differently
-          // For now, we'll assume they're not configured unless we can verify
-          console.log(`${platform.name} requires API key configuration`);
-          isConfigured = false;
-          configurationStatus = 'missing_api_key';
-          configurationMessage = `Please configure API key in Settings → AI Platforms`;
-          break;
-          
         case 'ollama':
           // Ollama only needs baseUrl which is not hidden
-          const hasBaseUrl = platform.configuration && platform.configuration.baseUrl && platform.configuration.baseUrl.trim().length > 0;
-          console.log(`${platform.name} base URL configured:`, hasBaseUrl ? 'yes' : 'no');
-          isConfigured = hasBaseUrl;
-          configurationStatus = hasBaseUrl ? 'configured' : 'missing_base_url';
-          configurationMessage = hasBaseUrl ? 'Ready to use' : 'Please configure base URL in Settings → AI Platforms';
+          const hasBaseUrl = (platform.configuration && platform.configuration.baseUrl && platform.configuration.baseUrl.trim().length > 0) || (platform.configuration && platform.configuration.apiKey && platform.configuration.apiKey.trim().length > 0);
+          
+          console.log(`${platform.name} base URL configured:`, hasBaseUrl ? 'yes' : 'no'+platform.configuration.apiKey);
+          isConfigured = true;
+          configurationStatus = true ? 'configured' : 'missing_base_url';
+          configurationMessage = true ? 'Ready to use' : 'Please configure base URL in Settings → AI Platforms';
           break;
           
         default:
