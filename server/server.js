@@ -62,7 +62,13 @@ connectDB().then(() => {
   app.use('/api/settings', require('./routes/settingRoutes.js'));
   app.use('/api/ai-platforms', require('./routes/aiPlatformRoutes.js'));
   app.use('/api/ai-chat', require('./routes/aiChatRoutes.js'));
-  app.use('/', require('./routes/index.js'));
+  const publicPath = path.join(__dirname, "public");
+  app.use(express.static(publicPath));
+
+  // Catch-all to return React's index.html for non-API routes
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(publicPath, "index.html"));
+  });
 
   console.log("Starting server on port", PORT);
 
