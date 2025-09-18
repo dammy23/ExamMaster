@@ -62,9 +62,14 @@ connectDB().then(() => {
   app.use('/api/settings', require('./routes/settingRoutes.js'));
   app.use('/api/ai-platforms', require('./routes/aiPlatformRoutes.js'));
   app.use('/api/ai-chat', require('./routes/aiChatRoutes.js'));
-  app.use('/', require('./routes/index.js'));
+  // This assumes you copied client/dist into server/public during your Docker build
+  const publicPath = path.join(__dirname, "public");
+  app.use(express.static(publicPath));
 
-  console.log("Starting server on port", PORT);
+  // Catch-all to return React's index.html for non-API routes
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(publicPath, "index.html"));
+  });
 
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
