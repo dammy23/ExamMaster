@@ -21,6 +21,7 @@ const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const { connectDB } = require("./config/database");
 const cors = require("cors");
+const path = require("path");
 
 if (!process.env.DATABASE_URL) {
   console.error("Error: DATABASE_URL variables in .env missing.");
