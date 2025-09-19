@@ -50,13 +50,20 @@ jobs:
             echo "Logging into Docker Hub (if needed)..."
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin || true
 
-            echo "Pulling latest image..."
-            docker pull "$IMAGE"
+            
 
             echo "Stopping and removing old container (if any)..."
             if [ "$(docker ps -aq -f name=$CONTAINER)" ]; then
               docker rm -f "$CONTAINER" || true
             fi
+
+            echo "Removing old image (if any)..."
+            if docker image inspect "$IMAGE" > /dev/null 2>&1; then
+              docker rmi -f "$IMAGE" || true
+            fi
+
+            echo "Pulling latest image..."
+            docker pull "$IMAGE"
 
             echo "Starting new container using existing env file..."
             docker run -d \
