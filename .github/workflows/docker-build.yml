@@ -38,7 +38,6 @@ jobs:
           script_stop: true
           script: |
             set -e
-
             IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/exam-master:latest"
             CONTAINER="exam-master"
             ENVFILE"${{ secrets.ENV_FILE }}"
