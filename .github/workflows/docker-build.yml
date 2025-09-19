@@ -40,7 +40,6 @@ jobs:
             set -e
             IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/exam-master:latest"
             CONTAINER="exam-master"
-            ENVFILE"${{ secrets.ENV_FILE }}"
             PORT="${{ secrets.SERVER_PORT }}"
 
             echo "Ensuring Docker is installed..."
@@ -64,7 +63,7 @@ jobs:
               --name "$CONTAINER" \
               --restart unless-stopped \
               -p $PORT:3000 \
-              --env-file $ENVFILE \
+              --env-file /opt/ExamMaster/app.env \
               "$IMAGE"
 
             echo "Deployment complete!"
