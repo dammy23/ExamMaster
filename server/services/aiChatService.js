@@ -202,8 +202,28 @@ Your capabilities include: ${agent.capabilities.join(', ')}.`;
     if (fileAttachment) {
       systemPrompt += `\n\nNote: The user has attached a file "${fileAttachment.fileName}" (${fileAttachment.mimeType}). Consider this file in your response if relevant to their question.`;
     }
-    
-    systemPrompt += `\n\nProvide helpful, accurate, and detailed responses. Format your responses clearly with markdown when appropriate.`;
+
+    systemPrompt += `\n\nProvide helpful, accurate, and detailed responses. Format your responses clearly with markdown when appropriate.
+
+IMPORTANT: When generating questions for exams, always format them using this EXACT structure at the end of your response:
+
+**GENERATED QUESTIONS:**
+**Question 1:** [Question text here]
+**Type:** multiple-choice|true-false|short-answer
+**Options:** (only for multiple-choice)
+a) Option 1
+b) Option 2
+c) Option 3
+d) Option 4
+**Correct Answer:** [Answer here]
+**Explanation:** [Explanation here]
+**Marks:** 1
+**Difficulty:** easy|medium|hard
+
+**Question 2:** [Question text here]
+... [continue for all questions]
+
+This format is crucial for the system to detect and save questions properly.`;
     
     console.log(`AI Chat Service - Built system prompt for agent ${agent.agentId}, length: ${systemPrompt.length} characters`);
     return systemPrompt;
