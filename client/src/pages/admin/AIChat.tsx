@@ -108,68 +108,6 @@ export function AIChat() {
         }
       }
 
-      // Look for new structured format: **GENERATED QUESTIONS:**
-      const generatedQuestionsMatch = responseText.match(/\*\*GENERATED QUESTIONS:\*\*([\s\S]*?)(?:\n\n|$)/i)
-      if (generatedQuestionsMatch && generatedQuestionsMatch[1]) {
-        const questionSection = generatedQuestionsMatch[1]
-        const structuredQuestions = questionSection.split(/\*\*Question \d+:\*\*/).filter(q => q.trim())
-
-        structuredQuestions.forEach((questionBlock, index) => {
-          const lines = questionBlock.trim().split('\n').map(line => line.trim()).filter(line => line)
-          if (lines.length === 0) return
-
-          let question = ''
-          let type = 'short-answer'
-          let options: string[] = []
-          let correctAnswer = ''
-          let explanation = ''
-          let marks = 1
-          let difficulty = 'medium'
-
-          // Extract question text (first non-empty line)
-          if (lines[0] && !lines[0].startsWith('**')) {
-            question = lines[0]
-          }
-
-          // Parse structured fields
-          lines.forEach(line => {
-            if (line.startsWith('**Type:**')) {
-              type = line.replace('**Type:**', '').trim()
-            } else if (line.startsWith('**Options:**')) {
-              // Skip the options header, collect following lines
-              return
-            } else if (line.match(/^[a-d]\)/)) {
-              // Option line
-              options.push(line.replace(/^[a-d]\)\s*/, ''))
-            } else if (line.startsWith('**Correct Answer:**')) {
-              correctAnswer = line.replace('**Correct Answer:**', '').trim()
-            } else if (line.startsWith('**Explanation:**')) {
-              explanation = line.replace('**Explanation:**', '').trim()
-            } else if (line.startsWith('**Marks:**')) {
-              marks = parseInt(line.replace('**Marks:**', '').trim()) || 1
-            } else if (line.startsWith('**Difficulty:**')) {
-              difficulty = line.replace('**Difficulty:**', '').trim()
-            }
-          })
-
-          if (question) {
-            questions.push({
-              tempId: `structured-${Date.now()}-${index}`,
-              type: type,
-              question: question,
-              options: options,
-              correctAnswers: correctAnswer ? [correctAnswer] : ['Sample answer'],
-              explanation: explanation || '',
-              marks: marks,
-              difficulty: difficulty
-            })
-          }
-        })
-
-        if (questions.length > 0) {
-          return questions
-        }
-      }
 
       // Fallback: Look for JSON questions anywhere in the response
       const jsonFallbackMatch = responseText.match(/\{[\s\S]*?"questions"[\s\S]*?\}/)
@@ -189,6 +127,85 @@ export function AIChat() {
       console.log('AI Chat - Starting aggressive question detection')
       console.log('AI Chat - Text sample (first 500 chars):', responseText.substring(0, 500))
       console.log('AI Chat - Contains question keywords:', hasQuestionKeywords)
+
+      // PRIORITY 1: Look for numbered structured format that AI is actually generating: 1. **Question 1:** ...
+      const aiStructuredQuestions = responseText.match(/\d+\.\s*\*\*Question \d+:\*\*[\s\S]*?(?=\d+\.\s*\*\*Question \d+:\*\*|$)/gi)
+      if (aiStructuredQuestions && aiStructuredQuestions.length > 0) {
+        console.log('AI Chat - Found AI structured questions:', aiStructuredQuestions.length)
+
+        aiStructuredQuestions.forEach((questionBlock, index) => {
+          const lines = questionBlock.trim().split('\n').map(line => line.trim()).filter(line => line)
+          if (lines.length === 0) return
+
+          let question = ''
+          let type = 'short-answer'
+          let options: string[] = []
+          let correctAnswer = ''
+          let explanation = ''
+          let marks = 1
+          let difficulty = 'medium'
+
+          // Extract question text from first line (after the question number)
+          const firstLine = lines[0]
+          const questionMatch = firstLine.match(/\d+\.\s*\*\*Question \d+:\*\*\s*(.*)/)
+          if (questionMatch) {
+            question = questionMatch[1].trim()
+          }
+
+          let collectingOptions = false
+
+          // Parse structured fields
+          lines.forEach((line, lineIndex) => {
+            if (line.startsWith('**Type:**')) {
+              type = line.replace('**Type:**', '').trim()
+              collectingOptions = false
+            } else if (line.startsWith('**Options:**')) {
+              collectingOptions = true
+            } else if (collectingOptions && line.match(/^[a-d]\)/)) {
+              // Option line
+              options.push(line.replace(/^[a-d]\)\s*/, ''))
+            } else if (line.startsWith('**Correct Answer:**')) {
+              correctAnswer = line.replace('**Correct Answer:**', '').trim()
+              collectingOptions = false
+            } else if (line.startsWith('**Explanation:**')) {
+              explanation = line.replace('**Explanation:**', '').trim()
+              collectingOptions = false
+            } else if (line.startsWith('**Marks:**')) {
+              marks = parseInt(line.replace('**Marks:**', '').trim()) || 1
+              collectingOptions = false
+            } else if (line.startsWith('**Difficulty:**')) {
+              difficulty = line.replace('**Difficulty:**', '').trim()
+              collectingOptions = false
+            }
+          })
+
+          if (question) {
+            console.log(`AI Chat - Parsed question ${index + 1}:`, {
+              question: question.substring(0, 50) + '...',
+              type,
+              optionsCount: options.length,
+              correctAnswer,
+              explanation: explanation.substring(0, 30) + '...'
+            })
+
+            questions.push({
+              tempId: `structured-${Date.now()}-${index}`,
+              type: type,
+              question: question,
+              options: options,
+              correctAnswers: correctAnswer ? [correctAnswer] : ['Sample answer'],
+              explanation: explanation || '',
+              marks: marks,
+              difficulty: difficulty
+            })
+          }
+        })
+
+        if (questions.length > 0) {
+          console.log('AI Chat - Successfully parsed structured questions:', questions.length)
+          return questions
+        }
+      }
 
       // Pattern 1: Simple numbered questions with question marks
       const simpleQuestions = responseText.match(/\d+\.\s*[^?\n]*\?/g)
