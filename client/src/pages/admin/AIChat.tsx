@@ -147,10 +147,10 @@ export function AIChat() {
     const file = event.target.files?.[0]
     if (file) {
       // Check file size (2MB limit)
-      if (file.size > 2 * 1024 * 1024) {
+      if (file.size > 20 * 1024 * 1024) {
         toast({
           title: "File too large",
-          description: "Please select a file smaller than 2MB",
+          description: "Please select a file smaller than 20MB",
           variant: "destructive"
         })
         return
