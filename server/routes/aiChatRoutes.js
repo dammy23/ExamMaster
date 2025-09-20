@@ -4,6 +4,10 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
 const AIChatService = require('../services/aiChatService');
+const DocumentParsingService = require('../services/documentParsingService');
+const ExamService = require('../services/examService');
+const QuestionService = require('../services/questionService');
+const SubjectService = require('../services/subjectService');
 const { requireUser } = require('./middleware/auth');
 
 console.log('Loading AI Chat Routes...');
@@ -50,7 +54,7 @@ const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
+    fileSize: 2 * 1024 * 1024 // 2MB limit (reduced to work within proxy constraints)
   }
 });
 
@@ -268,6 +272,352 @@ router.post('/upload', requireUser, upload.single('file'), async (req, res) => {
   }
 });
 
+// POST /api/ai-chat/generate-questions - Generate questions from document or text
+// Description: Generate exam questions from uploaded document or text input
+// Endpoint: POST /api/ai-chat/generate-questions
+// Request: { document?: File, text?: string, questionCount?: number, difficulty?: string, questionTypes?: Array<string>, subject?: string }
+// Response: { questions: Array<Question>, validationResults: { validQuestions: number, totalGenerated: number, errors: Array<string> } }
+router.post('/generate-questions', requireUser, upload.single('document'), async (req, res) => {
+  console.log('AI Chat Routes - POST /generate-questions');
+  console.log('Request body:', req.body);
+  console.log('Uploaded file:', req.file ? req.file.filename : 'None');
+
+  try {
+    const { text, questionCount = 5, difficulty = 'medium', questionTypes = 'multiple-choice,true-false,short-answer', subject = 'General' } = req.body;
+    const userId = req.user._id;
+
+    // Parse question types array
+    const questionTypesArray = typeof questionTypes === 'string'
+      ? questionTypes.split(',').map(type => type.trim())
+      : questionTypes;
+
+    let sourceText = '';
+
+    // Extract text from uploaded document or use provided text
+    if (req.file) {
+      console.log(`AI Chat Routes - Processing uploaded document: ${req.file.originalname}`);
+      try {
+        sourceText = await DocumentParsingService.parseDocument(req.file.path, req.file.mimetype);
+        console.log(`AI Chat Routes - Extracted ${sourceText.length} characters from document`);
+
+        // Clean up uploaded file
+        await DocumentParsingService.cleanupFile(req.file.path);
+      } catch (parseError) {
+        console.error('AI Chat Routes - Document parsing failed:', parseError);
+        return res.status(400).json({
+          success: false,
+          error: `Failed to parse document: ${parseError.message}`
+        });
+      }
+    } else if (text) {
+      sourceText = text.trim();
+      console.log(`AI Chat Routes - Using provided text: ${sourceText.length} characters`);
+    } else {
+      console.error('AI Chat Routes - No document or text provided');
+      return res.status(400).json({
+        success: false,
+        error: 'Please provide either a document file or text content'
+      });
+    }
+
+    if (sourceText.length < 100) {
+      console.error('AI Chat Routes - Insufficient content for question generation');
+      return res.status(400).json({
+        success: false,
+        error: 'Content is too short. Please provide at least 100 characters of text for question generation.'
+      });
+    }
+
+    // Generate questions from text
+    console.log(`AI Chat Routes - Generating ${questionCount} questions from text`);
+    const generatedQuestions = await DocumentParsingService.generateQuestionsFromText(sourceText, {
+      questionCount: parseInt(questionCount, 10),
+      difficulty,
+      questionTypes: questionTypesArray,
+      subject
+    });
+
+    // Validate generated questions
+    const validationResults = DocumentParsingService.validateGeneratedQuestions(generatedQuestions);
+
+    console.log(`AI Chat Routes - Question generation completed: ${validationResults.totalValid}/${validationResults.totalGenerated} questions valid`);
+
+    res.json({
+      success: true,
+      data: {
+        questions: validationResults.validQuestions,
+        validationResults: {
+          validQuestions: validationResults.totalValid,
+          totalGenerated: validationResults.totalGenerated,
+          errors: validationResults.errors
+        },
+        sourceTextLength: sourceText.length
+      }
+    });
+
+  } catch (error) {
+    console.error('AI Chat Routes - Error generating questions:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to generate questions'
+    });
+  }
+});
+
+// POST /api/ai-chat/create-exam - Create exam through AI assistant
+// Description: Create a new exam with AI assistance and guided flow
+// Endpoint: POST /api/ai-chat/create-exam
+// Request: { title: string, subject: string, duration: number, startDate: Date, endDate: Date, totalMarks: number, passingMarks: number, instructions?: string, questions?: Array<ObjectId> }
+// Response: { exam: Exam, message: string }
+router.post('/create-exam', requireUser, async (req, res) => {
+  console.log('AI Chat Routes - POST /create-exam');
+  console.log('Request body:', req.body);
+
+  try {
+    const examData = req.body;
+    const userId = req.user._id;
+
+    // Validate required fields
+    const requiredFields = ['title', 'subject', 'duration', 'startDate', 'endDate', 'totalMarks', 'passingMarks'];
+    const missingFields = requiredFields.filter(field => !examData[field]);
+
+    if (missingFields.length > 0) {
+      console.error(`AI Chat Routes - Missing required fields: ${missingFields.join(', ')}`);
+      return res.status(400).json({
+        success: false,
+        error: `Missing required fields: ${missingFields.join(', ')}`,
+        missingFields
+      });
+    }
+
+    // Create exam using existing service
+    console.log('AI Chat Routes - Creating exam with provided data');
+    const exam = await ExamService.create(examData, userId);
+
+    console.log(`AI Chat Routes - Exam created successfully: ${exam._id}`);
+
+    res.json({
+      success: true,
+      data: {
+        exam,
+        message: `Exam "${exam.title}" created successfully! ${exam.questions.length > 0 ? `${exam.questions.length} questions have been assigned.` : 'You can now add questions to this exam.'}`
+      }
+    });
+
+  } catch (error) {
+    console.error('AI Chat Routes - Error creating exam:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to create exam'
+    });
+  }
+});
+
+// POST /api/ai-chat/create-subject - Create subject through AI assistant
+// Description: Create a new subject with AI assistance
+// Endpoint: POST /api/ai-chat/create-subject
+// Request: { name: string, code: string, description?: string, isActive?: boolean }
+// Response: { subject: Subject, message: string }
+router.post('/create-subject', requireUser, async (req, res) => {
+  console.log('AI Chat Routes - POST /create-subject');
+  console.log('Request body:', req.body);
+
+  try {
+    const { name, code, description, isActive = true } = req.body;
+    const userId = req.user._id;
+
+    // Validate required fields
+    if (!name || !code) {
+      console.error('AI Chat Routes - Missing required fields: name and code are required');
+      return res.status(400).json({
+        success: false,
+        error: 'Subject name and code are required',
+        missingFields: !name && !code ? ['name', 'code'] : !name ? ['name'] : ['code']
+      });
+    }
+
+    // Create subject using existing service
+    console.log('AI Chat Routes - Creating subject with provided data');
+    const subject = await SubjectService.createSubject({
+      name: name.trim(),
+      code: code.trim().toUpperCase(),
+      description: description?.trim(),
+      isActive
+    }, userId);
+
+    console.log(`AI Chat Routes - Subject created successfully: ${subject._id}`);
+
+    res.json({
+      success: true,
+      data: {
+        subject,
+        message: `Subject "${subject.name}" (${subject.code}) created successfully! You can now use this subject when creating exams.`
+      }
+    });
+
+  } catch (error) {
+    console.error('AI Chat Routes - Error creating subject:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to create subject'
+    });
+  }
+});
+
+// POST /api/ai-chat/create-questions - Create questions through AI assistant
+// Description: Create questions from validated question data
+// Endpoint: POST /api/ai-chat/create-questions
+// Request: { questions: Array<Question>, examId?: ObjectId }
+// Response: { questions: Array<Question>, exam?: Exam, message: string }
+router.post('/create-questions', requireUser, async (req, res) => {
+  console.log('AI Chat Routes - POST /create-questions');
+  console.log('Request body:', req.body);
+
+  try {
+    const { questions, examId } = req.body;
+    const userId = req.user._id;
+
+    if (!questions || !Array.isArray(questions) || questions.length === 0) {
+      console.error('AI Chat Routes - No questions provided');
+      return res.status(400).json({
+        success: false,
+        error: 'Please provide an array of questions to create'
+      });
+    }
+
+    console.log(`AI Chat Routes - Creating ${questions.length} questions`);
+
+    // Create questions using existing service
+    const result = await QuestionService.bulkCreateQuestions(questions, userId);
+
+    let responseMessage = `Successfully created ${result.imported} questions.`;
+
+    if (result.errors && result.errors.length > 0) {
+      responseMessage += ` ${result.errors.length} questions had errors and were not created.`;
+    }
+
+    let updatedExam = null;
+
+    // If examId is provided, assign questions to the exam
+    if (examId && result.questions && result.questions.length > 0) {
+      try {
+        console.log(`AI Chat Routes - Assigning ${result.questions.length} questions to exam ${examId}`);
+        const questionIds = result.questions.map(q => q._id);
+        await ExamService.assignQuestions(examId, questionIds, userId);
+
+        // Get updated exam
+        updatedExam = await ExamService.getById(examId);
+        responseMessage += ` Questions have been assigned to the exam "${updatedExam.title}".`;
+      } catch (assignError) {
+        console.error('AI Chat Routes - Error assigning questions to exam:', assignError);
+        responseMessage += ` However, there was an error assigning questions to the exam: ${assignError.message}`;
+      }
+    }
+
+    console.log(`AI Chat Routes - Question creation completed: ${result.imported} questions created`);
+
+    res.json({
+      success: true,
+      data: {
+        questions: result.questions,
+        exam: updatedExam,
+        createdCount: result.imported,
+        errors: result.errors || [],
+        message: responseMessage
+      }
+    });
+
+  } catch (error) {
+    console.error('AI Chat Routes - Error creating questions:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to create questions'
+    });
+  }
+});
+
+// GET /api/ai-chat/conversation-context - Get conversation context and available options
+// Description: Get current conversation context and available actions for the AI assistant
+// Endpoint: GET /api/ai-chat/conversation-context
+// Request: { agentId?: string }
+// Response: { exams: Array<Exam>, subjects: Array<Subject>, questions: Array<Question>, suggestions: Array<string> }
+router.get('/conversation-context', requireUser, async (req, res) => {
+  console.log('AI Chat Routes - GET /conversation-context');
+
+  try {
+    const { agentId = 'exam-assistant' } = req.query;
+    const userId = req.user._id;
+
+    console.log(`AI Chat Routes - Getting conversation context for agent: ${agentId}`);
+
+    // Get relevant data based on agent type
+    const [exams, subjects, recentQuestions] = await Promise.all([
+      ExamService.getAll({}, userId),
+      SubjectService.getAllSubjects({ isActive: true }),
+      QuestionService.getAllQuestions({}, { page: 1, limit: 10 })
+    ]);
+
+    // Generate contextual suggestions based on current data
+    const suggestions = generateContextualSuggestions(agentId, {
+      examCount: exams.length,
+      subjectCount: subjects.length,
+      questionCount: recentQuestions.pagination.totalItems
+    });
+
+    console.log(`AI Chat Routes - Context retrieved: ${exams.length} exams, ${subjects.length} subjects, ${recentQuestions.pagination.totalItems} questions`);
+
+    res.json({
+      success: true,
+      data: {
+        exams: exams.slice(0, 5), // Latest 5 exams
+        subjects,
+        questions: recentQuestions.questions,
+        suggestions,
+        counts: {
+          totalExams: exams.length,
+          totalSubjects: subjects.length,
+          totalQuestions: recentQuestions.pagination.totalItems
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('AI Chat Routes - Error getting conversation context:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get conversation context'
+    });
+  }
+});
+
+// Helper function to generate contextual suggestions
+function generateContextualSuggestions(agentId, data) {
+  const suggestions = [];
+
+  if (agentId === 'exam-assistant') {
+    if (data.examCount === 0) {
+      suggestions.push("Let's create your first exam! I can guide you through the process.");
+    } else {
+      suggestions.push("Would you like to create a new exam or manage existing ones?");
+    }
+
+    if (data.subjectCount === 0) {
+      suggestions.push("You'll need subjects to organize your exams. Shall I help you create some?");
+    }
+
+    if (data.questionCount === 0) {
+      suggestions.push("I can help you create questions from documents or generate them manually.");
+    } else {
+      suggestions.push("I can help you generate more questions or organize existing ones.");
+    }
+
+    suggestions.push("Upload a document and I'll generate questions from it automatically.");
+    suggestions.push("What type of exam would you like to create? (MCQ, Mixed, Essay-based)");
+  }
+
+  return suggestions;
+}
+
 // Error handling middleware for multer errors
 router.use((error, req, res, next) => {
   if (error instanceof multer.MulterError) {
@@ -276,7 +626,7 @@ router.use((error, req, res, next) => {
     if (error.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({
         success: false,
-        error: 'File too large. Maximum size is 5MB.'
+        error: 'File too large. Maximum size is 2MB.'
       });
     }
     

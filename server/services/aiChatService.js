@@ -319,20 +319,42 @@ Your capabilities include: ${agent.capabilities.join(', ')}.`;
   
   static generateExamAssistantResponse(message, fileAttachment) {
     const lowerMessage = message.toLowerCase();
-    
+
+    // Analyze message for specific intents
     if (lowerMessage.includes('create') && lowerMessage.includes('exam')) {
-      return "To create a new exam in ExamMaster:\n\n1. Navigate to 'Exam Management' in the admin sidebar\n2. Click 'Create Exam'\n3. Fill in exam details (title, description, duration)\n4. Set scheduling and configuration options\n5. Add questions from your question bank\n6. Assign students or groups\n7. Review and publish\n\nWould you like me to guide you through any specific step?";
+      return "I can help you create a new exam! Let's start with the basics:\n\n**Exam Creation Wizard:**\n1. **Title**: What would you like to call your exam?\n2. **Subject**: Which subject is this exam for? (I can help create one if needed)\n3. **Duration**: How long should students have to complete it?\n4. **Scheduling**: When should the exam be available?\n5. **Questions**: Would you like me to generate questions or use existing ones?\n\n💡 **Pro tip**: I can automatically generate questions from documents you upload!\n\nTo get started, just tell me: \"**Create an exam for [subject] called [title]**\" and I'll guide you through each step.";
     }
-    
-    if (lowerMessage.includes('question') && (lowerMessage.includes('add') || lowerMessage.includes('create'))) {
-      return "ExamMaster supports multiple question types:\n\n• **Multiple Choice Questions (MCQ)**: 4-6 options with single or multiple correct answers\n• **True/False Questions**: Simple binary choice questions\n• **Short Answer Questions**: Open-ended text responses\n\nTo add questions:\n1. Go to 'Questions' in the admin panel\n2. Click 'Add New Question'\n3. Select question type\n4. Enter question text and options/answers\n5. Set difficulty level and subject\n6. Save and assign to exams\n\nNeed help with a specific question type?";
+
+    if (lowerMessage.includes('question') && (lowerMessage.includes('generate') || lowerMessage.includes('create') || lowerMessage.includes('from'))) {
+      if (fileAttachment) {
+        return "Perfect! I can see you've uploaded a document. I'll help you generate questions from it.\n\n**Question Generation Options:**\n• **Question Count**: How many questions would you like? (default: 5)\n• **Difficulty**: Easy, Medium, or Hard?\n• **Question Types**: MCQ, True/False, Short Answer, or Mixed?\n• **Subject**: What subject area is this content for?\n\n🚀 **Ready to generate?** Just say: \"**Generate [number] [difficulty] questions from this document**\" and I'll create them instantly!\n\nExample: \"Generate 10 medium MCQ questions from this document\"";
+      } else {
+        return "I can help you create questions in several ways:\n\n📄 **From Documents**: Upload a PDF, Word doc, or text file and I'll automatically generate questions\n✍️ **From Text**: Paste content and I'll create questions from it\n🔧 **Manual Creation**: I'll guide you through creating questions step by step\n\n**Question Types Available:**\n• **Multiple Choice (MCQ)**: 4-6 options with explanations\n• **True/False**: Binary choice with reasoning\n• **Short Answer**: Open-ended responses with sample answers\n\n📎 **Upload a document** or tell me: \"**Create [number] [type] questions about [topic]**\"";
+      }
     }
-    
+
+    if (lowerMessage.includes('subject') && (lowerMessage.includes('create') || lowerMessage.includes('add') || lowerMessage.includes('new'))) {
+      return "I'll help you create a new subject! Subjects help organize your exams and questions.\n\n**Subject Information Needed:**\n• **Name**: Full subject name (e.g., \"Advanced Mathematics\")\n• **Code**: Short identifier (e.g., \"MATH101\")\n• **Description**: Brief overview (optional)\n\n📝 **Quick Creation**: Just tell me: \"**Create subject [name] with code [code]**\"\n\nExample: \"Create subject Biology with code BIO101\" or \"Create subject Advanced Physics with code PHYS201\"";
+    }
+
     if (lowerMessage.includes('grade') || lowerMessage.includes('grading')) {
-      return "ExamMaster features automated grading:\n\n• **Objective Questions**: Automatically graded (MCQ, True/False)\n• **Subjective Questions**: Queued for manual review\n• **Partial Marking**: Configurable for multi-part questions\n• **Negative Marking**: Optional penalty for incorrect answers\n\nYou can configure grading schemes in the exam settings. The system provides detailed analytics and reports after grading completion.";
+      return "ExamMaster's smart grading system:\n\n✅ **Automatic Grading:**\n• MCQ and True/False questions are instantly graded\n• Real-time score calculation\n• Immediate feedback to students (if enabled)\n\n📝 **Manual Review Queue:**\n• Short answer questions flagged for review\n• Partial credit scoring\n• Detailed feedback options\n\n⚙️ **Grading Configuration:**\n• Set passing marks and grade boundaries\n• Configure negative marking for wrong answers\n• Enable/disable immediate result display\n\nNeed help configuring grading for a specific exam?";
     }
-    
-    return "As your Exam Assistant, I can help you with:\n\n• Creating and managing exams\n• Adding and organizing questions\n• Setting up grading schemes\n• Configuring exam settings and security\n• Managing student assignments\n• Analyzing exam results\n\nWhat specific aspect of exam management would you like assistance with?";
+
+    if (lowerMessage.match(/(\d+)\s+(question|mcq|true.?false|short.?answer)/i)) {
+      const matches = lowerMessage.match(/(\d+)\s+(question|mcq|true.?false|short.?answer)/i);
+      const count = matches[1];
+      const type = matches[2];
+
+      return `Great! I can help you create ${count} ${type} questions. \n\n**Next Steps:**\n1. 📎 **Upload a document** for automatic generation, or\n2. 📝 **Provide the topic/content** you want questions about\n3. ⚙️ **Choose difficulty**: Easy, Medium, or Hard\n4. 🎯 **Select subject** area\n\n🚀 **Quick command**: \"Generate ${count} medium ${type} questions about [your topic]\" or upload a document and I'll extract questions from it!`;
+    }
+
+    // Check for greeting/general help
+    if (lowerMessage.match(/^(hi|hello|hey|help|what|how)/)) {
+      return "Hello! I'm your AI Exam Assistant! 🎓 I'm here to make exam creation effortless.\n\n**I can help you:**\n\n🆕 **Create Complete Exams**\n• Guide you through exam setup\n• Generate questions automatically\n• Link subjects and questions\n\n📝 **Question Generation**\n• Upload documents → instant questions\n• Create custom question types\n• Bulk question import\n\n⚙️ **Exam Management**\n• Subject organization\n• Grading configuration\n• Student assignment\n\n💡 **Quick Starts:**\n• \"Create an exam for Biology\"\n• \"Generate 10 questions from document\" (upload file)\n• \"Help me create a subject\"\n\nWhat would you like to work on first?";
+    }
+
+    return "I'm your AI Exam Assistant! I specialize in making exam creation fast and easy.\n\n**What I can do for you:**\n\n🎯 **Smart Exam Creation**: Guide you step-by-step through creating professional exams\n📄 **Document-to-Questions**: Upload any document and I'll generate questions instantly\n🏗️ **Subject Management**: Help organize your exam subjects and categories\n⚡ **Quick Setup**: Create complete exams in minutes, not hours\n\n**Popular Commands:**\n• \"Create an exam for [subject]\"\n• \"Generate questions from this document\" (with file upload)\n• \"Help me create [number] MCQ questions\"\n• \"Set up a new subject called [name]\"\n\n🚀 Ready to create something amazing? What type of exam are you working on?";
   }
   
   static generateStudentSupportResponse(message, fileAttachment) {
