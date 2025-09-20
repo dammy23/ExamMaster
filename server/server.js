@@ -39,7 +39,9 @@ connectDB().then(() => {
 
   // Middleware
   app.use(cors());
-  app.use(express.json());
+  // Increase payload limits to handle base64 encoded images
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
   // Add request logging middleware
   app.use((req, res, next) => {

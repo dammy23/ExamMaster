@@ -3,7 +3,7 @@ import ReactQuill, { Quill } from "react-quill"
 import "react-quill/dist/quill.snow.css"
 import { cn } from "@/lib/utils"
 
-// Register video blot for Quill
+// Register video blot for Quill - only register if not already registered
 const BlockEmbed = Quill.import('blots/block/embed')
 
 class VideoBlot extends BlockEmbed {
@@ -26,7 +26,12 @@ class VideoBlot extends BlockEmbed {
   }
 }
 
-Quill.register(VideoBlot)
+// Only register if not already registered to prevent overwriting warnings
+try {
+  Quill.import('formats/video')
+} catch (e) {
+  Quill.register(VideoBlot)
+}
 
 interface RichTextEditorProps {
   value?: string
@@ -326,18 +331,20 @@ const RichTextEditor = forwardRef<ReactQuill, RichTextEditorProps>(
           }
         `}</style>
 
-        <ReactQuill
-          ref={quillRef}
-          theme={theme}
-          value={value}
-          onChange={handleChange}
-          readOnly={readOnly}
-          placeholder={placeholder}
-          modules={modules}
-          formats={formats}
-          preserveWhitespace
-          {...props}
-        />
+        <div suppressHydrationWarning>
+          <ReactQuill
+            ref={quillRef}
+            theme={theme}
+            value={value}
+            onChange={handleChange}
+            readOnly={readOnly}
+            placeholder={placeholder}
+            modules={modules}
+            formats={formats}
+            preserveWhitespace
+            {...props}
+          />
+        </div>
       </div>
     )
   }
