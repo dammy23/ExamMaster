@@ -1,42 +1,33 @@
-import { forwardRef, useRef, useEffect } from "react"
-import { CKEditor } from '@ckeditor/ckeditor5-react'
-import {
-  ClassicEditor,
-  Bold,
-  Italic,
-  Underline,
-  Strikethrough,
-  Code,
-  Subscript,
-  Superscript,
-  Link,
-  Paragraph,
-  Heading,
-  BlockQuote,
-  CodeBlock,
-  List,
-  TodoList,
-  Indent,
-  IndentBlock,
-  Alignment,
-  FontColor,
-  FontBackgroundColor,
-  FontFamily,
-  FontSize,
-  Image,
-  ImageCaption,
-  ImageStyle,
-  ImageToolbar,
-  ImageUpload,
-  ImageResize,
-  Base64UploadAdapter,
-  Essentials,
-  SourceEditing
-} from 'ckeditor5'
+import { forwardRef, useEffect, useRef, useMemo, useCallback } from "react"
+import ReactQuill, { Quill } from "react-quill"
+import "react-quill/dist/quill.snow.css"
 import { cn } from "@/lib/utils"
 import { uploadImage } from "@/api/upload"
 
-import 'ckeditor5/ckeditor5.css'
+// Register video blot for Quill
+const BlockEmbed = Quill.import('blots/block/embed')
+
+class VideoBlot extends BlockEmbed {
+  static blotName = 'video'
+  static tagName = 'iframe'
+
+  static create(value: string) {
+    const node = super.create()
+    node.setAttribute('src', value)
+    node.setAttribute('frameborder', '0')
+    node.setAttribute('allowfullscreen', true)
+    node.setAttribute('width', '100%')
+    node.setAttribute('height', '315')
+    node.style.maxWidth = '100%'
+    return node
+  }
+
+  static value(node: HTMLElement) {
+    return node.getAttribute('src')
+  }
+}
+
+Quill.register(VideoBlot)
 
 interface RichTextEditorProps {
   value?: string
@@ -44,269 +35,283 @@ interface RichTextEditorProps {
   placeholder?: string
   className?: string
   readOnly?: boolean
+  theme?: "snow" | "bubble"
+  modules?: any
+  formats?: string[]
   height?: string
-  onReady?: (editor: any) => void
 }
 
-// Custom upload adapter for CKEditor
-class CustomUploadAdapter {
-  private loader: any
-
-  constructor(loader: any) {
-    this.loader = loader
-  }
-
-  upload() {
-    return this.loader.file
-      .then((file: File) => {
-        console.log('CKEditor: Starting image upload:', file.name)
-        return uploadImage(file)
-      })
-      .then((response: any) => {
-        console.log('CKEditor: Image upload successful:', response)
-        return {
-          default: response.imageUrl
-        }
-      })
-      .catch((error: any) => {
-        console.error('CKEditor: Image upload failed:', error)
-        throw error
-      })
-  }
-
-  abort() {
-    // Implement if needed
-  }
-}
-
-// Plugin to integrate custom upload adapter
-function CustomUploadAdapterPlugin(editor: any) {
-  editor.plugins.get('FileRepository').createUploadAdapter = (loader: any) => {
-    return new CustomUploadAdapter(loader)
-  }
-}
-
-const RichTextEditor = forwardRef<any, RichTextEditorProps>(
+const RichTextEditor = forwardRef<ReactQuill, RichTextEditorProps>(
   ({
     value = '',
     onChange,
-    placeholder = 'Start typing...',
+    placeholder,
     className,
     readOnly = false,
-    height = "200px",
-    onReady,
+    theme = "snow",
+    height = "120px",
+    modules: customModules,
+    formats: customFormats,
     ...props
   }, ref) => {
-    const editorRef = useRef<any>(null)
+    const quillRef = useRef<ReactQuill>(null)
+    const containerRef = useRef<HTMLDivElement>(null)
 
+    // Stable image handler using useCallback
+    const imageHandler = useCallback(() => {
+      const input = document.createElement('input')
+      input.setAttribute('type', 'file')
+      input.setAttribute('accept', 'image/*')
+      input.click()
+
+      input.onchange = async () => {
+        const file = input.files?.[0]
+        if (!file) return
+
+        try {
+          console.log('Starting image upload:', file.name)
+          const response = await uploadImage(file)
+          const quillEditor = quillRef.current?.getEditor()
+          if (quillEditor && response.imageUrl) {
+            const range = quillEditor.getSelection(true)
+            quillEditor.insertEmbed(range?.index || 0, 'image', response.imageUrl)
+            quillEditor.setSelection((range?.index || 0) + 1, 0)
+            console.log('Image inserted successfully:', response.imageUrl)
+          }
+        } catch (error: any) {
+          console.error('Error uploading image:', error)
+          alert('Failed to upload image: ' + error.message)
+        }
+      }
+    }, [])
+
+    // Video handler using useCallback
+    const videoHandler = useCallback(() => {
+      const url = prompt('Enter video URL (YouTube, Vimeo, etc.):')
+      if (url) {
+        let embedUrl = url
+
+        // Convert YouTube URLs to embed format
+        if (url.includes('youtube.com/watch')) {
+          const videoId = url.split('v=')[1]?.split('&')[0]
+          if (videoId) {
+            embedUrl = `https://www.youtube.com/embed/${videoId}`
+          }
+        } else if (url.includes('youtu.be/')) {
+          const videoId = url.split('youtu.be/')[1]?.split('?')[0]
+          if (videoId) {
+            embedUrl = `https://www.youtube.com/embed/${videoId}`
+          }
+        } else if (url.includes('vimeo.com/')) {
+          const videoId = url.split('vimeo.com/')[1]?.split('?')[0]
+          if (videoId) {
+            embedUrl = `https://player.vimeo.com/video/${videoId}`
+          }
+        }
+
+        const quillEditor = quillRef.current?.getEditor()
+        if (quillEditor) {
+          const range = quillEditor.getSelection(true)
+          quillEditor.insertEmbed(range?.index || 0, 'video', embedUrl)
+          quillEditor.setSelection((range?.index || 0) + 1, 0)
+          console.log('Video embedded successfully:', embedUrl)
+        }
+      }
+    }, [])
+
+    // Memoize modules to prevent recreation on every render
+    const modules = useMemo(() => {
+      if (customModules) return customModules
+
+      return {
+        toolbar: {
+          container: [
+            [{ 'header': [1, 2, 3, false] }],
+            ['bold', 'italic', 'underline', 'strike'],
+            ['blockquote', 'code-block'],
+            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+            [{ 'script': 'sub'}, { 'script': 'super' }],
+            [{ 'color': [] }, { 'background': [] }],
+            [{ 'align': [] }],
+            ['link', 'image', 'video'],
+            ['clean']
+          ],
+          handlers: {
+            image: imageHandler,
+            video: videoHandler
+          }
+        },
+        clipboard: {
+          // toggle to add extra line breaks when pasting HTML:
+          matchVisual: false,
+        }
+      }
+    }, [imageHandler, videoHandler, customModules])
+
+    // Memoize formats
+    const formats = useMemo(() => {
+      if (customFormats) return customFormats
+
+      return [
+        'header',
+        'bold', 'italic', 'underline', 'strike',
+        'blockquote', 'code-block',
+        'list', 'bullet',
+        'script',
+        'color', 'background',
+        'align',
+        'link', 'image', 'video'
+      ]
+    }, [customFormats])
+
+    // Handle ref assignment
     useEffect(() => {
-      if (ref && editorRef.current) {
+      if (ref) {
         if (typeof ref === 'function') {
-          ref(editorRef.current)
-        } else {
-          ref.current = editorRef.current
+          ref(quillRef.current)
+        } else if (ref.current !== quillRef.current) {
+          ref.current = quillRef.current
         }
       }
     }, [ref])
 
-    const editorConfiguration = {
-      plugins: [
-        Essentials,
-        Bold,
-        Italic,
-        Underline,
-        Strikethrough,
-        Code,
-        Subscript,
-        Superscript,
-        Link,
-        Paragraph,
-        Heading,
-        BlockQuote,
-        CodeBlock,
-        List,
-        TodoList,
-        Indent,
-        IndentBlock,
-        Alignment,
-        FontColor,
-        FontBackgroundColor,
-        FontFamily,
-        FontSize,
-        Image,
-        ImageCaption,
-        ImageStyle,
-        ImageToolbar,
-        ImageUpload,
-        ImageResize,
-        Base64UploadAdapter,
-        SourceEditing,
-        CustomUploadAdapterPlugin
-      ],
-      toolbar: {
-        items: [
-          'heading',
-          '|',
-          'bold',
-          'italic',
-          'underline',
-          'strikethrough',
-          '|',
-          'fontFamily',
-          'fontSize',
-          'fontColor',
-          'fontBackgroundColor',
-          '|',
-          'alignment',
-          '|',
-          'numberedList',
-          'bulletedList',
-          'todoList',
-          '|',
-          'outdent',
-          'indent',
-          '|',
-          'link',
-          'imageUpload',
-          'blockQuote',
-          'codeBlock',
-          '|',
-          'code',
-          'subscript',
-          'superscript',
-          '|',
-          'sourceEditing'
-        ]
-      },
-      heading: {
-        options: [
-          { model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
-          { model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
-          { model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
-          { model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' }
-        ]
-      },
-      image: {
-        toolbar: [
-          'imageTextAlternative',
-          '|',
-          'imageStyle:inline',
-          'imageStyle:block',
-          'imageStyle:side',
-          '|',
-          'toggleImageCaption',
-          'imageResize'
-        ]
-      },
-      placeholder: placeholder,
-      ...props
-    }
+    // Stable change handler
+    const handleChange = useCallback((content: string) => {
+      if (onChange) {
+        onChange(content)
+      }
+    }, [onChange])
 
     return (
-      <div className={cn("rich-text-editor", className)}>
+      <div ref={containerRef} className={cn("rich-text-editor", className)}>
         <style>{`
-          .rich-text-editor .ck-editor {
-            border-radius: 6px;
-            border: 1px solid hsl(var(--border));
-          }
-
-          .rich-text-editor .ck-toolbar {
-            border-top-left-radius: 6px;
-            border-top-right-radius: 6px;
-            border: 1px solid hsl(var(--border));
-            border-bottom: none;
-            background: hsl(var(--background));
-          }
-
-          .rich-text-editor .ck-content {
-            border-bottom-left-radius: 6px;
-            border-bottom-right-radius: 6px;
-            border: 1px solid hsl(var(--border));
-            border-top: none;
-            background: hsl(var(--background));
-            color: hsl(var(--foreground));
+          .rich-text-editor .ql-editor {
             min-height: ${height};
             font-size: 14px;
             line-height: 1.5;
           }
 
-          .rich-text-editor .ck-content.ck-focused {
-            border-color: hsl(var(--ring));
-            outline: 2px solid transparent;
-            outline-offset: 2px;
-            box-shadow: 0 0 0 2px hsl(var(--ring));
+          .rich-text-editor .ql-toolbar {
+            border-top: 1px solid hsl(var(--border));
+            border-left: 1px solid hsl(var(--border));
+            border-right: 1px solid hsl(var(--border));
+            border-bottom: none;
+            border-top-left-radius: 6px;
+            border-top-right-radius: 6px;
+            background: hsl(var(--background));
           }
 
-          .rich-text-editor .ck-button:hover {
-            background-color: hsl(var(--muted));
+          .rich-text-editor .ql-container {
+            border-bottom: 1px solid hsl(var(--border));
+            border-left: 1px solid hsl(var(--border));
+            border-right: 1px solid hsl(var(--border));
+            border-top: none;
+            border-bottom-left-radius: 6px;
+            border-bottom-right-radius: 6px;
+            background: hsl(var(--background));
           }
 
-          .rich-text-editor .ck-button.ck-on {
-            background-color: hsl(var(--primary));
-            color: hsl(var(--primary-foreground));
+          .rich-text-editor .ql-editor.ql-blank::before {
+            color: hsl(var(--muted-foreground));
+            font-style: normal;
           }
 
-          .rich-text-editor .ck-dropdown__button:hover {
-            background-color: hsl(var(--muted));
+          .rich-text-editor .ql-snow.ql-toolbar button:hover,
+          .rich-text-editor .ql-snow .ql-toolbar button:hover,
+          .rich-text-editor .ql-snow.ql-toolbar button:focus,
+          .rich-text-editor .ql-snow .ql-toolbar button:focus {
+            color: hsl(var(--primary));
           }
 
-          .rich-text-editor .ck-content p {
+          .rich-text-editor .ql-snow.ql-toolbar button.ql-active,
+          .rich-text-editor .ql-snow .ql-toolbar button.ql-active {
+            color: hsl(var(--primary));
+          }
+
+          .rich-text-editor .ql-snow .ql-stroke {
+            stroke: hsl(var(--muted-foreground));
+          }
+
+          .rich-text-editor .ql-snow .ql-fill {
+            fill: hsl(var(--muted-foreground));
+          }
+
+          .rich-text-editor .ql-snow.ql-toolbar button:hover .ql-stroke,
+          .rich-text-editor .ql-snow .ql-toolbar button:hover .ql-stroke,
+          .rich-text-editor .ql-snow.ql-toolbar button:focus .ql-stroke,
+          .rich-text-editor .ql-snow .ql-toolbar button:focus .ql-stroke,
+          .rich-text-editor .ql-snow.ql-toolbar button.ql-active .ql-stroke,
+          .rich-text-editor .ql-snow .ql-toolbar button.ql-active .ql-stroke {
+            stroke: hsl(var(--primary));
+          }
+
+          .rich-text-editor .ql-snow.ql-toolbar button:hover .ql-fill,
+          .rich-text-editor .ql-snow .ql-toolbar button:hover .ql-fill,
+          .rich-text-editor .ql-snow.ql-toolbar button:focus .ql-fill,
+          .rich-text-editor .ql-snow .ql-toolbar button:focus .ql-fill,
+          .rich-text-editor .ql-snow.ql-toolbar button.ql-active .ql-fill,
+          .rich-text-editor .ql-snow .ql-toolbar button.ql-active .ql-fill {
+            fill: hsl(var(--primary));
+          }
+
+          .rich-text-editor .ql-editor {
+            color: hsl(var(--foreground));
+          }
+
+          .rich-text-editor .ql-editor p,
+          .rich-text-editor .ql-editor ol,
+          .rich-text-editor .ql-editor ul,
+          .rich-text-editor .ql-editor blockquote {
             margin: 0 0 8px 0;
           }
 
-          .rich-text-editor .ck-content h1,
-          .rich-text-editor .ck-content h2,
-          .rich-text-editor .ck-content h3 {
+          .rich-text-editor .ql-editor h1,
+          .rich-text-editor .ql-editor h2,
+          .rich-text-editor .ql-editor h3 {
             margin: 0 0 12px 0;
           }
 
-          .rich-text-editor .ck-content ul,
-          .rich-text-editor .ck-content ol {
-            margin: 0 0 8px 0;
-            padding-left: 24px;
+          .rich-text-editor .ql-editor iframe {
+            max-width: 100%;
+            border-radius: 6px;
+            margin: 8px 0;
           }
 
-          .rich-text-editor .ck-content blockquote {
-            margin: 0 0 8px 0;
-            padding-left: 16px;
-            border-left: 4px solid hsl(var(--border));
-            font-style: italic;
-          }
-
-          .rich-text-editor .ck-content img {
+          .rich-text-editor .ql-editor img {
             max-width: 100%;
             height: auto;
+            border-radius: 6px;
+            margin: 4px 0;
           }
 
-          .rich-text-editor .ck-placeholder::before {
-            color: hsl(var(--muted-foreground));
+          .rich-text-editor .ql-editor pre.ql-syntax {
+            background-color: hsl(var(--muted));
+            border: 1px solid hsl(var(--border));
+            border-radius: 6px;
+            padding: 12px;
+            margin: 8px 0;
+            font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+            overflow-x: auto;
+          }
+
+          .rich-text-editor .ql-code-block-container {
+            margin: 8px 0;
           }
         `}</style>
 
-        <CKEditor
-          editor={ClassicEditor}
-          config={editorConfiguration}
-          data={value}
-          disabled={readOnly}
-          onReady={(editor) => {
-            console.log('CKEditor is ready:', editor)
-            editorRef.current = editor
-            if (onReady) {
-              onReady(editor)
-            }
-          }}
-          onChange={(event, editor) => {
-            const data = editor.getData()
-            if (onChange) {
-              onChange(data)
-            }
-          }}
-          onError={(error, { willEditorRestart }) => {
-            console.error('CKEditor error:', error)
-            if (willEditorRestart) {
-              console.log('CKEditor will restart...')
-            }
-          }}
+        <ReactQuill
+          ref={quillRef}
+          theme={theme}
+          value={value}
+          onChange={handleChange}
+          readOnly={readOnly}
+          placeholder={placeholder}
+          modules={modules}
+          formats={formats}
+          preserveWhitespace
+          {...props}
         />
       </div>
     )
