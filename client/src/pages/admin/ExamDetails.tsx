@@ -175,7 +175,7 @@ export function ExamDetails() {
             {exam.description && (
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Description</label>
-                <p className="text-sm mt-1">{exam.description}</p>
+                <div className="text-sm mt-1" dangerouslySetInnerHTML={{ __html: exam.description }} />
               </div>
             )}
 
@@ -304,7 +304,7 @@ export function ExamDetails() {
           </CardHeader>
           <CardContent>
             <div className="prose prose-sm max-w-none">
-              <p className="whitespace-pre-wrap">{exam.instructions}</p>
+              <div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: exam.instructions }} />
             </div>
           </CardContent>
         </Card>

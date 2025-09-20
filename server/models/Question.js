@@ -11,7 +11,7 @@ const questionSchema = new mongoose.Schema({
     required: true,
     trim: true,
     minlength: 10,
-    maxlength: 1000
+    maxlength: 5000 // Increased to support HTML content
   },
   options: [{
     type: String,
@@ -24,7 +24,7 @@ const questionSchema = new mongoose.Schema({
   explanation: {
     type: String,
     trim: true,
-    maxlength: 500
+    maxlength: 3000 // Increased to support HTML content
   },
   difficulty: {
     type: String,

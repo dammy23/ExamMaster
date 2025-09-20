@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { RichTextEditor } from "@/components/ui/rich-text-editor"
 import {
   Select,
   SelectContent,
@@ -374,8 +375,7 @@ export function QuestionManagement() {
                       onClick={() => handleQuestionClick(question._id)}
                     >
                       <TableCell className="max-w-md">
-                        <div className="truncate font-medium">
-                          {question.question}
+                        <div className="truncate font-medium" dangerouslySetInnerHTML={{ __html: question.question.replace(/<[^>]*>/g, '') }}>
                         </div>
                       </TableCell>
                       <TableCell>{getTypeBadge(question.type)}</TableCell>
@@ -553,8 +553,7 @@ function QuestionDetailsView({ question }: { question: Question }) {
 
       <div>
         <Label className="text-sm font-medium text-muted-foreground">Question</Label>
-        <div className="mt-1 p-3 bg-muted rounded-md">
-          {question.question}
+        <div className="mt-1 p-3 bg-muted rounded-md" dangerouslySetInnerHTML={{ __html: question.question }}>
         </div>
       </div>
 
@@ -607,8 +606,7 @@ function QuestionDetailsView({ question }: { question: Question }) {
       {question.explanation && (
         <div>
           <Label className="text-sm font-medium text-muted-foreground">Explanation</Label>
-          <div className="mt-1 p-3 bg-muted rounded-md">
-            {question.explanation}
+          <div className="mt-1 p-3 bg-muted rounded-md" dangerouslySetInnerHTML={{ __html: question.explanation }}>
           </div>
         </div>
       )}
@@ -633,15 +631,16 @@ function CreateQuestionForm({ onSuccess }: { onSuccess: () => void }) {
   const [correctAnswers, setCorrectAnswers] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({})
+  const [questionText, setQuestionText] = useState('')
+  const [explanationText, setExplanationText] = useState('')
   const { toast } = useToast()
 
   const validateForm = (formData: FormData) => {
     const errors: {[key: string]: string} = {}
 
-    const questionText = formData.get('question') as string
     const marks = formData.get('marks') as string
 
-    if (!questionText || questionText.trim().length < 10) {
+    if (!questionText || questionText.replace(/<[^>]*>/g, '').trim().length < 10) {
       errors.question = 'Question must be at least 10 characters long'
     }
 
@@ -695,10 +694,10 @@ function CreateQuestionForm({ onSuccess }: { onSuccess: () => void }) {
 
     const questionData = {
       type: questionType,
-      question: formData.get('question') as string,
+      question: questionText,
       difficulty: formData.get('difficulty') as 'easy' | 'medium' | 'hard',
       marks: parseInt(formData.get('marks') as string),
-      explanation: formData.get('explanation') as string,
+      explanation: explanationText,
       options: questionType === 'multiple-choice' ? options.filter(opt => opt.trim()) : undefined,
       correctAnswers: questionType === 'true-false'
         ? [formData.get('trueFalseAnswer') as string]
@@ -731,12 +730,11 @@ function CreateQuestionForm({ onSuccess }: { onSuccess: () => void }) {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="question">Question *</Label>
-        <Textarea
-          id="question"
-          name="question"
+        <RichTextEditor
+          value={questionText}
+          onChange={setQuestionText}
           placeholder="Enter your question here (minimum 10 characters)..."
-          required
-          rows={3}
+          height="150px"
           className={validationErrors.question ? "border-red-500" : ""}
         />
         {validationErrors.question && (
@@ -872,11 +870,11 @@ function CreateQuestionForm({ onSuccess }: { onSuccess: () => void }) {
 
 <div className="space-y-2">
         <Label htmlFor="explanation">Explanation (Optional)</Label>
-        <Textarea
-          id="explanation"
-          name="explanation"
+        <RichTextEditor
+          value={explanationText}
+          onChange={setExplanationText}
           placeholder="Add explanation to help students understand..."
-          rows={3}
+          height="120px"
         />
       </div>
 
@@ -903,6 +901,8 @@ function EditQuestionForm({ question, onSuccess }: { question: Question, onSucce
   const [correctAnswers, setCorrectAnswers] = useState<string[]>(question.correctAnswers || [])
   const [loading, setLoading] = useState(false)
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({})
+  const [questionText, setQuestionText] = useState(question.question)
+  const [explanationText, setExplanationText] = useState(question.explanation || '')
   const { toast } = useToast()
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -914,10 +914,10 @@ function EditQuestionForm({ question, onSuccess }: { question: Question, onSucce
 
     const updatedQuestion = {
       type: questionType,
-      question: formData.get('question') as string,
+      question: questionText,
       difficulty: formData.get('difficulty') as 'easy' | 'medium' | 'hard',
       marks: parseInt(formData.get('marks') as string),
-      explanation: formData.get('explanation') as string,
+      explanation: explanationText,
       options: questionType === 'multiple-choice' ? options.filter(opt => opt.trim()) : undefined,
       correctAnswers: questionType === 'true-false'
         ? [formData.get('trueFalseAnswer') as string]
@@ -950,12 +950,11 @@ function EditQuestionForm({ question, onSuccess }: { question: Question, onSucce
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="question">Question *</Label>
-        <Textarea
-          id="question"
-          name="question"
-          defaultValue={question.question}
-          required
-          rows={3}
+        <RichTextEditor
+          value={questionText}
+          onChange={setQuestionText}
+          placeholder="Enter your question here (minimum 10 characters)..."
+          height="150px"
         />
       </div>
 
@@ -1068,11 +1067,11 @@ function EditQuestionForm({ question, onSuccess }: { question: Question, onSucce
 
       <div className="space-y-2">
         <Label htmlFor="explanation">Explanation (Optional)</Label>
-        <Textarea
-          id="explanation"
-          name="explanation"
-          defaultValue={question.explanation}
-          rows={3}
+        <RichTextEditor
+          value={explanationText}
+          onChange={setExplanationText}
+          placeholder="Add explanation to help students understand..."
+          height="120px"
         />
       </div>
 

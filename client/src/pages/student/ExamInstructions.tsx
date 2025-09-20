@@ -245,7 +245,7 @@ export function ExamInstructions() {
                 <div>
                   <CardTitle className="text-2xl">{exam.title}</CardTitle>
                   <CardDescription className="text-base mt-2">
-                    {exam.description}
+                    <div dangerouslySetInnerHTML={{ __html: exam.description }} />
                   </CardDescription>
                 </div>
                 <Badge variant="secondary" className="ml-4">
@@ -328,7 +328,7 @@ export function ExamInstructions() {
             <CardContent>
               <div className="prose max-w-none text-sm">
                 {exam.instructions ? (
-                  <div className="whitespace-pre-wrap">{exam.instructions}</div>
+                  <div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: exam.instructions }} />
                 ) : (
                   <div className="space-y-3">
                     <h4 className="font-medium">General Instructions:</h4>

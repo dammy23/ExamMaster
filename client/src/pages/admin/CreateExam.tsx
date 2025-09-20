@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { RichTextEditor } from "@/components/ui/rich-text-editor"
 import { Switch } from "@/components/ui/switch"
 import {
   Select,
@@ -49,6 +50,8 @@ export function CreateExam() {
   const [studentGroups, setStudentGroups] = useState<StudentGroup[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [selectedGroups, setSelectedGroups] = useState<string[]>([])
+  const [description, setDescription] = useState('')
+  const [instructions, setInstructions] = useState('')
 
   const {
     register,
@@ -115,6 +118,8 @@ export function CreateExam() {
       // Convert string values to numbers for proper validation
       const examData = {
         ...data,
+        description: description,
+        instructions: instructions,
         duration: Number(data.duration),
         totalMarks: Number(data.totalMarks),
         passingMarks: Number(data.passingMarks),
@@ -193,11 +198,11 @@ export function CreateExam() {
 
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  {...register("description")}
+                <RichTextEditor
+                  value={description}
+                  onChange={setDescription}
                   placeholder="Brief description of the exam content and objectives"
-                  rows={3}
+                  height="120px"
                 />
               </div>
 
@@ -224,11 +229,11 @@ export function CreateExam() {
 
               <div className="space-y-2">
                 <Label htmlFor="instructions">Instructions for Students</Label>
-                <Textarea
-                  id="instructions"
-                  {...register("instructions")}
+                <RichTextEditor
+                  value={instructions}
+                  onChange={setInstructions}
                   placeholder="Enter detailed instructions for students taking this exam"
-                  rows={4}
+                  height="150px"
                 />
               </div>
             </CardContent>

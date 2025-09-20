@@ -160,7 +160,7 @@ export function ExamQuestions() {
   }
 
   const filteredQuestions = questions.filter(question => {
-    const matchesSearch = question.question.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSearch = question.question.replace(/<[^>]*>/g, '').toLowerCase().includes(searchTerm.toLowerCase())
     const matchesDifficulty = filterDifficulty === "all" || question.difficulty === filterDifficulty
     
     return matchesSearch && matchesDifficulty
@@ -379,7 +379,7 @@ export function ExamQuestions() {
                       </TableCell>
                       <TableCell className="max-w-md">
                         <div className="truncate font-medium">
-                          {question.question}
+                          <div dangerouslySetInnerHTML={{ __html: question.question.replace(/<[^>]*>/g, '') }} />
                         </div>
                       </TableCell>
                       <TableCell>{getTypeBadge(question.type)}</TableCell>

@@ -623,7 +623,7 @@ export function ExamAttempt() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="prose max-w-none">
-                <p className="text-lg">{currentQuestion.question}</p>
+                <div className="text-lg" dangerouslySetInnerHTML={{ __html: currentQuestion.question }} />
               </div>
 
               {/* Answer Options */}
