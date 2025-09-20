@@ -169,8 +169,8 @@ class AIChatService {
       console.error(`AI Chat Service - Error processing request with ${platform.name}:`, error);
       
       // Provide fallback response if AI service fails
-      const fallbackResponse = this.generateFallbackResponse(agent.agentId, message, error.message);
-      
+      const fallbackResponse = await this.generateFallbackResponse(agent.agentId, message, error.message);
+
       return {
         response: fallbackResponse,
         tokenCount: {
@@ -282,12 +282,12 @@ Your capabilities include: ${agent.capabilities.join(', ')}.`;
   }
   
   // Generate fallback response when AI service fails
-  static generateFallbackResponse(agentId, message, errorMessage) {
+  static async generateFallbackResponse(agentId, message, errorMessage) {
     console.log(`AI Chat Service - Generating fallback response for agent ${agentId}, error: ${errorMessage}`);
 
     // For Exam Assistant, provide intelligent responses based on user intent
     if (agentId === 'exam-assistant') {
-      return this.generateExamAssistantResponse(message, null);
+      return await this.generateExamAssistantResponse(message, null);
     }
 
     // Determine if this is a configuration issue
@@ -320,7 +320,7 @@ Your capabilities include: ${agent.capabilities.join(', ')}.`;
     }
   }
   
-  static generateExamAssistantResponse(message, fileAttachment) {
+  static async generateExamAssistantResponse(message, fileAttachment) {
     const lowerMessage = message.toLowerCase();
 
     // Analyze message for specific intents
@@ -385,7 +385,7 @@ Your capabilities include: ${agent.capabilities.join(', ')}.`;
       return `Excellent! I'll help you generate ${count} questions about ${topic}.\n\n**🎯 Quick Generation Options:**\n\n**Option 1: Instant Generation** ⚡\nI can create ${count} sample questions about ${topic} right now using my built-in knowledge base.\n\n**Option 2: Document-Based** 📄\nUpload a document about ${topic} and I'll extract specific questions from your content.\n\n**Option 3: Manual Guidance** ✋\nI'll guide you through creating each question manually with best practices.\n\n**🚀 Ready to proceed?**\nJust say \"**Create ${count} sample questions about ${topic}**\" and I'll generate them instantly!\n\nOr upload a document for more specific content-based questions.`;
     }
 
-    // Check for "create sample questions" requests
+    // Check for "create sample questions" requests - GENERATE ACTUAL QUESTIONS
     if ((lowerMessage.includes('create') && lowerMessage.includes('sample') && lowerMessage.includes('question')) ||
         (lowerMessage.includes('create') && lowerMessage.includes('question') && lowerMessage.includes('about'))) {
 
@@ -403,7 +403,55 @@ Your capabilities include: ${agent.capabilities.join(', ')}.`;
         }
       }
 
-      return `🎯 **Generating ${count} Sample Questions About ${topic}**\n\nI'm creating ${count} questions for you right now! This includes:\n\n• **Multiple Choice Questions** with 4 options each\n• **Appropriate difficulty level** for the topic\n• **Clear explanations** for correct answers\n• **Proper marking scheme**\n\n⏳ **Processing...** This will take just a moment.\n\n*Note: I'm generating these using my built-in knowledge base. For more specific questions, you can upload a document with your exact content.*\n\n🚀 **Questions will be ready shortly!**`;
+      console.log(`AI Chat Service - Generating ${count} sample questions about ${topic}`);
+
+      // Generate actual sample questions using the document parsing service
+      try {
+        const DocumentParsingService = require('./documentParsingService');
+        const generatedQuestions = await DocumentParsingService.generateQuestionsFromText(
+          `Generate questions about ${topic}`, // This will be handled by generateTopicContent in aiChatRoutes
+          {
+            questionCount: count,
+            difficulty: 'medium',
+            questionTypes: ['multiple-choice', 'true-false', 'short-answer'],
+            subject: topic
+          }
+        );
+
+        // Format the response with actual questions
+        let response = `🎯 **Generated ${generatedQuestions.length} Questions About ${topic}**\n\n`;
+        response += `Here are your questions:\n\n`;
+
+        generatedQuestions.forEach((q, index) => {
+          response += `**Question ${index + 1}:** ${q.question}\n`;
+
+          if (q.type === 'multiple-choice' && q.options && q.options.length > 0) {
+            response += `**Options:**\n`;
+            q.options.forEach((option, optIndex) => {
+              response += `${String.fromCharCode(97 + optIndex)}) ${option}\n`;
+            });
+          }
+
+          if (q.correctAnswers && q.correctAnswers.length > 0) {
+            response += `**Answer:** ${q.correctAnswers[0]}\n`;
+          }
+
+          if (q.explanation) {
+            response += `**Explanation:** ${q.explanation}\n`;
+          }
+
+          response += `\n`;
+        });
+
+        response += `✅ **Questions are ready to save!** Use the "Save Questions" button below to add them to your question bank.\n\n`;
+        response += `🎓 **Generated Questions Data:**\n\`\`\`json\n${JSON.stringify({ questions: generatedQuestions }, null, 2)}\n\`\`\``;
+
+        return response;
+
+      } catch (error) {
+        console.error('AI Chat Service - Error generating sample questions:', error);
+        return `❌ **Error generating questions about ${topic}**\n\nI encountered an issue while generating questions: ${error.message}\n\nPlease try again or upload a document for more specific content-based question generation.`;
+      }
     }
 
     // Check for greeting/general help

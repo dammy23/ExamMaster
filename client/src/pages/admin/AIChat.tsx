@@ -7,11 +7,11 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/useToast"
-import { 
-  MessageSquare, 
-  Send, 
-  Paperclip, 
-  Bot, 
+import {
+  MessageSquare,
+  Send,
+  Paperclip,
+  Bot,
   User,
   Loader2,
   FileText,
@@ -21,9 +21,11 @@ import {
   Settings,
   CheckCircle,
   AlertCircle,
-  XCircle
+  XCircle,
+  Save,
+  Download
 } from "lucide-react"
-import { sendChatMessage, getChatHistory, getAIAgents, uploadChatFile } from "@/api/aiChat"
+import { sendChatMessage, getChatHistory, getAIAgents, uploadChatFile, createQuestionsWithAI } from "@/api/aiChat"
 import { getActiveAIPlatforms } from "@/api/aiPlatform"
 
 interface ChatMessage {
@@ -35,6 +37,7 @@ interface ChatMessage {
   agentId: string
   isUser?: boolean
   isBot?: boolean
+  generatedQuestions?: any[]
 }
 
 interface AIPlatform {
@@ -69,12 +72,156 @@ export function AIChat() {
   const [agents, setAgents] = useState<AIAgent[]>([])
   const [attachedFile, setAttachedFile] = useState<File | null>(null)
   const [loadingHistory, setLoadingHistory] = useState(true)
+  const [savingQuestions, setSavingQuestions] = useState<{ [key: string]: boolean }>({})
   const { toast } = useToast()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
+
+  // Parse questions from AI response text
+  const parseQuestionsFromResponse = (responseText: string): any[] => {
+    const questions: any[] = []
+
+    try {
+      // Look for JSON questions in the response with proper JSON block format
+      const jsonMatch = responseText.match(/```json\s*(\{[\s\S]*?\})\s*```/)
+      if (jsonMatch && jsonMatch[1]) {
+        const parsedData = JSON.parse(jsonMatch[1])
+        if (parsedData.questions && Array.isArray(parsedData.questions)) {
+          return parsedData.questions.map((q: any, index: number) => ({
+            ...q,
+            tempId: `generated-${Date.now()}-${index}`,
+            marks: q.marks || 1,
+            difficulty: q.difficulty || 'medium'
+          }))
+        }
+      }
+
+      // Fallback: Look for JSON questions anywhere in the response
+      const jsonFallbackMatch = responseText.match(/\{[\s\S]*?"questions"[\s\S]*?\}/)
+      if (jsonFallbackMatch) {
+        const parsedData = JSON.parse(jsonFallbackMatch[0])
+        if (parsedData.questions && Array.isArray(parsedData.questions)) {
+          return parsedData.questions.map((q: any, index: number) => ({
+            ...q,
+            tempId: `generated-${Date.now()}-${index}`,
+            marks: q.marks || 1,
+            difficulty: q.difficulty || 'medium'
+          }))
+        }
+      }
+
+      // Look for structured question blocks in markdown format
+      const questionBlocks = responseText.match(/\*\*Question \d+[:.]?\*\*([\s\S]*?)(?=\*\*Question \d+[:.]?\*\*|\*\*Answer[:.]?\*\*|$)/gi)
+      if (questionBlocks && questionBlocks.length > 0) {
+        questionBlocks.forEach((block, index) => {
+          const questionMatch = block.match(/\*\*Question \d+[:.]?\*\*(.*?)(?:\*\*(?:Options?|Choices?)[:.]?\*\*|$)/s)
+          const optionsMatch = block.match(/\*\*(?:Options?|Choices?)[:.]?\*\*(.*?)(?:\*\*(?:Correct )?Answer[:.]?\*\*|$)/s)
+          const answerMatch = block.match(/\*\*(?:Correct )?Answer[:.]?\*\*(.*?)(?:\*\*|$)/s)
+          const explanationMatch = block.match(/\*\*Explanation[:.]?\*\*(.*?)(?:\*\*|$)/s)
+
+          if (questionMatch) {
+            const question = questionMatch[1].trim()
+            const options: string[] = []
+            let correctAnswers: string[] = []
+            let questionType = 'short-answer'
+
+            // Parse options if present
+            if (optionsMatch) {
+              const optionLines = optionsMatch[1]
+                .split('\n')
+                .map(line => line.trim())
+                .filter(line => line && (line.match(/^[a-d]\)/) || line.match(/^[a-d]\./) || line.match(/^\d+\./)))
+
+              optionLines.forEach(line => {
+                const cleanOption = line.replace(/^[a-d][).]\s*/, '').replace(/^\d+\.\s*/, '').trim()
+                if (cleanOption) options.push(cleanOption)
+              })
+
+              if (options.length >= 4) {
+                questionType = 'multiple-choice'
+              }
+            }
+
+            // Parse correct answer
+            if (answerMatch) {
+              const answerText = answerMatch[1].trim()
+              if (answerText.toLowerCase() === 'true' || answerText.toLowerCase() === 'false') {
+                questionType = 'true-false'
+                correctAnswers = [answerText.toLowerCase()]
+              } else if (options.length > 0) {
+                // Try to match answer to options
+                const matchedOption = options.find(opt =>
+                  opt.toLowerCase().includes(answerText.toLowerCase()) ||
+                  answerText.toLowerCase().includes(opt.toLowerCase())
+                )
+                if (matchedOption) {
+                  correctAnswers = [matchedOption]
+                } else {
+                  correctAnswers = [answerText]
+                }
+              } else {
+                correctAnswers = [answerText]
+              }
+            }
+
+            const explanation = explanationMatch ? explanationMatch[1].trim() : ''
+
+            questions.push({
+              tempId: `parsed-${Date.now()}-${index}`,
+              type: questionType,
+              question: question,
+              options: options,
+              correctAnswers: correctAnswers.length > 0 ? correctAnswers : ['Sample answer'],
+              explanation: explanation,
+              marks: 1,
+              difficulty: 'medium'
+            })
+          }
+        })
+      }
+
+      return questions
+    } catch (error) {
+      console.error('Error parsing questions from response:', error)
+      return []
+    }
+  }
+
+  // Save generated questions to database
+  const handleSaveQuestions = async (messageId: string, questions: any[]) => {
+    if (!questions || questions.length === 0) return
+
+    setSavingQuestions(prev => ({ ...prev, [messageId]: true }))
+
+    try {
+      const result = await createQuestionsWithAI({ questions })
+
+      toast({
+        title: "Questions Saved Successfully",
+        description: `${result.createdCount} questions have been saved to your question bank.`
+      })
+
+      // Update the message to mark questions as saved
+      setMessages(prev => prev.map(msg =>
+        msg._id === messageId
+          ? { ...msg, generatedQuestions: undefined } // Remove questions after saving
+          : msg
+      ))
+
+    } catch (error) {
+      console.error("Error saving questions:", error)
+      toast({
+        variant: "destructive",
+        title: "Error Saving Questions",
+        description: (error as any)?.message || "Failed to save questions to database"
+      })
+    } finally {
+      setSavingQuestions(prev => ({ ...prev, [messageId]: false }))
+    }
   }
 
   useEffect(() => {
@@ -223,6 +370,10 @@ export function AIChat() {
       const responseData = response as any
       console.log('AI Chat - Response received:', responseData)
 
+      // Parse questions from AI response
+      const generatedQuestions = parseQuestionsFromResponse(responseData.response)
+      console.log('AI Chat - Parsed questions from response:', generatedQuestions)
+
       // Add bot response to chat
       const botChatMessage: ChatMessage = {
         _id: responseData.messageId || `bot_${Date.now()}`,
@@ -232,7 +383,8 @@ export function AIChat() {
         modelId: selectedPlatform,
         agentId: selectedAgent,
         isUser: false,
-        isBot: true
+        isBot: true,
+        generatedQuestions: generatedQuestions.length > 0 ? generatedQuestions : undefined
       }
 
       setMessages(prev => [...prev, botChatMessage])
@@ -518,6 +670,54 @@ export function AIChat() {
                             <p className="text-xs mt-1 opacity-70">
                               {new Date(message.timestamp).toLocaleTimeString()}
                             </p>
+
+                            {/* Save Questions Button - Show for bot messages with generated questions */}
+                            {message.isBot && message.generatedQuestions && message.generatedQuestions.length > 0 && (
+                              <div className="mt-3 pt-3 border-t border-border/50">
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <CheckCircle className="h-4 w-4 text-green-500" />
+                                    <span className="text-xs font-medium">
+                                      {message.generatedQuestions.length} questions detected
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleSaveQuestions(message._id, message.generatedQuestions!)}
+                                    disabled={savingQuestions[message._id]}
+                                    className="flex items-center gap-1"
+                                  >
+                                    {savingQuestions[message._id] ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <Save className="h-3 w-3" />
+                                    )}
+                                    {savingQuestions[message._id] ? 'Saving...' : 'Save Questions'}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      // Download questions as JSON for review
+                                      const dataStr = JSON.stringify(message.generatedQuestions, null, 2)
+                                      const dataBlob = new Blob([dataStr], { type: 'application/json' })
+                                      const url = URL.createObjectURL(dataBlob)
+                                      const link = document.createElement('a')
+                                      link.href = url
+                                      link.download = `generated-questions-${Date.now()}.json`
+                                      link.click()
+                                      URL.revokeObjectURL(url)
+                                    }}
+                                    className="flex items-center gap-1"
+                                  >
+                                    <Download className="h-3 w-3" />
+                                    Download
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
