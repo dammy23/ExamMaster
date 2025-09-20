@@ -94,44 +94,136 @@ export function AIChat() {
         return []
       }
 
-      // Look for JSON questions in the response with proper JSON block format
+      console.log('AI Chat - Starting question detection')
+      console.log('AI Chat - Text sample (first 500 chars):', responseText.substring(0, 500))
+
+      // PRIORITY 1: Look for JSON questions in the response with proper JSON block format
       const jsonMatch = responseText.match(/```json\s*(\{[\s\S]*?\})\s*```/)
       if (jsonMatch && jsonMatch[1]) {
-        const parsedData = JSON.parse(jsonMatch[1])
-        if (parsedData.questions && Array.isArray(parsedData.questions)) {
-          return parsedData.questions.map((q: any, index: number) => ({
-            ...q,
-            tempId: `generated-${Date.now()}-${index}`,
-            marks: q.marks || 1,
-            difficulty: q.difficulty || 'medium'
-          }))
+        try {
+          const parsedData = JSON.parse(jsonMatch[1])
+          if (parsedData.questions && Array.isArray(parsedData.questions)) {
+            console.log('AI Chat - Found JSON format questions:', parsedData.questions.length)
+            return parsedData.questions.map((q: any, index: number) => ({
+              ...q,
+              tempId: `json-${Date.now()}-${index}`,
+              marks: q.marks || 1,
+              difficulty: q.difficulty || 'medium'
+            }))
+          }
+        } catch (jsonError) {
+          console.error('AI Chat - Error parsing JSON questions:', jsonError)
         }
       }
 
-
-      // Fallback: Look for JSON questions anywhere in the response
+      // PRIORITY 2: Look for JSON questions anywhere in the response (fallback)
       const jsonFallbackMatch = responseText.match(/\{[\s\S]*?"questions"[\s\S]*?\}/)
       if (jsonFallbackMatch) {
-        const parsedData = JSON.parse(jsonFallbackMatch[0])
-        if (parsedData.questions && Array.isArray(parsedData.questions)) {
-          return parsedData.questions.map((q: any, index: number) => ({
-            ...q,
-            tempId: `generated-${Date.now()}-${index}`,
-            marks: q.marks || 1,
-            difficulty: q.difficulty || 'medium'
-          }))
+        try {
+          const parsedData = JSON.parse(jsonFallbackMatch[0])
+          if (parsedData.questions && Array.isArray(parsedData.questions)) {
+            console.log('AI Chat - Found JSON fallback questions:', parsedData.questions.length)
+            return parsedData.questions.map((q: any, index: number) => ({
+              ...q,
+              tempId: `json-fallback-${Date.now()}-${index}`,
+              marks: q.marks || 1,
+              difficulty: q.difficulty || 'medium'
+            }))
+          }
+        } catch (jsonError) {
+          console.error('AI Chat - Error parsing JSON fallback questions:', jsonError)
         }
       }
 
-      // Aggressive question detection - look for various patterns
-      console.log('AI Chat - Starting aggressive question detection')
-      console.log('AI Chat - Text sample (first 500 chars):', responseText.substring(0, 500))
-      console.log('AI Chat - Contains question keywords:', hasQuestionKeywords)
+      // PRIORITY 3: Look for structured AI format: **GENERATED QUESTIONS:** followed by **Question 1:** ...
+      const structuredSectionMatch = responseText.match(/\*\*GENERATED QUESTIONS:\*\*[\s\S]*/)
+      if (structuredSectionMatch) {
+        console.log('AI Chat - Found GENERATED QUESTIONS section')
+        const structuredSection = structuredSectionMatch[0]
 
-      // PRIORITY 1: Look for numbered structured format that AI is actually generating: 1. **Question 1:** ...
+        const aiStructuredQuestions = structuredSection.match(/\*\*Question \d+:\*\*[\s\S]*?(?=\*\*Question \d+:\*\*|$)/gi)
+        if (aiStructuredQuestions && aiStructuredQuestions.length > 0) {
+          console.log('AI Chat - Found AI structured questions in section:', aiStructuredQuestions.length)
+
+          aiStructuredQuestions.forEach((questionBlock, index) => {
+            const lines = questionBlock.trim().split('\n').map(line => line.trim()).filter(line => line)
+            if (lines.length === 0) return
+
+            let question = ''
+            let type = 'short-answer'
+            let options: string[] = []
+            let correctAnswer = ''
+            let explanation = ''
+            let marks = 1
+            let difficulty = 'medium'
+
+            // Extract question text from first line
+            const firstLine = lines[0]
+            const questionMatch = firstLine.match(/\*\*Question \d+:\*\*\s*(.*)/)
+            if (questionMatch) {
+              question = questionMatch[1].trim()
+            }
+
+            let collectingOptions = false
+
+            // Parse structured fields
+            lines.forEach((line, lineIndex) => {
+              if (line.startsWith('**Type:**')) {
+                type = line.replace('**Type:**', '').trim()
+                collectingOptions = false
+              } else if (line.startsWith('**Options:**')) {
+                collectingOptions = true
+              } else if (collectingOptions && line.match(/^[a-d]\)/)) {
+                // Option line
+                options.push(line.replace(/^[a-d]\)\s*/, ''))
+              } else if (line.startsWith('**Correct Answer:**')) {
+                correctAnswer = line.replace('**Correct Answer:**', '').trim()
+                collectingOptions = false
+              } else if (line.startsWith('**Explanation:**')) {
+                explanation = line.replace('**Explanation:**', '').trim()
+                collectingOptions = false
+              } else if (line.startsWith('**Marks:**')) {
+                marks = parseInt(line.replace('**Marks:**', '').trim()) || 1
+                collectingOptions = false
+              } else if (line.startsWith('**Difficulty:**')) {
+                difficulty = line.replace('**Difficulty:**', '').trim()
+                collectingOptions = false
+              }
+            })
+
+            if (question) {
+              console.log(`AI Chat - Parsed structured question ${index + 1}:`, {
+                question: question.substring(0, 50) + '...',
+                type,
+                optionsCount: options.length,
+                correctAnswer,
+                explanation: explanation.substring(0, 30) + '...'
+              })
+
+              questions.push({
+                tempId: `structured-${Date.now()}-${index}`,
+                type: type,
+                question: question,
+                options: options,
+                correctAnswers: correctAnswer ? [correctAnswer] : ['Sample answer'],
+                explanation: explanation || '',
+                marks: marks,
+                difficulty: difficulty
+              })
+            }
+          })
+
+          if (questions.length > 0) {
+            console.log('AI Chat - Successfully parsed structured questions:', questions.length)
+            return questions // Early return to prevent other parsers from running
+          }
+        }
+      }
+
+      // PRIORITY 4: Look for numbered structured format: 1. **Question 1:** ... (fallback for different numbering)
       const aiStructuredQuestions = responseText.match(/\d+\.\s*\*\*Question \d+:\*\*[\s\S]*?(?=\d+\.\s*\*\*Question \d+:\*\*|$)/gi)
       if (aiStructuredQuestions && aiStructuredQuestions.length > 0) {
-        console.log('AI Chat - Found AI structured questions:', aiStructuredQuestions.length)
+        console.log('AI Chat - Found numbered AI structured questions:', aiStructuredQuestions.length)
 
         aiStructuredQuestions.forEach((questionBlock, index) => {
           const lines = questionBlock.trim().split('\n').map(line => line.trim()).filter(line => line)
@@ -180,7 +272,7 @@ export function AIChat() {
           })
 
           if (question) {
-            console.log(`AI Chat - Parsed question ${index + 1}:`, {
+            console.log(`AI Chat - Parsed numbered question ${index + 1}:`, {
               question: question.substring(0, 50) + '...',
               type,
               optionsCount: options.length,
@@ -189,7 +281,7 @@ export function AIChat() {
             })
 
             questions.push({
-              tempId: `structured-${Date.now()}-${index}`,
+              tempId: `numbered-structured-${Date.now()}-${index}`,
               type: type,
               question: question,
               options: options,
@@ -202,106 +294,18 @@ export function AIChat() {
         })
 
         if (questions.length > 0) {
-          console.log('AI Chat - Successfully parsed structured questions:', questions.length)
-          return questions
+          console.log('AI Chat - Successfully parsed numbered structured questions:', questions.length)
+          return questions // Early return to prevent other parsers from running
         }
       }
 
-      // Pattern 1: Simple numbered questions with question marks
-      const simpleQuestions = responseText.match(/\d+\.\s*[^?\n]*\?/g)
-      if (simpleQuestions && simpleQuestions.length > 0) {
-        console.log('AI Chat - Found simple questions:', simpleQuestions)
-        simpleQuestions.forEach((q, index) => {
-          const questionText = q.replace(/^\d+\.\s*/, '').trim()
-          if (questionText.length > 15) {
-            questions.push({
-              tempId: `simple-${Date.now()}-${index}`,
-              type: 'short-answer',
-              question: questionText,
-              options: [],
-              correctAnswers: ['Sample answer'],
-              explanation: '',
-              marks: 1,
-              difficulty: 'medium'
-            })
-          }
-        })
-      }
+      // FALLBACK PARSERS: Only run these if no structured questions were found above
+      console.log('AI Chat - No structured questions found, trying fallback parsers')
 
-      // Pattern 2: Questions that start with "What", "How", "Why", "Where", "When", "Which"
-      const wh_questions = responseText.match(/(?:What|How|Why|Where|When|Which|Who)[^?\n]*\?/gi)
-      if (wh_questions && wh_questions.length > 0) {
-        console.log('AI Chat - Found WH questions:', wh_questions)
-        wh_questions.forEach((q, index) => {
-          const questionText = q.trim()
-          if (questionText.length > 10 && !questions.some(existing => existing.question === questionText)) {
-            questions.push({
-              tempId: `wh-${Date.now()}-${index}`,
-              type: 'short-answer',
-              question: questionText,
-              options: [],
-              correctAnswers: ['Sample answer'],
-              explanation: '',
-              marks: 1,
-              difficulty: 'medium'
-            })
-          }
-        })
-      }
-
-      // Pattern 3: Look for multiple choice blocks
-      const mcqMatches = responseText.match(/(?:multiple\s*choice|mcq)[^?]*\?[\s\S]*?[a-d]\)[^\n]+/gi)
-      if (mcqMatches && mcqMatches.length > 0) {
-        console.log('AI Chat - Found MCQ blocks:', mcqMatches)
-        mcqMatches.forEach((block, index) => {
-          const questionMatch = block.match(/[^?]*\?/)
-          if (questionMatch) {
-            const questionText = questionMatch[0].replace(/(?:multiple\s*choice|mcq)\s*/gi, '').trim()
-            const optionMatches = block.match(/[a-d]\)[^a-d\n]+/gi)
-            const options = optionMatches ? optionMatches.map(opt => opt.replace(/^[a-d]\)\s*/, '')) : []
-
-            if (questionText.length > 10) {
-              questions.push({
-                tempId: `mcq-${Date.now()}-${index}`,
-                type: options.length >= 4 ? 'multiple-choice' : 'short-answer',
-                question: questionText,
-                options: options,
-                correctAnswers: ['Sample answer'],
-                explanation: '',
-                marks: 1,
-                difficulty: 'medium'
-              })
-            }
-          }
-        })
-      }
-
-      // Pattern 4: True/False questions
-      const tfQuestions = responseText.match(/(?:true|false)[^?\n]*\?/gi)
-      if (tfQuestions && tfQuestions.length > 0) {
-        console.log('AI Chat - Found T/F questions:', tfQuestions)
-        tfQuestions.forEach((q, index) => {
-          const questionText = q.trim()
-          if (questionText.length > 10 && !questions.some(existing => existing.question === questionText)) {
-            questions.push({
-              tempId: `tf-${Date.now()}-${index}`,
-              type: 'true-false',
-              question: questionText,
-              options: [],
-              correctAnswers: ['true'],
-              explanation: '',
-              marks: 1,
-              difficulty: 'medium'
-            })
-          }
-        })
-      }
-
-      console.log('AI Chat - Questions found after aggressive detection:', questions.length)
-
-      // Look for structured question blocks in markdown format
+      // Look for structured question blocks in markdown format (alternative format)
       const questionBlocks = responseText.match(/\*\*Question \d+[:.]?\*\*([\s\S]*?)(?=\*\*Question \d+[:.]?\*\*|\*\*Answer[:.]?\*\*|$)/gi)
       if (questionBlocks && questionBlocks.length > 0) {
+        console.log('AI Chat - Found markdown question blocks:', questionBlocks.length)
         questionBlocks.forEach((block, index) => {
           const questionMatch = block.match(/\*\*Question \d+[:.]?\*\*(.*?)(?:\*\*(?:Options?|Choices?)[:.]?\*\*|$)/s)
           const optionsMatch = block.match(/\*\*(?:Options?|Choices?)[:.]?\*\*(.*?)(?:\*\*(?:Correct )?Answer[:.]?\*\*|$)/s)
@@ -356,7 +360,7 @@ export function AIChat() {
             const explanation = explanationMatch ? explanationMatch[1].trim() : ''
 
             questions.push({
-              tempId: `parsed-${Date.now()}-${index}`,
+              tempId: `markdown-${Date.now()}-${index}`,
               type: questionType,
               question: question,
               options: options,
@@ -367,47 +371,165 @@ export function AIChat() {
             })
           }
         })
+
+        if (questions.length > 0) {
+          console.log('AI Chat - Successfully parsed markdown questions:', questions.length)
+          return questions
+        }
       }
 
-      // If no questions found yet, try final fallbacks
-      if (questions.length === 0) {
-        console.log('AI Chat - No questions found with structured patterns, trying fallbacks')
+      // Pattern 1: Simple numbered questions with question marks
+      const simpleQuestions = responseText.match(/\d+\.\s*[^?\n]*\?/g)
+      if (simpleQuestions && simpleQuestions.length > 0) {
+        console.log('AI Chat - Found simple questions:', simpleQuestions)
+        simpleQuestions.forEach((q, index) => {
+          const questionText = q.replace(/^\d+\.\s*/, '').trim()
+          if (questionText.length > 15) {
+            questions.push({
+              tempId: `simple-${Date.now()}-${index}`,
+              type: 'short-answer',
+              question: questionText,
+              options: [],
+              correctAnswers: ['Sample answer'],
+              explanation: '',
+              marks: 1,
+              difficulty: 'medium'
+            })
+          }
+        })
 
-        // Fallback 1: Any text ending with a question mark that looks substantial
-        const allQuestions = responseText.match(/[A-Z][^?\n]{15,}\?/g)
-        if (allQuestions && allQuestions.length > 0) {
-          console.log('AI Chat - Found questions with final fallback:', allQuestions)
-          allQuestions.forEach((q, index) => {
-            const questionText = q.trim()
-            if (!questions.some(existing => existing.question === questionText)) {
+        if (questions.length > 0) {
+          console.log('AI Chat - Successfully parsed simple questions:', questions.length)
+          return questions
+        }
+      }
+
+      // Pattern 2: Questions that start with "What", "How", "Why", "Where", "When", "Which"
+      const wh_questions = responseText.match(/(?:What|How|Why|Where|When|Which|Who)[^?\n]*\?/gi)
+      if (wh_questions && wh_questions.length > 0) {
+        console.log('AI Chat - Found WH questions:', wh_questions)
+        wh_questions.forEach((q, index) => {
+          const questionText = q.trim()
+          if (questionText.length > 10 && !questions.some(existing => existing.question === questionText)) {
+            questions.push({
+              tempId: `wh-${Date.now()}-${index}`,
+              type: 'short-answer',
+              question: questionText,
+              options: [],
+              correctAnswers: ['Sample answer'],
+              explanation: '',
+              marks: 1,
+              difficulty: 'medium'
+            })
+          }
+        })
+
+        if (questions.length > 0) {
+          console.log('AI Chat - Successfully parsed WH questions:', questions.length)
+          return questions
+        }
+      }
+
+      // Pattern 3: Look for multiple choice blocks
+      const mcqMatches = responseText.match(/(?:multiple\s*choice|mcq)[^?]*\?[\s\S]*?[a-d]\)[^\n]+/gi)
+      if (mcqMatches && mcqMatches.length > 0) {
+        console.log('AI Chat - Found MCQ blocks:', mcqMatches)
+        mcqMatches.forEach((block, index) => {
+          const questionMatch = block.match(/[^?]*\?/)
+          if (questionMatch) {
+            const questionText = questionMatch[0].replace(/(?:multiple\s*choice|mcq)\s*/gi, '').trim()
+            const optionMatches = block.match(/[a-d]\)[^a-d\n]+/gi)
+            const options = optionMatches ? optionMatches.map(opt => opt.replace(/^[a-d]\)\s*/, '')) : []
+
+            if (questionText.length > 10) {
               questions.push({
-                tempId: `fallback-${Date.now()}-${index}`,
-                type: 'short-answer',
+                tempId: `mcq-${Date.now()}-${index}`,
+                type: options.length >= 4 ? 'multiple-choice' : 'short-answer',
                 question: questionText,
-                options: [],
+                options: options,
                 correctAnswers: ['Sample answer'],
                 explanation: '',
                 marks: 1,
                 difficulty: 'medium'
               })
             }
-          })
-        }
+          }
+        })
 
-        // Fallback 2: If response mentions creating/generating questions, create a generic sample
-        if (questions.length === 0 && /generat|creat.*question/i.test(responseText)) {
-          console.log('AI Chat - Response mentions generating questions, creating sample')
-          questions.push({
-            tempId: `sample-${Date.now()}`,
-            type: 'multiple-choice',
-            question: 'Sample question extracted from AI response (please edit)',
-            options: ['Option A', 'Option B', 'Option C', 'Option D'],
-            correctAnswers: ['Option A'],
-            explanation: 'Please update this sample question with actual content from the AI response.',
-            marks: 1,
-            difficulty: 'medium'
-          })
+        if (questions.length > 0) {
+          console.log('AI Chat - Successfully parsed MCQ questions:', questions.length)
+          return questions
         }
+      }
+
+      // Pattern 4: True/False questions
+      const tfQuestions = responseText.match(/(?:true|false)[^?\n]*\?/gi)
+      if (tfQuestions && tfQuestions.length > 0) {
+        console.log('AI Chat - Found T/F questions:', tfQuestions)
+        tfQuestions.forEach((q, index) => {
+          const questionText = q.trim()
+          if (questionText.length > 10 && !questions.some(existing => existing.question === questionText)) {
+            questions.push({
+              tempId: `tf-${Date.now()}-${index}`,
+              type: 'true-false',
+              question: questionText,
+              options: [],
+              correctAnswers: ['true'],
+              explanation: '',
+              marks: 1,
+              difficulty: 'medium'
+            })
+          }
+        })
+
+        if (questions.length > 0) {
+          console.log('AI Chat - Successfully parsed T/F questions:', questions.length)
+          return questions
+        }
+      }
+
+      // Final fallbacks if no patterns matched
+      console.log('AI Chat - No question patterns found, trying final fallbacks')
+
+      // Fallback 1: Any text ending with a question mark that looks substantial
+      const allQuestions = responseText.match(/[A-Z][^?\n]{15,}\?/g)
+      if (allQuestions && allQuestions.length > 0) {
+        console.log('AI Chat - Found questions with final fallback:', allQuestions)
+        allQuestions.forEach((q, index) => {
+          const questionText = q.trim()
+          if (!questions.some(existing => existing.question === questionText)) {
+            questions.push({
+              tempId: `fallback-${Date.now()}-${index}`,
+              type: 'short-answer',
+              question: questionText,
+              options: [],
+              correctAnswers: ['Sample answer'],
+              explanation: '',
+              marks: 1,
+              difficulty: 'medium'
+            })
+          }
+        })
+
+        if (questions.length > 0) {
+          console.log('AI Chat - Successfully parsed fallback questions:', questions.length)
+          return questions
+        }
+      }
+
+      // Fallback 2: If response mentions creating/generating questions, create a generic sample
+      if (questions.length === 0 && /generat|creat.*question/i.test(responseText)) {
+        console.log('AI Chat - Response mentions generating questions, creating sample')
+        questions.push({
+          tempId: `sample-${Date.now()}`,
+          type: 'multiple-choice',
+          question: 'Sample question extracted from AI response (please edit)',
+          options: ['Option A', 'Option B', 'Option C', 'Option D'],
+          correctAnswers: ['Option A'],
+          explanation: 'Please update this sample question with actual content from the AI response.',
+          marks: 1,
+          difficulty: 'medium'
+        })
       }
 
       console.log('AI Chat - Total questions found by parser:', questions.length)
