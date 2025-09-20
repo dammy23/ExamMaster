@@ -54,7 +54,7 @@ const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 2 * 1024 * 1024 // 2MB limit (reduced to work within proxy constraints)
+    fileSize: 20 * 1024 * 1024 // 20MB limit (reduced to work within proxy constraints)
   }
 });
 
@@ -715,7 +715,7 @@ router.use((error, req, res, next) => {
     if (error.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({
         success: false,
-        error: 'File too large. Maximum size is 2MB.'
+        error: 'File too large. Maximum size is 20MB.'
       });
     }
     
