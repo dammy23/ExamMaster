@@ -40,6 +40,14 @@ interface ChatMessage {
   generatedQuestions?: any[]
 }
 
+interface ChatPagination {
+  currentPage: number
+  totalPages: number
+  totalCount: number
+  hasMore: boolean
+  limit: number
+}
+
 interface AIPlatform {
   _id: string
   name: string
@@ -72,13 +80,78 @@ export function AIChat() {
   const [agents, setAgents] = useState<AIAgent[]>([])
   const [attachedFile, setAttachedFile] = useState<File | null>(null)
   const [loadingHistory, setLoadingHistory] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [pagination, setPagination] = useState<ChatPagination | null>(null)
   const [savingQuestions, setSavingQuestions] = useState<{ [key: string]: boolean }>({})
   const { toast } = useToast()
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
+
+  // Load more chat history (older messages)
+  const loadMoreMessages = async () => {
+    if (!pagination || !pagination.hasMore || loadingMore) return
+
+    setLoadingMore(true)
+    try {
+      console.log('AI Chat - Loading more messages, page:', pagination.currentPage + 1)
+      const historyResponse = await getChatHistory({
+        page: pagination.currentPage + 1,
+        limit: 20
+      })
+
+      const historyData = historyResponse.messages
+      const newPagination = historyResponse.pagination
+
+      console.log('AI Chat - More history received:', historyData?.length || 0, 'messages')
+
+      // Preserve scroll position when adding older messages
+      const scrollContainer = messagesContainerRef.current
+      const previousScrollHeight = scrollContainer?.scrollHeight || 0
+
+      // Transform and prepend older messages to current list
+      const transformedMessages: ChatMessage[] = []
+      historyData?.forEach((msg: ChatMessage) => {
+        transformedMessages.push({
+          ...msg,
+          isUser: true,
+          isBot: false
+        })
+        transformedMessages.push({
+          ...msg,
+          _id: msg._id + '_response',
+          message: msg.response,
+          isUser: false,
+          isBot: true
+        })
+      })
+
+      setMessages(prev => [...transformedMessages, ...prev])
+      setPagination(newPagination)
+
+      // Restore scroll position after DOM update
+      setTimeout(() => {
+        if (scrollContainer) {
+          const newScrollHeight = scrollContainer.scrollHeight
+          const heightDiff = newScrollHeight - previousScrollHeight
+          scrollContainer.scrollTop = heightDiff
+        }
+      }, 0)
+
+    } catch (error) {
+      console.error('Error loading more messages:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load more messages",
+        variant: "destructive"
+      })
+    } finally {
+      setLoadingMore(false)
+    }
   }
 
   // Parse questions from AI response text
@@ -584,36 +657,41 @@ export function AIChat() {
         const [platformsResponse, agentsResponse, historyResponse] = await Promise.all([
           getActiveAIPlatforms(),
           getAIAgents(),
-          getChatHistory()
+          getChatHistory({ page: 1, limit: 20 }) // Load first page of messages
         ])
 
         const platformsData = (platformsResponse as any).data.platforms
         const agentsData = (agentsResponse as any).agents
-        const historyData = (historyResponse as any).messages
+        const historyData = historyResponse.messages
+        const historyPagination = historyResponse.pagination
 
         console.log('AI Chat - Platforms received:', platformsData)
         console.log('AI Chat - Agents received:', agentsData)
-        console.log('AI Chat - History received:', historyData)
+        console.log('AI Chat - History received:', historyData?.length || 0, 'messages')
+        console.log('AI Chat - Pagination:', historyPagination)
 
         setPlatforms(platformsData || [])
         setAgents(agentsData || [])
-        
+        setPagination(historyPagination)
+
         // Set default selections - only select configured platforms
-        const defaultPlatform = platformsData?.find((p: AIPlatform) => p.isDefault && p.isConfigured) || 
+        const defaultPlatform = platformsData?.find((p: AIPlatform) => p.isDefault && p.isConfigured) ||
                                platformsData?.find((p: AIPlatform) => p.isConfigured)
         const defaultAgent = agentsData?.find((a: AIAgent) => a.isActive) || agentsData?.[0]
-        
+
         if (defaultPlatform) setSelectedPlatform(defaultPlatform._id)
         if (defaultAgent) setSelectedAgent(defaultAgent._id)
 
-        // Transform history to display format
+        // Transform history to display format - messages come sorted oldest first from backend
         const transformedMessages: ChatMessage[] = []
         historyData?.forEach((msg: ChatMessage) => {
+          // User message first
           transformedMessages.push({
             ...msg,
             isUser: true,
             isBot: false
           })
+          // Then bot response
           transformedMessages.push({
             ...msg,
             _id: msg._id + '_response',
@@ -692,7 +770,7 @@ export function AIChat() {
     console.log('AI Chat - Selected agent:', selectedAgent)
     console.log('AI Chat - Attached file:', attachedFile?.name)
 
-    // Add user message to chat
+    // Add user message to chat (at the end since latest messages appear at bottom)
     const userChatMessage: ChatMessage = {
       _id: `user_${Date.now()}`,
       message: userMessage,
@@ -953,7 +1031,7 @@ export function AIChat() {
           {/* Messages + Input */}
           <CardContent className="flex-1 min-h-0 flex flex-col p-0">
             {/* Messages Area */}
-            <ScrollArea className="h-full p-4 [scrollbar-gutter:stable] overscroll-y-contain">
+            <ScrollArea ref={messagesContainerRef} className="h-full p-4 [scrollbar-gutter:stable] overscroll-y-contain">
               {loadingHistory ? (
                 <div className="flex items-center justify-center h-32">
                   <Loader2 className="h-6 w-6 animate-spin" />
@@ -961,6 +1039,29 @@ export function AIChat() {
                 </div>
               ) : (
                 <div className="space-y-4">
+                  {/* Load More Button - Show at top when there are more messages */}
+                  {pagination && pagination.hasMore && (
+                    <div className="flex justify-center">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={loadMoreMessages}
+                        disabled={loadingMore}
+                        className="mb-4"
+                      >
+                        {loadingMore ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Loading older messages...
+                          </>
+                        ) : (
+                          <>
+                            Load More Messages ({pagination.totalCount - messages.length / 2} older)
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
                   {messages.length === 0 ? (
                     <div className="text-center text-muted-foreground py-8">
                       <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />

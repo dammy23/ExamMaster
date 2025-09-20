@@ -134,44 +134,46 @@ router.post('/message', requireUser, upload.single('fileAttachment'), async (req
   }
 });
 
-// GET /api/ai-chat/history - Get chat history
+// Description: Get chat history with pagination for current user
+// Endpoint: GET /api/ai-chat/history
+// Request: { page?: number, limit?: number }
+// Response: { messages: Array<ChatMessage>, pagination: { currentPage: number, totalPages: number, totalCount: number, hasMore: boolean, limit: number } }
 router.get('/history', requireUser, async (req, res) => {
   console.log('AI Chat Routes - GET /history');
-  
+
   try {
     const userId = req.user._id;
-    const { page = 1, limit = 50 } = req.query;
-    
+    const { page = 1, limit = 20 } = req.query;
+
     console.log(`AI Chat Routes - Getting history for user ${userId}, page ${page}, limit ${limit}`);
-    
+
     // Validate pagination parameters
     const pageNum = parseInt(page, 10);
     const limitNum = parseInt(limit, 10);
-    
+
     if (pageNum < 1 || limitNum < 1 || limitNum > 100) {
       console.error('AI Chat Routes - Invalid pagination parameters');
       return res.status(400).json({
         success: false,
-        error: 'Invalid pagination parameters'
+        error: 'Invalid pagination parameters. Page must be >= 1, limit must be 1-100'
       });
     }
-    
+
     const result = await AIChatService.getChatHistory(userId, {
       page: pageNum,
       limit: limitNum
     });
-    
-    console.log(`AI Chat Routes - Retrieved ${result.messages.length} messages`);
-    
+
+    console.log(`AI Chat Routes - Retrieved ${result.messages.length} messages, total: ${result.pagination.totalCount}, hasMore: ${result.pagination.hasMore}`);
+
     res.json({
       success: true,
       data: {
         messages: result.messages,
-        page: pageNum,
-        limit: limitNum
+        pagination: result.pagination
       }
     });
-    
+
   } catch (error) {
     console.error('AI Chat Routes - Error getting chat history:', error);
     res.status(500).json({

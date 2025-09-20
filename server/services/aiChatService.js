@@ -528,16 +528,16 @@ This format is crucial for the system to detect and save questions properly.`;
     return "Hello! I'm here to help you with ExamMaster. I can assist with:\n\n• **Exam Management**: Creating, editing, and organizing exams\n• **Question Banks**: Managing and organizing questions\n• **Student Management**: Adding and tracking student progress\n• **Reports & Analytics**: Generating insights and performance reports\n• **System Configuration**: Settings and customization options\n\nFeel free to ask me about any ExamMaster feature or functionality. How can I help you today?";
   }
   
-  // Get chat history for a user
+  // Get chat history for a user with pagination
   static async getChatHistory(userId, options = {}) {
     console.log(`AI Chat Service - Getting chat history for user ${userId}`);
-    
+
     try {
-      const messages = await AIChat.getChatHistory(userId, options);
-      console.log(`AI Chat Service - Retrieved ${messages.length} chat messages`);
-      
+      const result = await AIChat.getChatHistory(userId, options);
+      console.log(`AI Chat Service - Retrieved ${result.messages.length} chat messages from ${result.pagination.totalCount} total`);
+
       return {
-        messages: messages.map(msg => ({
+        messages: result.messages.map(msg => ({
           _id: msg._id,
           message: msg.message,
           response: msg.response,
@@ -545,7 +545,8 @@ This format is crucial for the system to detect and save questions properly.`;
           modelId: msg.modelId,
           agentId: msg.agentId,
           fileAttachment: msg.fileAttachment
-        }))
+        })),
+        pagination: result.pagination
       };
     } catch (error) {
       console.error('AI Chat Service - Error getting chat history:', error);

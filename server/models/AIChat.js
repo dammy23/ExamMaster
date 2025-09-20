@@ -94,19 +94,40 @@ aiChatSchema.statics.findActive = function(filter = {}) {
   return this.find({ ...filter, isDeleted: false });
 };
 
-// Static method to get chat history for a user
-aiChatSchema.statics.getChatHistory = function(userId, options = {}) {
-  const { page = 1, limit = 50 } = options;
+// Static method to get chat history for a user with improved pagination
+aiChatSchema.statics.getChatHistory = async function(userId, options = {}) {
+  const { page = 1, limit = 20 } = options;
   const skip = (page - 1) * limit;
-  
+
   console.log(`Getting chat history for user ${userId}, page ${page}, limit ${limit}`);
-  
-  return this.findActive({ userId })
-    .sort({ createdAt: -1 })
+
+  // Get total count for pagination metadata
+  const totalCount = await this.countDocuments({ userId, isDeleted: false });
+  console.log(`Total chat messages for user ${userId}: ${totalCount}`);
+
+  // Get messages sorted by creation date (oldest first) so latest appear at bottom
+  const messages = await this.findActive({ userId })
+    .sort({ createdAt: 1 })
     .skip(skip)
     .limit(limit)
     .populate('userId', 'email name role')
     .lean();
+
+  const hasMore = (skip + messages.length) < totalCount;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  console.log(`Retrieved ${messages.length} messages, hasMore: ${hasMore}, totalPages: ${totalPages}`);
+
+  return {
+    messages,
+    pagination: {
+      currentPage: page,
+      totalPages,
+      totalCount,
+      hasMore,
+      limit
+    }
+  };
 };
 
 // Pre-save middleware for logging
