@@ -282,37 +282,38 @@ Your capabilities include: ${agent.capabilities.join(', ')}.`;
   // Generate fallback response when AI service fails
   static generateFallbackResponse(agentId, message, errorMessage) {
     console.log(`AI Chat Service - Generating fallback response for agent ${agentId}, error: ${errorMessage}`);
-    
+
+    // For Exam Assistant, provide intelligent responses based on user intent
+    if (agentId === 'exam-assistant') {
+      return this.generateExamAssistantResponse(message, null);
+    }
+
     // Determine if this is a configuration issue
-    const isConfigIssue = errorMessage.includes('API key not configured') || 
-                         errorMessage.includes('Base URL') || 
+    const isConfigIssue = errorMessage.includes('API key not configured') ||
+                         errorMessage.includes('Base URL') ||
                          errorMessage.includes('not configured');
-    
+
     if (isConfigIssue) {
       // Provide specific guidance for configuration issues
       const fallbackResponses = {
-        'exam-assistant': `I'm currently unavailable because the AI service needs to be configured by your administrator. In the meantime, I can guide you to ExamMaster features:\n\n• **Create Exams**: Go to Exam Management → Create Exam\n• **Manage Questions**: Visit the Questions section\n• **Student Management**: Check the Students panel\n• **View Reports**: Access the Reports section\n\nTo enable AI assistance, please ask your administrator to configure the AI platforms in Settings → AI Platforms.`,
-        
         'student-support': `I'm currently unavailable due to AI service configuration requirements. You can still access these features directly:\n\n• **Student Performance**: View reports in the Reports section\n• **Group Management**: Manage student groups in Student Management\n• **Data Export**: Use the available export options\n• **Analytics**: Check the Dashboard for basic statistics\n\nFor AI-powered insights, please ask your administrator to configure the AI platforms.`,
-        
+
         'content-creator': `I'm currently unavailable because the AI service needs administrator configuration. You can still:\n\n• **Create Questions**: Use the Questions section for manual creation\n• **Import Content**: Upload questions via CSV/Excel templates\n• **Browse Question Banks**: Explore existing question collections\n• **Use Templates**: Access built-in question templates\n\nFor AI-assisted content creation, ask your administrator to set up AI platforms in Settings.`,
-        
+
         'data-analyst': `I'm currently unavailable due to AI service configuration needs. You can still access:\n\n• **Standard Reports**: Use pre-built reports in the Reports section\n• **Raw Data**: Export data for external analysis\n• **Dashboard Statistics**: View basic metrics on the Dashboard\n• **Custom Reports**: Generate standard performance reports\n\nFor advanced AI-powered analytics, please have your administrator configure the AI platforms.`
       };
-      
+
       return fallbackResponses[agentId] || `I apologize, but I'm currently unavailable due to AI service configuration requirements. Please ask your administrator to configure the AI platforms in Settings → AI Platforms to enable AI assistance.`;
     } else {
-      // Generic temporary issue
+      // Generic temporary issue - but still provide helpful responses for exam assistant
       const fallbackResponses = {
-        'exam-assistant': `I'm temporarily experiencing technical difficulties. Please try again in a few moments. In the meantime, you can:\n\n• **Create Exams**: Go to Exam Management → Create Exam\n• **Manage Questions**: Visit the Questions section\n• **Student Management**: Check the Students panel\n• **View Reports**: Access the Reports section\n\nIf this issue persists, please contact support.`,
-        
         'student-support': `I'm temporarily unavailable due to technical difficulties. You can still:\n\n• **View Performance**: Check the Reports section\n• **Manage Groups**: Use Student Management\n• **Export Data**: Access available export options\n• **Contact Support**: For immediate assistance\n\nPlease try again shortly.`,
-        
+
         'content-creator': `I'm currently experiencing technical difficulties. While I recover, you can:\n\n• **Create Questions**: Use the Questions section\n• **Import Content**: Upload via CSV/Excel templates\n• **Browse Questions**: Explore existing question banks\n• **Use Templates**: Access built-in templates\n\nPlease try again in a few moments.`,
-        
+
         'data-analyst': `I'm temporarily unavailable due to technical difficulties. You can still:\n\n• **View Reports**: Access the Reports section\n• **Export Data**: Use export options for external analysis\n• **Dashboard**: Check basic statistics\n• **Standard Reports**: Generate performance reports\n\nPlease retry your request shortly.`
       };
-      
+
       return fallbackResponses[agentId] || `I apologize, but I'm currently experiencing technical difficulties. Please try again in a few moments. If this issue persists, please contact support.`;
     }
   }
@@ -341,17 +342,71 @@ Your capabilities include: ${agent.capabilities.join(', ')}.`;
       return "ExamMaster's smart grading system:\n\n✅ **Automatic Grading:**\n• MCQ and True/False questions are instantly graded\n• Real-time score calculation\n• Immediate feedback to students (if enabled)\n\n📝 **Manual Review Queue:**\n• Short answer questions flagged for review\n• Partial credit scoring\n• Detailed feedback options\n\n⚙️ **Grading Configuration:**\n• Set passing marks and grade boundaries\n• Configure negative marking for wrong answers\n• Enable/disable immediate result display\n\nNeed help configuring grading for a specific exam?";
     }
 
-    if (lowerMessage.match(/(\d+)\s+(question|mcq|true.?false|short.?answer)/i)) {
-      const matches = lowerMessage.match(/(\d+)\s+(question|mcq|true.?false|short.?answer)/i);
-      const count = matches[1];
-      const type = matches[2];
+    if (lowerMessage.match(/(\d+)\s+(question|mcq|true.?false|short.?answer)/i) || lowerMessage.includes('help me create') && lowerMessage.match(/\d+/)) {
+      let count, type;
 
-      return `Great! I can help you create ${count} ${type} questions. \n\n**Next Steps:**\n1. 📎 **Upload a document** for automatic generation, or\n2. 📝 **Provide the topic/content** you want questions about\n3. ⚙️ **Choose difficulty**: Easy, Medium, or Hard\n4. 🎯 **Select subject** area\n\n🚀 **Quick command**: \"Generate ${count} medium ${type} questions about [your topic]\" or upload a document and I'll extract questions from it!`;
+      // Extract number and type from different patterns
+      if (lowerMessage.match(/(\d+)\s+(question|mcq|true.?false|short.?answer)/i)) {
+        const matches = lowerMessage.match(/(\d+)\s+(question|mcq|true.?false|short.?answer)/i);
+        count = matches[1];
+        type = matches[2];
+      } else if (lowerMessage.includes('help me create') && lowerMessage.match(/\d+/)) {
+        const numberMatch = lowerMessage.match(/(\d+)/);
+        count = numberMatch[1];
+        type = lowerMessage.includes('mcq') ? 'MCQ' : 'questions';
+      }
+
+      return `Perfect! I can help you create ${count} ${type} questions. Here are your options:\n\n**🚀 Quick Generation Methods:**\n\n1️⃣ **Upload Document** 📄\n   • Upload a PDF, Word doc, or text file\n   • I'll automatically extract and create ${count} questions\n   • Just drag & drop your file above!\n\n2️⃣ **Specify Topic** 📝\n   • Tell me: \"Generate ${count} ${type} questions about [your topic]\"\n   • Example: \"Generate ${count} medium MCQ questions about Biology\"\n\n3️⃣ **Manual Creation** ✋\n   • Go to Questions → Add New Question\n   • Create each question step by step\n\n**🎯 Recommended Approach:**\nJust tell me: \"**Generate ${count} medium ${type} questions about [YOUR TOPIC]**\"\n\nWhat subject/topic should these questions cover?`;
+    }
+
+    // Check for topic-based question generation requests
+    if (lowerMessage.includes('generate') && lowerMessage.includes('question') && (lowerMessage.includes('about') || lowerMessage.includes('on'))) {
+      const numberMatch = lowerMessage.match(/(\d+)/);
+      const count = numberMatch ? numberMatch[1] : '5';
+
+      // Extract topic
+      let topic = 'General';
+      if (lowerMessage.includes('about')) {
+        const aboutMatch = lowerMessage.split('about')[1];
+        if (aboutMatch) {
+          topic = aboutMatch.trim().split(/\s+/).slice(0, 3).join(' '); // Take first few words
+          topic = topic.charAt(0).toUpperCase() + topic.slice(1); // Capitalize
+        }
+      } else if (lowerMessage.includes('on')) {
+        const onMatch = lowerMessage.split('on')[1];
+        if (onMatch) {
+          topic = onMatch.trim().split(/\s+/).slice(0, 3).join(' '); // Take first few words
+          topic = topic.charAt(0).toUpperCase() + topic.slice(1); // Capitalize
+        }
+      }
+
+      return `Excellent! I'll help you generate ${count} questions about ${topic}.\n\n**🎯 Quick Generation Options:**\n\n**Option 1: Instant Generation** ⚡\nI can create ${count} sample questions about ${topic} right now using my built-in knowledge base.\n\n**Option 2: Document-Based** 📄\nUpload a document about ${topic} and I'll extract specific questions from your content.\n\n**Option 3: Manual Guidance** ✋\nI'll guide you through creating each question manually with best practices.\n\n**🚀 Ready to proceed?**\nJust say \"**Create ${count} sample questions about ${topic}**\" and I'll generate them instantly!\n\nOr upload a document for more specific content-based questions.`;
+    }
+
+    // Check for "create sample questions" requests
+    if ((lowerMessage.includes('create') && lowerMessage.includes('sample') && lowerMessage.includes('question')) ||
+        (lowerMessage.includes('create') && lowerMessage.includes('question') && lowerMessage.includes('about'))) {
+
+      const numberMatch = lowerMessage.match(/(\d+)/);
+      const count = numberMatch ? parseInt(numberMatch[1]) : 5;
+
+      // Extract topic
+      let topic = 'General Knowledge';
+      const aboutIndex = lowerMessage.indexOf('about');
+      if (aboutIndex !== -1) {
+        const topicPart = lowerMessage.substring(aboutIndex + 5).trim();
+        if (topicPart) {
+          topic = topicPart.split(/\s+/).slice(0, 3).join(' ');
+          topic = topic.charAt(0).toUpperCase() + topic.slice(1);
+        }
+      }
+
+      return `🎯 **Generating ${count} Sample Questions About ${topic}**\n\nI'm creating ${count} questions for you right now! This includes:\n\n• **Multiple Choice Questions** with 4 options each\n• **Appropriate difficulty level** for the topic\n• **Clear explanations** for correct answers\n• **Proper marking scheme**\n\n⏳ **Processing...** This will take just a moment.\n\n*Note: I'm generating these using my built-in knowledge base. For more specific questions, you can upload a document with your exact content.*\n\n🚀 **Questions will be ready shortly!**`;
     }
 
     // Check for greeting/general help
     if (lowerMessage.match(/^(hi|hello|hey|help|what|how)/)) {
-      return "Hello! I'm your AI Exam Assistant! 🎓 I'm here to make exam creation effortless.\n\n**I can help you:**\n\n🆕 **Create Complete Exams**\n• Guide you through exam setup\n• Generate questions automatically\n• Link subjects and questions\n\n📝 **Question Generation**\n• Upload documents → instant questions\n• Create custom question types\n• Bulk question import\n\n⚙️ **Exam Management**\n• Subject organization\n• Grading configuration\n• Student assignment\n\n💡 **Quick Starts:**\n• \"Create an exam for Biology\"\n• \"Generate 10 questions from document\" (upload file)\n• \"Help me create a subject\"\n\nWhat would you like to work on first?";
+      return "Hello! I'm your AI Exam Assistant! 🎓 I'm here to make exam creation effortless.\n\n**I can help you:**\n\n🆕 **Create Complete Exams**\n• Guide you through exam setup\n• Generate questions automatically\n• Link subjects and questions\n\n📝 **Question Generation**\n• Upload documents → instant questions\n• Create custom question types\n• Bulk question import\n\n⚙️ **Exam Management**\n• Subject organization\n• Grading configuration\n• Student assignment\n\n💡 **Quick Starts:**\n• \"Create an exam for Biology\"\n• \"Generate 10 questions about Mathematics\"\n• \"Help me create a subject\"\n\nWhat would you like to work on first?";
     }
 
     return "I'm your AI Exam Assistant! I specialize in making exam creation fast and easy.\n\n**What I can do for you:**\n\n🎯 **Smart Exam Creation**: Guide you step-by-step through creating professional exams\n📄 **Document-to-Questions**: Upload any document and I'll generate questions instantly\n🏗️ **Subject Management**: Help organize your exam subjects and categories\n⚡ **Quick Setup**: Create complete exams in minutes, not hours\n\n**Popular Commands:**\n• \"Create an exam for [subject]\"\n• \"Generate questions from this document\" (with file upload)\n• \"Help me create [number] MCQ questions\"\n• \"Set up a new subject called [name]\"\n\n🚀 Ready to create something amazing? What type of exam are you working on?";

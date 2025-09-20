@@ -221,3 +221,17 @@ export const getConversationContext = async (agentId?: string) => {
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
+
+// Description: Generate sample questions for a topic using built-in knowledge
+// Endpoint: POST /api/ai-chat/generate-sample-questions
+// Request: { topic: string, questionCount?: number, difficulty?: string, questionTypes?: Array<string> }
+// Response: { questions: Array<Question>, message: string, topic: string, validationResults: { validQuestions: number, totalGenerated: number, errors: Array<string> } }
+export const generateSampleQuestions = async (data: { topic: string; questionCount?: number; difficulty?: string; questionTypes?: string[] }) => {
+  try {
+    const response = await api.post('/api/ai-chat/generate-sample-questions', data);
+    return response.data.data;
+  } catch (error) {
+    console.error(error);
+    throw new Error(error?.response?.data?.error || error.message);
+  }
+};

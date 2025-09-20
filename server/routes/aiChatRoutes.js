@@ -536,6 +536,95 @@ router.post('/create-questions', requireUser, async (req, res) => {
   }
 });
 
+// POST /api/ai-chat/generate-sample-questions - Generate sample questions for a topic without external AI
+// Description: Generate sample questions using built-in templates and patterns
+// Endpoint: POST /api/ai-chat/generate-sample-questions
+// Request: { topic: string, questionCount?: number, difficulty?: string, questionTypes?: Array<string> }
+// Response: { questions: Array<Question>, message: string, topic: string }
+router.post('/generate-sample-questions', requireUser, async (req, res) => {
+  console.log('AI Chat Routes - POST /generate-sample-questions');
+  console.log('Request body:', req.body);
+
+  try {
+    const { topic = 'General Knowledge', questionCount = 5, difficulty = 'medium', questionTypes = ['multiple-choice', 'true-false'] } = req.body;
+    const userId = req.user._id;
+
+    console.log(`AI Chat Routes - Generating ${questionCount} sample questions about ${topic}`);
+
+    // Create sample content based on the topic for question generation
+    const sampleContent = generateTopicContent(topic);
+
+    // Generate questions using the document parsing service
+    const generatedQuestions = await DocumentParsingService.generateQuestionsFromText(sampleContent, {
+      questionCount: parseInt(questionCount, 10),
+      difficulty,
+      questionTypes: Array.isArray(questionTypes) ? questionTypes : questionTypes.split(',').map(t => t.trim()),
+      subject: topic
+    });
+
+    // Validate generated questions
+    const validationResults = DocumentParsingService.validateGeneratedQuestions(generatedQuestions);
+
+    console.log(`AI Chat Routes - Sample question generation completed: ${validationResults.totalValid}/${validationResults.totalGenerated} questions valid`);
+
+    res.json({
+      success: true,
+      data: {
+        questions: validationResults.validQuestions,
+        validationResults: {
+          validQuestions: validationResults.totalValid,
+          totalGenerated: validationResults.totalGenerated,
+          errors: validationResults.errors
+        },
+        message: `Generated ${validationResults.totalValid} sample questions about ${topic}. You can review and edit them before adding to your question bank.`,
+        topic,
+        sourceType: 'sample_generation'
+      }
+    });
+
+  } catch (error) {
+    console.error('AI Chat Routes - Error generating sample questions:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to generate sample questions'
+    });
+  }
+});
+
+// Helper function to generate sample content for different topics
+function generateTopicContent(topic) {
+  const topicLower = topic.toLowerCase();
+
+  // Topic-specific sample content for question generation
+  const topicContents = {
+    'biology': 'Biology is the scientific study of life and living organisms. It encompasses various levels of organization from molecules and cells to organisms and ecosystems. Key areas include genetics, evolution, ecology, and physiology. Photosynthesis is the process by which plants convert light energy into chemical energy. DNA contains genetic information and is composed of nucleotides. Cell division includes mitosis and meiosis. Evolution occurs through natural selection and genetic variation.',
+
+    'mathematics': 'Mathematics is the study of numbers, shapes, patterns, and relationships. Algebra involves solving equations and working with variables. Geometry deals with shapes, angles, and spatial relationships. Calculus studies rates of change and areas under curves. Statistics involves collecting, analyzing, and interpreting data. Probability measures the likelihood of events occurring. Prime numbers are integers greater than 1 divisible only by 1 and themselves.',
+
+    'physics': 'Physics is the fundamental science that studies matter, energy, and their interactions. Force equals mass times acceleration according to Newton\'s second law. Energy cannot be created or destroyed, only transformed from one form to another. Light travels at approximately 300,000 kilometers per second in a vacuum. Gravity is the force that attracts objects toward each other. Electric current is the flow of electric charge through a conductor.',
+
+    'chemistry': 'Chemistry is the science that studies the composition, structure, and properties of matter. Atoms are the basic building blocks of matter and consist of protons, neutrons, and electrons. Chemical bonds form when atoms share or transfer electrons. The periodic table organizes elements by atomic number and properties. Chemical reactions involve breaking and forming bonds between atoms. pH measures the acidity or alkalinity of solutions.',
+
+    'history': 'History is the study of past events and their impact on human civilization. Ancient civilizations like Egypt, Greece, and Rome laid foundations for modern society. The Renaissance marked a period of cultural and scientific rebirth in Europe. The Industrial Revolution transformed manufacturing and transportation. World War I and II were major global conflicts that shaped the 20th century. Democracy developed as a system of government by the people.',
+
+    'english': 'English language and literature encompass grammar, vocabulary, composition, and literary analysis. Nouns are words that name people, places, things, or ideas. Verbs express action or state of being. Adjectives describe or modify nouns. Literary devices include metaphor, simile, and symbolism. Shakespeare wrote numerous plays and sonnets that remain influential today. Poetry uses rhythm, rhyme, and imagery to express ideas and emotions.',
+
+    'geography': 'Geography is the study of Earth\'s physical features, climate, and human populations. Continents are large landmasses including Asia, Africa, North America, South America, Antarctica, Europe, and Australia. The water cycle involves evaporation, condensation, and precipitation. Climate is determined by factors such as latitude, altitude, and proximity to water bodies. Natural resources include renewable and non-renewable materials used by humans.',
+
+    'computer science': 'Computer science involves the study of algorithms, programming, and computational systems. Programming languages include Python, Java, JavaScript, and C++. Algorithms are step-by-step procedures for solving problems. Data structures organize and store information efficiently. Software engineering involves designing and building computer applications. Artificial intelligence enables computers to perform tasks that typically require human intelligence.',
+  };
+
+  // Check for topic matches and return appropriate content
+  for (const [key, content] of Object.entries(topicContents)) {
+    if (topicLower.includes(key) || key.includes(topicLower)) {
+      return content;
+    }
+  }
+
+  // General fallback content
+  return `${topic} is an important subject of study that involves understanding key concepts, principles, and applications. Students should develop critical thinking skills and analytical abilities in this area. Important topics include fundamental theories, practical applications, and current developments in the field. Understanding the historical context and future trends can provide valuable insights. Regular practice and application of concepts helps in mastering the subject matter.`;
+}
+
 // GET /api/ai-chat/conversation-context - Get conversation context and available options
 // Description: Get current conversation context and available actions for the AI assistant
 // Endpoint: GET /api/ai-chat/conversation-context
