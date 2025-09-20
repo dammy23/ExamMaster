@@ -63,8 +63,15 @@ connectDB().then(() => {
   app.use('/api/settings', require('./routes/settingRoutes.js'));
   app.use('/api/ai-platforms', require('./routes/aiPlatformRoutes.js'));
   app.use('/api/ai-chat', require('./routes/aiChatRoutes.js'));
+  app.use('/api/upload', require('./routes/uploadRoutes.js'));
+
+  // Serve static files
   const publicPath = path.join(__dirname, "public");
   app.use(express.static(publicPath));
+
+  // Serve uploaded files (images)
+  const uploadsPath = path.join(__dirname, "uploads");
+  app.use('/uploads', express.static(uploadsPath));
 
   // Catch-all to return React's index.html for non-API routes
   app.get("*", (req, res) => {

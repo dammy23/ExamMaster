@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useRef } from "react"
 import ReactQuill from "react-quill"
 import "react-quill/dist/quill.snow.css"
 import { cn } from "@/lib/utils"
+import { uploadImage } from "@/api/upload"
 
 interface RichTextEditorProps {
   value?: string
@@ -30,18 +31,50 @@ const RichTextEditor = forwardRef<ReactQuill, RichTextEditorProps>(
   }, ref) => {
     const quillRef = useRef<ReactQuill>(null)
 
+    // Image upload handler
+    const imageHandler = () => {
+      const input = document.createElement('input')
+      input.setAttribute('type', 'file')
+      input.setAttribute('accept', 'image/*')
+      input.click()
+
+      input.onchange = async () => {
+        const file = input.files?.[0]
+        if (!file) return
+
+        try {
+          console.log('Starting image upload:', file.name)
+          const response = await uploadImage(file)
+          const quillEditor = quillRef.current?.getEditor()
+          if (quillEditor && response.imageUrl) {
+            const range = quillEditor.getSelection()
+            quillEditor.insertEmbed(range?.index || 0, 'image', response.imageUrl)
+            console.log('Image inserted successfully:', response.imageUrl)
+          }
+        } catch (error: any) {
+          console.error('Error uploading image:', error)
+          alert('Failed to upload image: ' + error.message)
+        }
+      }
+    }
+
     const defaultModules = {
-      toolbar: [
-        [{ 'header': [1, 2, 3, false] }],
-        ['bold', 'italic', 'underline', 'strike'],
-        ['blockquote', 'code-block'],
-        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-        [{ 'script': 'sub'}, { 'script': 'super' }],
-        [{ 'color': [] }, { 'background': [] }],
-        [{ 'align': [] }],
-        ['link'],
-        ['clean']
-      ],
+      toolbar: {
+        container: [
+          [{ 'header': [1, 2, 3, false] }],
+          ['bold', 'italic', 'underline', 'strike'],
+          ['blockquote', 'code-block'],
+          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+          [{ 'script': 'sub'}, { 'script': 'super' }],
+          [{ 'color': [] }, { 'background': [] }],
+          [{ 'align': [] }],
+          ['link', 'image'],
+          ['clean']
+        ],
+        handlers: {
+          image: imageHandler
+        }
+      },
     }
 
     const defaultFormats = [
@@ -52,7 +85,7 @@ const RichTextEditor = forwardRef<ReactQuill, RichTextEditorProps>(
       'script',
       'color', 'background',
       'align',
-      'link'
+      'link', 'image'
     ]
 
     const modules = customModules || defaultModules
@@ -68,7 +101,7 @@ const RichTextEditor = forwardRef<ReactQuill, RichTextEditorProps>(
 
     return (
       <div className={cn("rich-text-editor", className)}>
-        <style jsx>{`
+        <style>{`
           .rich-text-editor .ql-editor {
             min-height: ${height};
             font-size: 14px;
