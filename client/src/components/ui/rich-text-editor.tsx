@@ -2,7 +2,6 @@ import { forwardRef, useEffect, useRef, useMemo, useCallback } from "react"
 import ReactQuill, { Quill } from "react-quill"
 import "react-quill/dist/quill.snow.css"
 import { cn } from "@/lib/utils"
-import { uploadImage } from "@/api/upload"
 
 // Register video blot for Quill
 const BlockEmbed = Quill.import('blots/block/embed')
@@ -57,7 +56,7 @@ const RichTextEditor = forwardRef<ReactQuill, RichTextEditorProps>(
     const quillRef = useRef<ReactQuill>(null)
     const containerRef = useRef<HTMLDivElement>(null)
 
-    // Stable image handler using useCallback
+    // Convert file to base64 and insert directly
     const imageHandler = useCallback(() => {
       const input = document.createElement('input')
       input.setAttribute('type', 'file')
@@ -68,19 +67,45 @@ const RichTextEditor = forwardRef<ReactQuill, RichTextEditorProps>(
         const file = input.files?.[0]
         if (!file) return
 
+        // Check file size (limit to 5MB)
+        const maxSize = 5 * 1024 * 1024 // 5MB in bytes
+        if (file.size > maxSize) {
+          alert('Image size must be less than 5MB. Please choose a smaller image.')
+          return
+        }
+
+        // Check file type
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+        if (!allowedTypes.includes(file.type)) {
+          alert('Please select a valid image file (JPEG, PNG, GIF, or WebP).')
+          return
+        }
+
         try {
-          console.log('Starting image upload:', file.name)
-          const response = await uploadImage(file)
-          const quillEditor = quillRef.current?.getEditor()
-          if (quillEditor && response.imageUrl) {
-            const range = quillEditor.getSelection(true)
-            quillEditor.insertEmbed(range?.index || 0, 'image', response.imageUrl)
-            quillEditor.setSelection((range?.index || 0) + 1, 0)
-            console.log('Image inserted successfully:', response.imageUrl)
+          console.log('Converting image to base64:', file.name, 'Size:', file.size)
+
+          // Convert file to base64
+          const reader = new FileReader()
+          reader.onload = () => {
+            const base64String = reader.result as string
+            const quillEditor = quillRef.current?.getEditor()
+            if (quillEditor && base64String) {
+              const range = quillEditor.getSelection(true)
+              quillEditor.insertEmbed(range?.index || 0, 'image', base64String)
+              quillEditor.setSelection((range?.index || 0) + 1, 0)
+              console.log('Base64 image inserted successfully')
+            }
           }
+
+          reader.onerror = () => {
+            console.error('Error reading file')
+            alert('Failed to read image file. Please try again.')
+          }
+
+          reader.readAsDataURL(file)
         } catch (error: any) {
-          console.error('Error uploading image:', error)
-          alert('Failed to upload image: ' + error.message)
+          console.error('Error converting image to base64:', error)
+          alert('Failed to process image: ' + error.message)
         }
       }
     }, [])
