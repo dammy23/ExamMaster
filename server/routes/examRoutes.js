@@ -87,12 +87,18 @@ router.get('/:id', requireUser, async (req, res) => {
 });
 
 // Create new exam
+// Description: Create a new exam
+// Endpoint: POST /api/exams
+// Request: { exam data including description and instructions with potential base64 images }
+// Response: { success: boolean, exam: Exam }
 router.post('/', requireUser, async (req, res) => {
   try {
-    console.log(`Creating new exam for user: ${req.user.email}`);
+    console.log(`POST /api/exams - Creating new exam for user: ${req.user.email}`);
+    console.log(`Request body size: ${JSON.stringify(req.body).length} characters`);
 
     // Only admin users can create exams
     if (req.user.role !== 'admin') {
+      console.log(`Access denied - User ${req.user.email} is not admin`);
       return res.status(403).json({
         success: false,
         error: 'Only admin users can create exams'
@@ -100,15 +106,25 @@ router.post('/', requireUser, async (req, res) => {
     }
 
     const examData = req.body;
+    console.log(`Exam data received: title="${examData.title}", duration=${examData.duration}`);
+
+    if (examData.description && examData.description.length > 1000) {
+      console.log(`Description contains ${examData.description.length} characters (likely has base64 images)`);
+    }
+    if (examData.instructions && examData.instructions.length > 1000) {
+      console.log(`Instructions contains ${examData.instructions.length} characters (likely has base64 images)`);
+    }
+
     const exam = await ExamService.create(examData, req.user._id);
 
-    console.log(`Exam created successfully: ${exam.title} by user: ${req.user.email}`);
+    console.log(`Exam created successfully: ${exam.title} (ID: ${exam._id}) by user: ${req.user.email}`);
     return res.status(201).json({
       success: true,
       exam: exam
     });
   } catch (error) {
-    console.error(`Error creating exam for user ${req.user.email}:`, error.message);
+    console.error(`Error creating exam for user ${req.user.email}:`, error);
+    console.error(`Error stack:`, error.stack);
 
     if (error.message.includes('required') || error.message.includes('validation') ||
         error.message.includes('exceed') || error.message.includes('must be')) {

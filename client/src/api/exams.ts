@@ -50,10 +50,22 @@ export const getExams = async () => {
 // Response: { success: boolean, exam: Exam }
 export const createExam = async (examData: Partial<Exam>) => {
   try {
+    console.log('Creating exam with data:', examData);
     const response = await api.post('/api/exams', examData);
+    console.log('Exam creation response:', response.data);
     return response.data;
   } catch (error: any) {
-    throw new Error(error?.response?.data?.error || error.message);
+    console.error('Error creating exam:', error);
+    console.error('Error response:', error?.response);
+    console.error('Error response data:', error?.response?.data);
+    console.error('Error response status:', error?.response?.status);
+
+    // If we get HTML instead of JSON, it's likely a server error
+    if (error?.response?.data && typeof error.response.data === 'string' && error.response.data.includes('<')) {
+      throw new Error('Server error occurred. Please check server logs and try again.');
+    }
+
+    throw new Error(error?.response?.data?.error || error?.response?.data?.message || error.message);
   }
 };
 

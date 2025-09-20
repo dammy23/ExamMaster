@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useRef, useMemo, useCallback } from "react"
+import React, { forwardRef, useEffect, useRef, useMemo, useCallback } from "react"
 import ReactQuill, { Quill } from "react-quill"
 import "react-quill/dist/quill.snow.css"
 import { cn } from "@/lib/utils"
@@ -331,20 +331,18 @@ const RichTextEditor = forwardRef<ReactQuill, RichTextEditorProps>(
           }
         `}</style>
 
-        <div suppressHydrationWarning>
-          <ReactQuill
-            ref={quillRef}
-            theme={theme}
-            value={value}
-            onChange={handleChange}
-            readOnly={readOnly}
-            placeholder={placeholder}
-            modules={modules}
-            formats={formats}
-            preserveWhitespace
-            {...props}
-          />
-        </div>
+        <ReactQuill
+          ref={quillRef}
+          theme={theme}
+          value={value}
+          onChange={handleChange}
+          readOnly={readOnly}
+          placeholder={placeholder}
+          modules={modules}
+          formats={formats}
+          preserveWhitespace
+          {...props}
+        />
       </div>
     )
   }
