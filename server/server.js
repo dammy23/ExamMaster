@@ -16,6 +16,7 @@ const mongoose = require("mongoose");
 const express = require("express");
 const session = require("express-session");
 const MongoStore = require('connect-mongo');
+const compression = require("compression");
 const basicRoutes = require("./routes/index");
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
@@ -39,6 +40,11 @@ connectDB().then(() => {
 
   // Middleware
   app.use(cors());
+  // Enable gzip compression to reduce payload sizes
+  app.use(compression({
+    level: 6, // Good balance between compression ratio and speed
+    threshold: 1024, // Only compress responses > 1KB
+  }));
   // Increase payload limits to handle base64 encoded images
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));

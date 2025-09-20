@@ -11,7 +11,7 @@ const questionSchema = new mongoose.Schema({
     required: true,
     trim: true,
     minlength: 10,
-    maxlength: 5000 // Increased to support HTML content
+    maxlength: [20000000, 'Description cannot exceed 20000000 characters'] // Increased to support HTML content
   },
   options: [{
     type: String,
@@ -24,7 +24,8 @@ const questionSchema = new mongoose.Schema({
   explanation: {
     type: String,
     trim: true,
-    maxlength: 3000 // Increased to support HTML content
+    maxlength: [20000000, 'Description cannot exceed 20000000 characters'] // Increased to support HTML content
+ 
   },
   difficulty: {
     type: String,

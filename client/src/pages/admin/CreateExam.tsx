@@ -110,6 +110,14 @@ export function CreateExam() {
 
   const negativeMarking = watch("negativeMarking")
 
+  // Helper function to estimate payload size
+  const estimatePayloadSize = (data: any) => {
+    const jsonString = JSON.stringify(data)
+    const sizeInBytes = new Blob([jsonString]).size
+    const sizeInMB = sizeInBytes / (1024 * 1024)
+    return { sizeInBytes, sizeInMB }
+  }
+
   const onSubmit = async (data: ExamFormData) => {
     setLoading(true)
     try {
@@ -132,6 +140,24 @@ export function CreateExam() {
       }
       
       console.log('Converted exam data:', examData)
+
+      // Check payload size before submission
+      const { sizeInMB } = estimatePayloadSize(examData)
+      console.log(`Estimated payload size: ${sizeInMB.toFixed(2)} MB`)
+
+      // Warn if payload is large (approaching 10MB limit that many reverse proxies have)
+      if (sizeInMB > 8) {
+        const confirmed = confirm(
+          `The exam data is quite large (${sizeInMB.toFixed(2)} MB) due to embedded images. ` +
+          'This might cause upload issues. Do you want to continue?\n\n' +
+          'Tip: Consider reducing image sizes or removing some images to reduce the payload size.'
+        )
+        if (!confirmed) {
+          setLoading(false)
+          return
+        }
+      }
+
       const response = await createExam(examData)
 
       toast({

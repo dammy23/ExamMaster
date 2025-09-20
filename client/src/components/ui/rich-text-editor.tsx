@@ -72,10 +72,10 @@ const RichTextEditor = forwardRef<ReactQuill, RichTextEditorProps>(
         const file = input.files?.[0]
         if (!file) return
 
-        // Check file size (limit to 5MB)
-        const maxSize = 5 * 1024 * 1024 // 5MB in bytes
+        // Check file size (limit to 1MB to prevent large payloads)
+        const maxSize = 1 * 1024 * 1024 // 1MB in bytes
         if (file.size > maxSize) {
-          alert('Image size must be less than 5MB. Please choose a smaller image.')
+          alert('Image size must be less than 1MB. Please choose a smaller image or compress it first.')
           return
         }
 

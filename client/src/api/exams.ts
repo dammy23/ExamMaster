@@ -60,8 +60,25 @@ export const createExam = async (examData: Partial<Exam>) => {
     console.error('Error response data:', error?.response?.data);
     console.error('Error response status:', error?.response?.status);
 
-    // If we get HTML instead of JSON, it's likely a server error
+    // Handle 413 Request Entity Too Large error specifically
+    if (error?.response?.status === 413) {
+      throw new Error(
+        'The exam data is too large to upload (exceeds server limits). ' +
+        'This is usually caused by large images in the description or instructions. ' +
+        'Please reduce image sizes or remove some images and try again.'
+      );
+    }
+
+    // If we get HTML instead of JSON, it's likely a server error (like 413 from reverse proxy)
     if (error?.response?.data && typeof error.response.data === 'string' && error.response.data.includes('<')) {
+      // Check if it's specifically a 413 error based on HTML content
+      if (error.response.data.includes('413') || error.response.data.includes('Request Entity Too Large')) {
+        throw new Error(
+          'The exam data is too large to upload (exceeds server limits). ' +
+          'This is usually caused by large images in the description or instructions. ' +
+          'Please reduce image sizes or remove some images and try again.'
+        );
+      }
       throw new Error('Server error occurred. Please check server logs and try again.');
     }
 

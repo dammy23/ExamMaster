@@ -11,7 +11,7 @@ const examSchema = new mongoose.Schema({
   description: {
     type: String,
     trim: true,
-    maxlength: [5000, 'Description cannot exceed 5000 characters'] // Increased to support HTML content
+    maxlength: [20000000, 'Description cannot exceed 20000000 characters'] // Increased to support HTML content
   },
   subject: {
     type: mongoose.Schema.Types.ObjectId,
@@ -55,8 +55,8 @@ const examSchema = new mongoose.Schema({
   instructions: {
     type: String,
     trim: true,
-    maxlength: [10000, 'Instructions cannot exceed 10000 characters'] // Increased to support HTML content
-  },
+    maxlength: [20000000, 'Description cannot exceed 20000000 characters'] // Increased to support HTML content
+ },
   allowReview: {
     type: Boolean,
     default: true
