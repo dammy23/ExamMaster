@@ -146,11 +146,11 @@ export function AIChat() {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
-      // Check file size (5MB limit)
-      if (file.size > 5 * 1024 * 1024) {
+      // Check file size (2MB limit)
+      if (file.size > 2 * 1024 * 1024) {
         toast({
           title: "File too large",
-          description: "Please select a file smaller than 5MB",
+          description: "Please select a file smaller than 2MB",
           variant: "destructive"
         })
         return
