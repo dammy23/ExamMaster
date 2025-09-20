@@ -128,11 +128,11 @@ const aiAgentSchema = new mongoose.Schema({
 });
 
 // Indexes for better performance
-aiModelSchema.index({ modelId: 1 });
+// Index for modelId already created by unique: true
 aiModelSchema.index({ provider: 1 });
 aiModelSchema.index({ isActive: 1, isDeleted: 1 });
 
-aiAgentSchema.index({ agentId: 1 });
+// Index for agentId already created by unique: true
 aiAgentSchema.index({ category: 1 });
 aiAgentSchema.index({ isActive: 1, isDeleted: 1 });
 aiAgentSchema.index({ priority: -1 });

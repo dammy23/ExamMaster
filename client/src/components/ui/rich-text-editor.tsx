@@ -30,6 +30,7 @@ const RichTextEditor = forwardRef<ReactQuill, RichTextEditorProps>(
     ...props
   }, ref) => {
     const quillRef = useRef<ReactQuill>(null)
+    const editorRef = useRef<HTMLDivElement>(null)
 
     // Image upload handler
     const imageHandler = () => {
@@ -92,15 +93,17 @@ const RichTextEditor = forwardRef<ReactQuill, RichTextEditorProps>(
     const formats = customFormats || defaultFormats
 
     useEffect(() => {
-      if (ref && typeof ref === 'function') {
-        ref(quillRef.current)
-      } else if (ref && quillRef.current) {
-        ref.current = quillRef.current
+      if (ref) {
+        if (typeof ref === 'function') {
+          ref(quillRef.current)
+        } else {
+          ref.current = quillRef.current
+        }
       }
     }, [ref])
 
     return (
-      <div className={cn("rich-text-editor", className)}>
+      <div ref={editorRef} className={cn("rich-text-editor", className)}>
         <style>{`
           .rich-text-editor .ql-editor {
             min-height: ${height};

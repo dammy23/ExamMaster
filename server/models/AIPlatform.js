@@ -110,7 +110,7 @@ const aiPlatformSchema = new mongoose.Schema({
 });
 
 // Indexes for better performance
-aiPlatformSchema.index({ name: 1 });
+// Index for name already created by unique: true
 aiPlatformSchema.index({ isActive: 1, isDeleted: 1 });
 aiPlatformSchema.index({ isDefault: 1 });
 

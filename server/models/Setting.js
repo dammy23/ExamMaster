@@ -6,8 +6,7 @@ const settingSchema = new mongoose.Schema({
     required: [true, 'Setting name is required'],
     unique: true,
     trim: true,
-    maxlength: [100, 'Setting name cannot exceed 100 characters'],
-    index: true
+    maxlength: [100, 'Setting name cannot exceed 100 characters']
   },
   value: {
     type: String,
@@ -24,8 +23,7 @@ const settingSchema = new mongoose.Schema({
   versionKey: false
 });
 
-// Index for efficient querying
-settingSchema.index({ name: 1 });
+// Index for efficient querying (name already indexed via unique: true)
 
 const Setting = mongoose.model('Setting', settingSchema);
 
