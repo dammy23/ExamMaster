@@ -317,8 +317,8 @@ export function Reports() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {examReports.map((report) => (
-                    <TableRow key={report.examId}>
+                  {examReports.map((report, index) => (
+                    <TableRow key={`exam-report-${report.examId}-${index}`}>
                       <TableCell className="font-medium">{report.examTitle}</TableCell>
                       <TableCell>{report.totalStudents}</TableCell>
                       <TableCell>{report.completedAttempts}</TableCell>
@@ -366,8 +366,8 @@ export function Reports() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {studentPerformances.map((performance) => (
-                    <TableRow key={performance.studentId}>
+                  {studentPerformances.map((performance, index) => (
+                    <TableRow key={`student-performance-${performance.studentId}-${index}`}>
                       <TableCell className="font-medium">{performance.studentName}</TableCell>
                       <TableCell>{performance.totalExams}</TableCell>
                       <TableCell>{performance.averageScore.toFixed(1)}%</TableCell>
@@ -377,8 +377,8 @@ export function Reports() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          {performance.strengths.slice(0, 2).map((strength, index) => (
-                            <Badge key={index} variant="secondary" className="text-xs">
+                          {performance.strengths.slice(0, 2).map((strength, strengthIndex) => (
+                            <Badge key={`strength-${index}-${strengthIndex}`} variant="secondary" className="text-xs">
                               {strength}
                             </Badge>
                           ))}
@@ -386,8 +386,8 @@ export function Reports() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          {performance.weaknesses.slice(0, 2).map((weakness, index) => (
-                            <Badge key={index} variant="outline" className="text-xs">
+                          {performance.weaknesses.slice(0, 2).map((weakness, weaknessIndex) => (
+                            <Badge key={`weakness-${index}-${weaknessIndex}`} variant="outline" className="text-xs">
                               {weakness}
                             </Badge>
                           ))}
@@ -427,8 +427,8 @@ export function Reports() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {questionAnalysis.map((analysis) => (
-                    <TableRow key={analysis.questionId}>
+                  {questionAnalysis.map((analysis, index) => (
+                    <TableRow key={`question-analysis-${analysis.questionId}-${index}`}>
                       <TableCell className="max-w-md">
                         <div className="truncate font-medium">
                           {analysis.question}
@@ -438,9 +438,9 @@ export function Reports() {
                       <TableCell>{analysis.correctAnswers}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Progress 
-                            value={(analysis.correctAnswers / analysis.totalAttempts) * 100} 
-                            className="w-16 h-2" 
+                          <Progress
+                            value={(analysis.correctAnswers / analysis.totalAttempts) * 100}
+                            className="w-16 h-2"
                           />
                           <span className="text-sm">
                             {((analysis.correctAnswers / analysis.totalAttempts) * 100).toFixed(1)}%
@@ -552,7 +552,7 @@ export function Reports() {
                 </TableHeader>
                 <TableBody>
                   {examStudentReport.studentScores.map((student, index) => (
-                    <TableRow key={student.studentId}>
+                    <TableRow key={`student-score-${student.studentId}-${index}`}>
                       <TableCell className="font-medium">{student.studentName}</TableCell>
                       <TableCell className="text-muted-foreground">{student.studentEmail}</TableCell>
                       <TableCell className="font-medium">{student.score}</TableCell>
@@ -726,7 +726,7 @@ export function Reports() {
                   </TableHeader>
                   <TableBody>
                     {performanceAnalysis.questionAnalysis.map((question, index) => (
-                      <TableRow key={question.questionId}>
+                      <TableRow key={`performance-question-${question.questionId}-${index}`}>
                         <TableCell className="max-w-md">
                           <div className="truncate font-medium">
                             {question.questionText}

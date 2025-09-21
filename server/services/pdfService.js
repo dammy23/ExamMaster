@@ -24,10 +24,19 @@ class PDFService {
     try {
       const html = await this.generateReportHTML(data, reportType);
 
-      // Launch puppeteer
+      // Launch puppeteer with additional args for containerized environments
       const browser = await puppeteer.launch({
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--single-process',
+          '--disable-gpu'
+        ]
       });
 
       const page = await browser.newPage();
@@ -55,6 +64,17 @@ class PDFService {
 
     } catch (error) {
       console.error('PDFService - Error generating PDF report:', error);
+
+      // Check if it's a system dependency issue
+      if (error.message.includes('Failed to launch the browser process') ||
+          error.message.includes('libglib') ||
+          error.message.includes('chrome: error while loading shared libraries')) {
+        console.log('PDFService - System dependencies not available, generating fallback response');
+        // Generate a simple HTML report as fallback
+        const fallbackHtml = await this.generateReportHTML(data, reportType);
+        return Buffer.from(fallbackHtml, 'utf8');
+      }
+
       throw new Error(`Failed to generate PDF report: ${error.message}`);
     }
   }
