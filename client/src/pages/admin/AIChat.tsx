@@ -27,6 +27,7 @@ import {
 } from "lucide-react"
 import { sendChatMessage, getChatHistory, getAIAgents, uploadChatFile, createQuestionsWithAI } from "@/api/aiChat"
 import { getActiveAIPlatforms } from "@/api/aiPlatform"
+import { AIChatQuestionAssignment } from "@/components/AIChatQuestionAssignment"
 
 interface ChatMessage {
   _id: string
@@ -38,6 +39,7 @@ interface ChatMessage {
   isUser?: boolean
   isBot?: boolean
   generatedQuestions?: any[]
+  showAssignmentFlow?: boolean
 }
 
 interface ChatPagination {
@@ -83,6 +85,7 @@ export function AIChat() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [pagination, setPagination] = useState<ChatPagination | null>(null)
   const [savingQuestions, setSavingQuestions] = useState<{ [key: string]: boolean }>({})
+  const [assigningQuestions, setAssigningQuestions] = useState<{ [key: string]: boolean }>({})
   const { toast } = useToast()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
@@ -613,37 +616,45 @@ export function AIChat() {
     }
   }
 
-  // Save generated questions to database
-  const handleSaveQuestions = async (messageId: string, questions: any[]) => {
+  // Start question assignment flow
+  const handleSaveQuestions = (messageId: string, questions: any[]) => {
     if (!questions || questions.length === 0) return
 
-    setSavingQuestions(prev => ({ ...prev, [messageId]: true }))
+    console.log('AI Chat - Starting question assignment flow for message:', messageId)
+    setAssigningQuestions(prev => ({ ...prev, [messageId]: true }))
 
-    try {
-      const result = await createQuestionsWithAI({ questions })
+    // Update the message to show assignment component
+    setMessages(prev => prev.map(msg =>
+      msg._id === messageId
+        ? { ...msg, showAssignmentFlow: true }
+        : msg
+    ))
+  }
 
-      toast({
-        title: "Questions Saved Successfully",
-        description: `${result.createdCount} questions have been saved to your question bank.`
-      })
+  // Handle assignment completion
+  const handleAssignmentComplete = (messageId: string) => {
+    console.log('AI Chat - Assignment completed for message:', messageId)
+    setAssigningQuestions(prev => ({ ...prev, [messageId]: false }))
 
-      // Update the message to mark questions as saved
-      setMessages(prev => prev.map(msg =>
-        msg._id === messageId
-          ? { ...msg, generatedQuestions: undefined } // Remove questions after saving
-          : msg
-      ))
+    // Remove questions and assignment flow from message
+    setMessages(prev => prev.map(msg =>
+      msg._id === messageId
+        ? { ...msg, generatedQuestions: undefined, showAssignmentFlow: false }
+        : msg
+    ))
+  }
 
-    } catch (error) {
-      console.error("Error saving questions:", error)
-      toast({
-        variant: "destructive",
-        title: "Error Saving Questions",
-        description: (error as any)?.message || "Failed to save questions to database"
-      })
-    } finally {
-      setSavingQuestions(prev => ({ ...prev, [messageId]: false }))
-    }
+  // Handle assignment cancellation
+  const handleAssignmentCancel = (messageId: string) => {
+    console.log('AI Chat - Assignment cancelled for message:', messageId)
+    setAssigningQuestions(prev => ({ ...prev, [messageId]: false }))
+
+    // Hide assignment flow but keep questions
+    setMessages(prev => prev.map(msg =>
+      msg._id === messageId
+        ? { ...msg, showAssignmentFlow: false }
+        : msg
+    ))
   }
 
   useEffect(() => {
@@ -1124,8 +1135,8 @@ export function AIChat() {
                               {new Date(message.timestamp).toLocaleTimeString()}
                             </p>
 
-                            {/* Save Questions Button - Show for bot messages with generated questions */}
-                            {message.isBot && message.generatedQuestions && message.generatedQuestions.length > 0 && (
+                            {/* Save Questions Button - Show for bot messages with generated questions (only if not in assignment flow) */}
+                            {message.isBot && message.generatedQuestions && message.generatedQuestions.length > 0 && !message.showAssignmentFlow && (
                               <div className="mt-3 pt-3 border-t border-border/50">
                                 <div className="flex items-center justify-between mb-2">
                                   <div className="flex items-center gap-2">
@@ -1139,15 +1150,11 @@ export function AIChat() {
                                   <Button
                                     size="sm"
                                     onClick={() => handleSaveQuestions(message._id, message.generatedQuestions!)}
-                                    disabled={savingQuestions[message._id]}
+                                    disabled={assigningQuestions[message._id]}
                                     className="flex items-center gap-1"
                                   >
-                                    {savingQuestions[message._id] ? (
-                                      <Loader2 className="h-3 w-3 animate-spin" />
-                                    ) : (
-                                      <Save className="h-3 w-3" />
-                                    )}
-                                    {savingQuestions[message._id] ? 'Saving...' : 'Save Questions'}
+                                    <Save className="h-3 w-3" />
+                                    Save Questions
                                   </Button>
                                   <Button
                                     size="sm"
@@ -1164,12 +1171,22 @@ export function AIChat() {
                                       URL.revokeObjectURL(url)
                                     }}
                                     className="flex items-center gap-1"
+                                    disabled={assigningQuestions[message._id]}
                                   >
                                     <Download className="h-3 w-3" />
                                     Download
                                   </Button>
                                 </div>
                               </div>
+                            )}
+
+                            {/* Question Assignment Flow */}
+                            {message.isBot && message.showAssignmentFlow && message.generatedQuestions && (
+                              <AIChatQuestionAssignment
+                                questions={message.generatedQuestions}
+                                onAssignmentComplete={() => handleAssignmentComplete(message._id)}
+                                onCancel={() => handleAssignmentCancel(message._id)}
+                              />
                             )}
                           </div>
                         </div>
@@ -1246,7 +1263,8 @@ export function AIChat() {
                     isLoading ||
                     !selectedPlatform ||
                     !selectedAgent ||
-                    !selectedPlatformInfo?.isConfigured
+                    !selectedPlatformInfo?.isConfigured ||
+                    Object.values(assigningQuestions).some(Boolean)
                   }
                   className="shrink-0"
                 >
@@ -1254,7 +1272,11 @@ export function AIChat() {
                 </Button>
               </div>
 
-              {platforms.length === 0 ? (
+              {Object.values(assigningQuestions).some(Boolean) ? (
+                <p className="text-xs text-blue-600 mt-2">
+                  Question assignment in progress. Chat is temporarily disabled.
+                </p>
+              ) : platforms.length === 0 ? (
                 <p className="text-xs text-muted-foreground mt-2">
                   No AI platforms are configured. Please configure AI platforms in Settings → AI Platforms to enable chat
                   functionality.
