@@ -28,6 +28,8 @@ import {
 import { sendChatMessage, getChatHistory, getAIAgents, uploadChatFile, createQuestionsWithAI } from "@/api/aiChat"
 import { getActiveAIPlatforms } from "@/api/aiPlatform"
 import { AIChatQuestionAssignment } from "@/components/AIChatQuestionAssignment"
+import { detectIntention, type DetectedIntent } from "@/utils/intentDetection"
+import { IntentConfirmationDialog, CreationDialogManager } from "@/components/IntentConfirmationDialog"
 
 interface ChatMessage {
   _id: string
@@ -86,6 +88,13 @@ export function AIChat() {
   const [pagination, setPagination] = useState<ChatPagination | null>(null)
   const [savingQuestions, setSavingQuestions] = useState<{ [key: string]: boolean }>({})
   const [assigningQuestions, setAssigningQuestions] = useState<{ [key: string]: boolean }>({})
+
+  // Intent detection and creation dialog state
+  const [detectedIntent, setDetectedIntent] = useState<DetectedIntent>(null)
+  const [pendingMessage, setPendingMessage] = useState<string>("")
+  const [showIntentConfirmation, setShowIntentConfirmation] = useState(false)
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
+
   const { toast } = useToast()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
@@ -657,6 +666,39 @@ export function AIChat() {
     ))
   }
 
+  // Intent detection and handling functions
+  const handleIntentConfirm = () => {
+    console.log('AI Chat - User confirmed intent:', detectedIntent)
+    setShowIntentConfirmation(false)
+    setShowCreateDialog(true)
+  }
+
+  const handleIntentCancel = () => {
+    console.log('AI Chat - User cancelled intent, proceeding with AI message')
+    setShowIntentConfirmation(false)
+    // Proceed with sending the original message to AI
+    proceedWithAIMessage(pendingMessage)
+  }
+
+  const handleCreationDialogClose = () => {
+    console.log('AI Chat - Creation dialog closed')
+    setShowCreateDialog(false)
+    setDetectedIntent(null)
+    setPendingMessage("")
+  }
+
+  const handleCreationSuccess = () => {
+    console.log('AI Chat - Creation completed successfully')
+    // Clear the message since user completed the intended action
+    setNewMessage("")
+  }
+
+  const proceedWithAIMessage = async (message: string) => {
+    console.log('AI Chat - Proceeding with AI message:', message)
+    // Call the actual AI message sending logic
+    await sendMessageToAI(message)
+  }
+
   useEffect(() => {
     scrollToBottom()
   }, [messages])
@@ -776,7 +818,26 @@ export function AIChat() {
     }
 
     const userMessage = newMessage.trim()
-    console.log('AI Chat - Sending message:', userMessage)
+
+    // Detect intention in the message
+    const intent = detectIntention(userMessage)
+    console.log('AI Chat - Intent detection result:', intent)
+
+    if (intent) {
+      // Store the message and show confirmation dialog
+      console.log('AI Chat - Intent detected, showing confirmation dialog')
+      setPendingMessage(userMessage)
+      setDetectedIntent(intent)
+      setShowIntentConfirmation(true)
+      return
+    }
+
+    // No intent detected, proceed with AI message
+    await sendMessageToAI(userMessage)
+  }
+
+  const sendMessageToAI = async (userMessage: string) => {
+    console.log('AI Chat - Sending message to AI:', userMessage)
     console.log('AI Chat - Selected platform:', selectedPlatform)
     console.log('AI Chat - Selected agent:', selectedAgent)
     console.log('AI Chat - Attached file:', attachedFile?.name)
@@ -829,7 +890,7 @@ export function AIChat() {
       }
 
       setMessages(prev => [...prev, botChatMessage])
-      
+
       // Clear attached file after sending
       if (attachedFile) {
         removeAttachedFile()
@@ -1299,6 +1360,24 @@ export function AIChat() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Intent Confirmation Dialog */}
+      <IntentConfirmationDialog
+        open={showIntentConfirmation}
+        intent={detectedIntent}
+        originalMessage={pendingMessage}
+        onConfirm={handleIntentConfirm}
+        onCancel={handleIntentCancel}
+        onClose={() => setShowIntentConfirmation(false)}
+      />
+
+      {/* Creation Dialog Manager */}
+      <CreationDialogManager
+        intent={detectedIntent}
+        showCreateDialog={showCreateDialog}
+        onDialogClose={handleCreationDialogClose}
+        onCreationSuccess={handleCreationSuccess}
+      />
     </div>
   )
 }
