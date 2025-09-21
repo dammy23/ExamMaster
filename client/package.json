@@ -42,6 +42,7 @@
     "@radix-ui/react-tooltip": "^1.1.4",
     "@types/papaparse": "^5.3.16",
     "axios": "^1.7.8",
+    "chartjs-node-canvas": "^5.0.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
