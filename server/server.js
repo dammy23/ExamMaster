@@ -71,6 +71,13 @@ connectDB().then(() => {
   app.use('/api/settings', require('./routes/settingRoutes.js'));
   app.use('/api/ai-platforms', require('./routes/aiPlatformRoutes.js'));
   app.use('/api/ai-chat', require('./routes/aiChatRoutes.js'));
+
+  // Legacy download route handler (redirect to reports download)
+  app.get('/api/downloads/:filename', (req, res) => {
+    console.log(`Legacy download route accessed: ${req.params.filename}, redirecting to reports download`);
+    res.redirect(`/api/reports/download/${req.params.filename}`);
+  });
+
   // Serve static files
   const publicPath = path.join(__dirname, "public");
   app.use(express.static(publicPath));

@@ -34,6 +34,78 @@ export interface QuestionAnalysis {
   averageTimeSpent: number;
 }
 
+export interface StudentScore {
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  score: number;
+  percentage: number;
+  timeSpent: number;
+  startTime: Date;
+  endTime: Date;
+  status: string;
+  tabSwitches: number;
+  attemptNumber: number;
+  isPassed: boolean;
+}
+
+export interface ExamStatistics {
+  totalStudents: number;
+  passedStudents: number;
+  failedStudents: number;
+  passRate: number;
+  averageScore: number;
+  highestScore: number;
+  lowestScore: number;
+  averageTimeSpent: number;
+}
+
+export interface ExamStudentReport {
+  exam: {
+    id: string;
+    title: string;
+    subject: string;
+    totalMarks: number;
+    passingMarks: number;
+    duration: number;
+  };
+  statistics: ExamStatistics;
+  studentScores: StudentScore[];
+}
+
+export interface PerformanceAnalysis {
+  examInfo: {
+    id: string;
+    title: string;
+    subject: string;
+    totalMarks: number;
+    passingMarks: number;
+    duration: number;
+    totalQuestions: number;
+  };
+  overallStats: {
+    totalAttempts: number;
+    averageScore: number;
+    highestScore: number;
+    lowestScore: number;
+    passRate: number;
+    averageTimeSpent: number;
+  };
+  scoreDistribution: Record<string, number>;
+  questionAnalysis: Array<{
+    questionId: string;
+    questionText: string;
+    type: string;
+    marks: number;
+    totalAttempts: number;
+    correctAnswers: number;
+    incorrectAnswers: number;
+    successRate: number;
+    difficultyRating: number;
+    averageTimeSpent: number;
+  }>;
+}
+
 // Description: Get exam reports
 // Endpoint: GET /api/reports/exams
 // Request: {}
@@ -74,6 +146,34 @@ export const getQuestionAnalysis = async (examId?: string) => {
     return response.data;
   } catch (error: any) {
     console.error('Get question analysis error:', error);
+    throw new Error(error?.response?.data?.error || error.message);
+  }
+};
+
+// Description: Get student scores for specific exam
+// Endpoint: GET /api/reports/exam/:examId/students
+// Request: { examId: string }
+// Response: ExamStudentReport
+export const getExamStudentScores = async (examId: string) => {
+  try {
+    const response = await api.get(`/api/reports/exam/${examId}/students`);
+    return response.data;
+  } catch (error: any) {
+    console.error('Get exam student scores error:', error);
+    throw new Error(error?.response?.data?.error || error.message);
+  }
+};
+
+// Description: Get performance analysis for specific exam
+// Endpoint: GET /api/reports/exam/:examId/analysis
+// Request: { examId: string }
+// Response: { analysis: PerformanceAnalysis }
+export const getExamPerformanceAnalysis = async (examId: string) => {
+  try {
+    const response = await api.get(`/api/reports/exam/${examId}/analysis`);
+    return response.data;
+  } catch (error: any) {
+    console.error('Get exam performance analysis error:', error);
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
