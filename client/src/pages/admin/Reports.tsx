@@ -38,6 +38,7 @@ import {
   getExamStudentScores,
   getExamPerformanceAnalysis,
   exportReport,
+  triggerFileDownload,
   type ExamReport,
   type StudentPerformance,
   type QuestionAnalysis,
@@ -144,8 +145,8 @@ export function Reports() {
         description: `Report exported successfully as ${format.toUpperCase()}`
       })
 
-      // In a real app, this would trigger a download
-      window.open(result.downloadUrl, '_blank')
+      // Trigger authenticated download using the secure URL
+      triggerFileDownload(result.downloadUrl, result.filename || `report.${format}`)
     } catch (error: any) {
       console.error('Error exporting report:', error)
       toast({

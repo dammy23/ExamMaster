@@ -5,8 +5,85 @@ const Exam = require('../models/Exam.js');
 const User = require('../models/User.js');
 const pdfService = require('../services/pdfService.js');
 const mongoose = require('mongoose');
+const { verifyDownloadToken, generateSecureDownloadUrl } = require('../utils/downloadTokens.js');
+const jwt = require('jsonwebtoken');
 
 const router = express.Router();
+
+// Middleware for download authentication - supports both Bearer token and query parameter token
+const requireDownloadAuth = async (req, res, next) => {
+  try {
+    console.log('Download auth middleware - checking authentication');
+
+    let user = null;
+    let authMethod = '';
+
+    // First, try Bearer token authentication
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.substring(7);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        user = await User.findById(decoded.userId).select('-password');
+        authMethod = 'bearer';
+        console.log('Download auth - Bearer token authentication successful');
+      } catch (bearerError) {
+        console.log('Download auth - Bearer token authentication failed:', bearerError.message);
+      }
+    }
+
+    // If Bearer token failed, try query parameter token
+    if (!user && req.query.token) {
+      try {
+        const decoded = verifyDownloadToken(req.query.token);
+        user = await User.findById(decoded.userId).select('-password');
+        authMethod = 'query';
+
+        // Additional validation: ensure the requested filename matches the token
+        const requestedFilename = req.params.filename;
+        if (decoded.filename !== requestedFilename) {
+          console.log(`Download auth - Filename mismatch: token=${decoded.filename}, requested=${requestedFilename}`);
+          return res.status(403).json({
+            success: false,
+            error: 'Token is not valid for this file'
+          });
+        }
+
+        console.log('Download auth - Query parameter token authentication successful');
+      } catch (queryError) {
+        console.log('Download auth - Query parameter token authentication failed:', queryError.message);
+      }
+    }
+
+    // If no valid authentication method worked
+    if (!user) {
+      console.log('Download auth - No valid authentication provided');
+      return res.status(401).json({
+        success: false,
+        error: 'Access token required'
+      });
+    }
+
+    // Only allow admin users
+    if (user.role !== 'admin') {
+      console.log(`Download auth - User ${user.email} is not admin, role: ${user.role}`);
+      return res.status(403).json({
+        success: false,
+        error: 'Only admin users can download reports'
+      });
+    }
+
+    console.log(`Download auth - Authentication successful via ${authMethod} for user: ${user.email}`);
+    req.user = user;
+    next();
+  } catch (error) {
+    console.error('Download auth middleware error:', error.message, error.stack);
+    return res.status(500).json({
+      success: false,
+      error: 'Authentication error'
+    });
+  }
+};
 
 // Get exam reports
 router.get('/exams', requireUser, async (req, res) => {
@@ -545,7 +622,7 @@ router.post('/export', requireUser, async (req, res) => {
           const filename = `report-${type}-${Date.now()}.pdf`;
           const filePath = await pdfService.savePDFToFile(pdfBuffer, filename);
 
-          const downloadUrl = `/api/reports/download/${filename}`;
+          const downloadUrl = generateSecureDownloadUrl(req.user._id.toString(), filename);
 
           console.log(`PDF report generated successfully for user: ${req.user.email}`);
           return res.status(200).json({
@@ -613,7 +690,7 @@ router.post('/export', requireUser, async (req, res) => {
 
       try {
         fs.writeFileSync(filePath, csvContent, 'utf8');
-        const downloadUrl = `/api/reports/download/${filename}`;
+        const downloadUrl = generateSecureDownloadUrl(req.user._id.toString(), filename);
 
         console.log(`CSV export completed for user: ${req.user.email}`);
         return res.status(200).json({
@@ -644,8 +721,11 @@ router.post('/export', requireUser, async (req, res) => {
   }
 });
 
-// Download generated report
-router.get('/download/:filename', requireUser, async (req, res) => {
+// Description: Download generated report file with secure authentication
+// Endpoint: GET /api/reports/download/:filename
+// Request: { filename: string, token?: string }
+// Response: File stream or { success: false, error: string }
+router.get('/download/:filename', requireDownloadAuth, async (req, res) => {
   try {
     const { filename } = req.params;
     console.log(`Downloading report file: ${filename} for user: ${req.user.email}`);

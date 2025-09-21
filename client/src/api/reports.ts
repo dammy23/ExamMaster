@@ -195,3 +195,56 @@ export const exportReport = async (type: string, examId?: string, format: 'pdf' 
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
+
+// Description: Download report file with authentication
+// Endpoint: GET /api/reports/download/:filename
+// Request: { filename: string, token?: string }
+// Response: File blob or error
+export const downloadReportFile = async (filename: string, token?: string) => {
+  try {
+    let url = `/api/reports/download/${filename}`;
+
+    // If token is provided, add it as query parameter for direct browser downloads
+    if (token) {
+      url += `?token=${token}`;
+    }
+
+    // For API calls with authentication headers, use the api instance
+    if (!token) {
+      const response = await api.get(url, {
+        responseType: 'blob'
+      });
+      return response.data;
+    } else {
+      // For direct browser downloads with token, just return the URL
+      return url;
+    }
+  } catch (error: any) {
+    console.error('Download report file error:', error);
+    throw new Error(error?.response?.data?.error || error.message);
+  }
+};
+
+// Description: Trigger file download in browser with authentication
+// This function handles the actual file download by creating a temporary link
+export const triggerFileDownload = (downloadUrl: string, filename: string) => {
+  try {
+    console.log(`Triggering download for file: ${filename}`);
+
+    // Create a temporary anchor element to trigger the download
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = filename;
+    link.target = '_blank';
+
+    // Append to body, click, and remove
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    console.log(`Download triggered successfully for file: ${filename}`);
+  } catch (error) {
+    console.error('Error triggering file download:', error);
+    throw new Error('Failed to download file');
+  }
+};
