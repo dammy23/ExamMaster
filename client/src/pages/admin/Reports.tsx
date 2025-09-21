@@ -163,8 +163,8 @@ export function Reports() {
     return <Badge className="bg-red-500">Needs Attention</Badge>
   }
 
-  const getDifficultyColor = (rating: number) => {
-    if (rating <= 2) return "text-green-600"
+  const getDifficultyColor = (rating: number | null | undefined) => {
+    if (!rating || rating <= 2) return "text-green-600"
     if (rating <= 3) return "text-yellow-600"
     return "text-red-600"
   }
@@ -448,8 +448,8 @@ export function Reports() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className={`font-medium ${getDifficultyColor(analysis.difficultyRating)}`}>
-                          {analysis.difficultyRating.toFixed(1)}/5
+                        <span className={`font-medium ${getDifficultyColor(analysis.difficultyRating || 0)}`}>
+                          {analysis.difficultyRating ? analysis.difficultyRating.toFixed(1) : 'N/A'}/5
                         </span>
                       </TableCell>
                       <TableCell>
@@ -750,8 +750,8 @@ export function Reports() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <span className={`font-medium ${getDifficultyColor(question.difficultyRating)}`}>
-                            {question.difficultyRating.toFixed(1)}/5
+                          <span className={`font-medium ${getDifficultyColor(question.difficultyRating || 0)}`}>
+                            {question.difficultyRating ? question.difficultyRating.toFixed(1) : 'N/A'}/5
                           </span>
                         </TableCell>
                         <TableCell>

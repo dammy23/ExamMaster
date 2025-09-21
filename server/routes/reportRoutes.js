@@ -376,7 +376,7 @@ router.get('/exam/:examId/analysis', requireUser, async (req, res) => {
         correctAnswers,
         incorrectAnswers: questionAttempts - correctAnswers,
         successRate: questionAttempts > 0 ? (correctAnswers / questionAttempts) * 100 : 0,
-        difficultyRating: 5 - ((correctAnswers / questionAttempts) * 4), // Inverse relationship
+        difficultyRating: Math.max(1, 5 - ((correctAnswers / questionAttempts) * 4)), // Inverse relationship, minimum 1
         averageTimeSpent: Math.floor(Math.random() * 120) + 30 // Mock time data
       };
     });
@@ -566,15 +566,68 @@ router.post('/export', requireUser, async (req, res) => {
           });
         }
       }
-    } else {
-      // CSV export (mock for now)
-      const downloadUrl = `/api/downloads/report-${Date.now()}.${format}`;
+    } else if (format === 'csv') {
+      // CSV export - create actual CSV content
+      let csvContent = '';
+      let filename = `report-${type}-${Date.now()}.csv`;
 
-      console.log(`CSV export initiated for user: ${req.user.email}`);
-      return res.status(200).json({
-        success: true,
-        downloadUrl
-      });
+      if (type === 'exam-students' && examId) {
+        // Get student scores for CSV
+        const exam = await Exam.findOne({ _id: examId, createdBy: req.user._id })
+          .populate('subject', 'name');
+
+        if (!exam) {
+          return res.status(404).json({
+            success: false,
+            error: 'Exam not found'
+          });
+        }
+
+        const attempts = await ExamAttempt.find({
+          examId: examId,
+          status: { $in: ['completed', 'submitted'] }
+        }).populate('studentId', 'name email');
+
+        // CSV Header
+        csvContent = 'Student Name,Email,Score,Percentage,Time Spent (min),Status,Tab Switches,Result\n';
+
+        // CSV Data
+        attempts.forEach(attempt => {
+          const score = attempt.score || 0;
+          const percentage = attempt.percentage || 0;
+          const timeSpent = Math.round((attempt.timeSpent || 0) / 60);
+          const isPassed = score >= exam.passingMarks;
+
+          csvContent += `"${attempt.studentId.name}","${attempt.studentId.email}",${score},${percentage.toFixed(1)},${timeSpent},"${attempt.status}",${attempt.tabSwitches || 0},"${isPassed ? 'Passed' : 'Failed'}"\n`;
+        });
+      } else {
+        // Default CSV for other report types
+        csvContent = 'Report Type,Generated Date,User\n';
+        csvContent += `"${type}","${new Date().toLocaleDateString()}","${req.user.email}"\n`;
+      }
+
+      // Save CSV to file
+      const fs = require('fs');
+      const path = require('path');
+      const filePath = path.join(__dirname, '../uploads/reports', filename);
+
+      try {
+        fs.writeFileSync(filePath, csvContent, 'utf8');
+        const downloadUrl = `/api/reports/download/${filename}`;
+
+        console.log(`CSV export completed for user: ${req.user.email}`);
+        return res.status(200).json({
+          success: true,
+          downloadUrl,
+          filename
+        });
+      } catch (csvError) {
+        console.error('Error creating CSV file:', csvError.message);
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to create CSV file'
+        });
+      }
     }
 
     console.log(`Report export initiated for user: ${req.user.email}`);
@@ -617,8 +670,16 @@ router.get('/download/:filename', requireUser, async (req, res) => {
       });
     }
 
-    // Set appropriate headers
-    res.setHeader('Content-Type', 'application/pdf');
+    // Set appropriate headers based on file type
+    const ext = path.extname(filename).toLowerCase();
+    if (ext === '.pdf') {
+      res.setHeader('Content-Type', 'application/pdf');
+    } else if (ext === '.csv') {
+      res.setHeader('Content-Type', 'text/csv');
+    } else {
+      res.setHeader('Content-Type', 'application/octet-stream');
+    }
+
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
     // Stream the file
