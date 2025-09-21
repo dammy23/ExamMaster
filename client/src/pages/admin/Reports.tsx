@@ -52,7 +52,7 @@ export function Reports() {
   const [studentPerformances, setStudentPerformances] = useState<StudentPerformance[]>([])
   const [questionAnalysis, setQuestionAnalysis] = useState<QuestionAnalysis[]>([])
   const [exams, setExams] = useState<Exam[]>([])
-  const [selectedExam, setSelectedExam] = useState<string>("")
+  const [selectedExam, setSelectedExam] = useState<string>("all")
   const [examStudentReport, setExamStudentReport] = useState<ExamStudentReport | null>(null)
   const [performanceAnalysis, setPerformanceAnalysis] = useState<PerformanceAnalysis | null>(null)
   const [loading, setLoading] = useState(true)
@@ -91,7 +91,7 @@ export function Reports() {
   }
 
   const fetchExamSpecificData = async (examId: string) => {
-    if (!examId) return
+    if (!examId || examId === "all") return
 
     setLoadingExamData(true)
     try {
@@ -116,15 +116,27 @@ export function Reports() {
   }
 
   useEffect(() => {
-    if (selectedExam) {
+    if (selectedExam && selectedExam !== "all") {
       fetchExamSpecificData(selectedExam)
+    } else {
+      // Clear exam-specific data when "all" is selected
+      setExamStudentReport(null)
+      setPerformanceAnalysis(null)
     }
   }, [selectedExam])
+
+  // Separate effect to reset report type to avoid dependency issues
+  useEffect(() => {
+    if (selectedExam === "all" && (selectedReport === "exam-students" || selectedReport === "exam-analysis")) {
+      setSelectedReport("exam-overview")
+    }
+  }, [selectedExam, selectedReport])
 
   const handleExportReport = async (format: 'pdf' | 'csv') => {
     try {
       console.log('Exporting report:', selectedReport, format, 'for exam:', selectedExam)
-      const response = await exportReport(selectedReport, selectedExam || undefined, format)
+      const examIdToUse = selectedExam === "all" ? undefined : selectedExam
+      const response = await exportReport(selectedReport, examIdToUse, format)
       const result = response as any
 
       toast({
@@ -180,7 +192,7 @@ export function Reports() {
               <SelectValue placeholder="Select an exam for detailed analysis" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Exams Overview</SelectItem>
+              <SelectItem value="all">All Exams Overview</SelectItem>
               {exams.map((exam) => (
                 <SelectItem key={exam._id} value={exam._id}>
                   {exam.title} ({exam.subject.name})
@@ -196,7 +208,7 @@ export function Reports() {
               <SelectItem value="exam-overview">Exam Overview</SelectItem>
               <SelectItem value="student-performance">Student Performance</SelectItem>
               <SelectItem value="question-analysis">Question Analysis</SelectItem>
-              {selectedExam && (
+              {selectedExam && selectedExam !== "all" && (
                 <>
                   <SelectItem value="exam-students">Student Scores</SelectItem>
                   <SelectItem value="exam-analysis">Performance Analysis</SelectItem>
@@ -456,7 +468,7 @@ export function Reports() {
       )}
 
       {/* Individual Student Scores for Selected Exam */}
-      {selectedReport === "exam-students" && selectedExam && examStudentReport && (
+      {selectedReport === "exam-students" && selectedExam && selectedExam !== "all" && examStudentReport && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -590,7 +602,7 @@ export function Reports() {
       )}
 
       {/* Performance Analysis for Selected Exam */}
-      {selectedReport === "exam-analysis" && selectedExam && performanceAnalysis && (
+      {selectedReport === "exam-analysis" && selectedExam && selectedExam !== "all" && performanceAnalysis && (
         <div className="space-y-6">
           <Card>
             <CardHeader>
