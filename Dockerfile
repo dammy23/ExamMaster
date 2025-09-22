@@ -5,18 +5,17 @@ FROM node:18-alpine AS frontend-builder
 
 WORKDIR /app/client
 
-# Copy both package.json AND package-lock.json for reproducible builds
+# Copy only package.json (no lockfile)
 COPY client/package.json ./
 
-# If the frontend actually needs canvas/chartjs-node-canvas (most do not), 
-# install native build deps here. 
-# Remove this line entirely if your frontend doesn't use server-side canvas.
+# If your frontend uses chartjs-node-canvas (rare), add native deps here.
+# Typically React/Vue just use browser Chart.js so you can skip this line.
 # RUN apk add --no-cache python3 make g++ cairo-dev pango-dev jpeg-dev giflib-dev
 
-# Install dependencies using lockfile
-RUN npm ci --no-audit --no-fund
+# Install frontend dependencies
+RUN npm install --no-audit --no-fund
 
-# Copy rest of frontend code and build
+# Copy and build the frontend
 COPY client/ .
 RUN npm run build
 
@@ -28,18 +27,18 @@ FROM node:18-alpine AS backend
 
 WORKDIR /app
 
-# ✅ Install native build deps for node-canvas (required by chartjs-node-canvas)
+# ✅ Install native build deps for node-canvas (needed by chartjs-node-canvas)
 RUN apk add --no-cache \
     python3 make g++ \
     cairo-dev pango-dev jpeg-dev giflib-dev
 
-# Copy backend package files AND lockfile
+# Copy backend package.json (no lockfile)
 COPY server/package.json ./server/
 
 WORKDIR /app/server
 
-# Install backend dependencies using lockfile
-RUN npm ci --no-audit --no-fund
+# Install backend dependencies
+RUN npm install --no-audit --no-fund
 
 # Copy backend source code
 COPY server/ ./
