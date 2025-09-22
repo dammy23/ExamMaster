@@ -6,7 +6,7 @@ FROM node:18-alpine AS frontend-builder
 WORKDIR /app/client
 
 # Copy both package.json AND package-lock.json for reproducible builds
-COPY client/package.json client/package-lock.json ./
+COPY client/package.json ./
 
 # If the frontend actually needs canvas/chartjs-node-canvas (most do not), 
 # install native build deps here. 
@@ -34,7 +34,7 @@ RUN apk add --no-cache \
     cairo-dev pango-dev jpeg-dev giflib-dev
 
 # Copy backend package files AND lockfile
-# COPY server/package.json server/package-lock.json ./server/
+COPY server/package.json ./server/
 
 WORKDIR /app/server
 
