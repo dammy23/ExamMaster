@@ -34,7 +34,7 @@ RUN apk add --no-cache \
     cairo-dev pango-dev jpeg-dev giflib-dev
 
 # Copy backend package files AND lockfile
-COPY server/package.json server/package-lock.json ./server/
+# COPY server/package.json server/package-lock.json ./server/
 
 WORKDIR /app/server
 
