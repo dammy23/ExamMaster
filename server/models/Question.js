@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const questionSchema = new mongoose.Schema({
   type: {
     type: String,
-    enum: ['multiple-choice', 'true-false', 'short-answer'],
+    enum: ['multiple-choice', 'true-false', 'theory'],
     required: true
   },
   question: {
@@ -76,9 +76,9 @@ questionSchema.pre('save', function(next) {
     }
   }
   
-  if (this.type === 'short-answer') {
+  if (this.type === 'theory') {
     if (!this.correctAnswers || this.correctAnswers.length === 0) {
-      return next(new Error('Short answer questions must have at least one sample answer'));
+      return next(new Error('Theory questions must have at least one sample answer'));
     }
   }
   

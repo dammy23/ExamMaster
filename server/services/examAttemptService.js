@@ -1,6 +1,7 @@
 const ExamAttempt = require('../models/ExamAttempt.js');
 const Exam = require('../models/Exam.js');
 const Question = require('../models/Question.js');
+const AIGradingService = require('./aiGradingService.js');
 const mongoose = require('mongoose');
 
 class ExamAttemptService {
@@ -206,8 +207,9 @@ class ExamAttemptService {
 
       // Calculate score based on actual questions
       let totalScore = 0;
+      let theoryQuestions = [];
       const exam = await Exam.findById(attempt.examId).populate('questions');
-      
+
       if (exam && exam.questions) {
         for (const question of exam.questions) {
           const studentAnswer = attempt.answers.get(question._id.toString());
@@ -226,31 +228,66 @@ class ExamAttemptService {
                   totalScore += question.marks;
                 }
               }
-            } else if (question.type === 'short-answer') {
-              // For short answers, award half marks for any attempt (manual review needed)
-              totalScore += question.marks * 0.5;
+            } else if (question.type === 'theory') {
+              // Collect theory questions for AI grading
+              theoryQuestions.push({
+                questionId: question._id.toString(),
+                question: question.question,
+                studentAnswer: studentAnswer,
+                sampleAnswer: question.correctAnswers[0] || '',
+                maxMarks: question.marks
+              });
+              console.log(`Theory question ${question._id} will be graded by AI`);
             }
           }
         }
       }
-      
+
+      // Grade theory questions using AI if any exist
+      let aiGradingResults = null;
+      if (theoryQuestions.length > 0) {
+        console.log(`ExamAttemptService: Starting AI grading for ${theoryQuestions.length} theory questions`);
+        try {
+          aiGradingResults = await AIGradingService.gradeMultipleTheoryQuestions(theoryQuestions);
+          if (aiGradingResults.success) {
+            totalScore += aiGradingResults.totalScore;
+            console.log(`ExamAttemptService: AI grading completed, added ${aiGradingResults.totalScore} marks from theory questions`);
+          }
+        } catch (error) {
+          console.error('ExamAttemptService: AI grading failed:', error.message);
+          // Continue without AI scores - they can be graded manually later
+        }
+      }
+
       const percentage = exam ? (totalScore / exam.totalMarks) * 100 : 0;
 
-      // Update attempt
+      // Update attempt with scores and AI grading results
       attempt.endTime = endTime;
       attempt.timeSpent = timeSpentMinutes;
       attempt.score = totalScore;
       attempt.percentage = Math.round(percentage * 100) / 100; // Round to 2 decimal places
       attempt.status = 'completed';
 
+      // Store AI grading results in attempt metadata if available
+      if (aiGradingResults && aiGradingResults.success) {
+        attempt.aiGradingResults = {
+          totalScore: aiGradingResults.totalScore,
+          totalMaxScore: aiGradingResults.totalMaxScore,
+          results: aiGradingResults.results,
+          gradedAt: aiGradingResults.gradedAt
+        };
+      }
+
       await attempt.save();
 
-      console.log('ExamAttemptService: Exam attempt submitted successfully with score:', totalScore);
-      
+      console.log('ExamAttemptService: Exam attempt submitted successfully with total score:', totalScore);
+
       return {
         success: true,
         score: totalScore,
-        percentage: attempt.percentage
+        percentage: attempt.percentage,
+        aiGradingCompleted: aiGradingResults ? aiGradingResults.success : false,
+        theoryQuestionsCount: theoryQuestions.length
       };
     } catch (error) {
       console.error('ExamAttemptService: Error submitting exam attempt:', error.message);
@@ -560,6 +597,104 @@ class ExamAttemptService {
   }
 
   // Helper method to calculate time ago
+  // Grade theory questions for a specific exam attempt manually
+  static async gradeTheoryQuestionsForAttempt(attemptId, adminId) {
+    try {
+      console.log('ExamAttemptService: Grading theory questions for attempt:', attemptId);
+
+      if (!mongoose.Types.ObjectId.isValid(attemptId)) {
+        throw new Error('Invalid attempt ID format');
+      }
+
+      // Get the exam attempt with populated exam and questions
+      const attempt = await ExamAttempt.findById(attemptId).populate({
+        path: 'examId',
+        populate: {
+          path: 'questions'
+        }
+      });
+
+      if (!attempt) {
+        throw new Error('Exam attempt not found');
+      }
+
+      // Validate that attempt is completed
+      if (attempt.status !== 'completed') {
+        throw new Error('Can only grade theory questions for completed exam attempts');
+      }
+
+      // Extract theory questions that need grading
+      let theoryQuestions = [];
+      if (attempt.examId && attempt.examId.questions) {
+        for (const question of attempt.examId.questions) {
+          if (question.type === 'theory') {
+            const studentAnswer = attempt.answers.get(question._id.toString());
+            if (studentAnswer) {
+              theoryQuestions.push({
+                questionId: question._id.toString(),
+                question: question.question,
+                studentAnswer: studentAnswer,
+                sampleAnswer: question.correctAnswers[0] || '',
+                maxMarks: question.marks
+              });
+            }
+          }
+        }
+      }
+
+      if (theoryQuestions.length === 0) {
+        throw new Error('No theory questions found in this exam attempt');
+      }
+
+      console.log(`ExamAttemptService: Found ${theoryQuestions.length} theory questions to grade`);
+
+      // Grade using AI service
+      const aiGradingResults = await AIGradingService.gradeMultipleTheoryQuestions(theoryQuestions);
+
+      if (!aiGradingResults.success) {
+        throw new Error('AI grading failed');
+      }
+
+      // Calculate new total score
+      let currentNonTheoryScore = attempt.score || 0;
+
+      // Subtract any existing theory scores if this is a re-grading
+      if (attempt.aiGradingResults && attempt.aiGradingResults.totalScore) {
+        currentNonTheoryScore -= attempt.aiGradingResults.totalScore;
+      }
+
+      const newTotalScore = currentNonTheoryScore + aiGradingResults.totalScore;
+      const newPercentage = attempt.examId ? (newTotalScore / attempt.examId.totalMarks) * 100 : 0;
+
+      // Update the attempt with new AI grading results
+      attempt.score = newTotalScore;
+      attempt.percentage = Math.round(newPercentage * 100) / 100;
+      attempt.aiGradingResults = {
+        totalScore: aiGradingResults.totalScore,
+        totalMaxScore: aiGradingResults.totalMaxScore,
+        results: aiGradingResults.results,
+        gradedAt: aiGradingResults.gradedAt
+      };
+
+      await attempt.save();
+
+      console.log(`ExamAttemptService: Theory questions graded successfully. New total score: ${newTotalScore}`);
+
+      return {
+        success: true,
+        aiGradingResults: aiGradingResults,
+        totalScore: newTotalScore,
+        updatedPercentage: attempt.percentage,
+        theoryQuestionsGraded: theoryQuestions.length
+      };
+
+    } catch (error) {
+      console.error('ExamAttemptService: Error grading theory questions:', error.message);
+      throw error;
+    }
+  }
+
+  // Helper method to format time ago
   static getTimeAgo(date) {
     const now = new Date();
     const diffInMs = now - new Date(date);

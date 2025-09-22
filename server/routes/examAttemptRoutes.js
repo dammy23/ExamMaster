@@ -1,5 +1,6 @@
 const express = require('express');
 const ExamAttemptService = require('../services/examAttemptService.js');
+const AIGradingService = require('../services/aiGradingService.js');
 const { requireUser } = require('./middleware/auth.js');
 const { videoUpload, generateSecureVideoUrl, validateVideoAccessToken, getVideoFileInfo } = require('../utils/videoHandler.js');
 const path = require('path');
@@ -498,6 +499,67 @@ router.get('/admin/recent-activity', requireUser, async (req, res) => {
     });
   } catch (error) {
     console.error(`Error getting recent activity for admin ${req.user.email}:`, error.message);
+
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Description: Grade theory questions for a specific exam attempt using AI
+// Endpoint: POST /api/exam-attempts/grade-theory/:attemptId
+// Request: { }
+// Response: { success: boolean, aiGradingResults: Object, totalScore: number, updatedPercentage: number }
+router.post('/grade-theory/:attemptId', requireUser, async (req, res) => {
+  try {
+    const { attemptId } = req.params;
+    console.log(`Manually triggering AI grading for attempt: ${attemptId} by user: ${req.user.email}`);
+
+    // Only allow admin users to manually trigger AI grading
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only admin users can manually trigger AI grading'
+      });
+    }
+
+    if (!attemptId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Attempt ID is required'
+      });
+    }
+
+    // Check if AI grading is available
+    const aiAvailable = await AIGradingService.isAIGradingAvailable();
+    if (!aiAvailable) {
+      return res.status(503).json({
+        success: false,
+        error: 'AI grading service is not available. Please configure an AI platform in settings.'
+      });
+    }
+
+    const result = await ExamAttemptService.gradeTheoryQuestionsForAttempt(attemptId, req.user._id);
+
+    console.log(`AI grading completed for attempt: ${attemptId}`);
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error(`Error grading theory questions for attempt ${req.params.attemptId}:`, error.message);
+
+    if (error.message === 'Exam attempt not found' || error.message === 'Invalid attempt ID format') {
+      return res.status(404).json({
+        success: false,
+        error: error.message
+      });
+    }
+
+    if (error.message.includes('not authorized') || error.message.includes('No theory questions')) {
+      return res.status(400).json({
+        success: false,
+        error: error.message
+      });
+    }
 
     return res.status(500).json({
       success: false,

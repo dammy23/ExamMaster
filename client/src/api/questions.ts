@@ -2,7 +2,7 @@ import api from './api';
 
 export interface Question {
   _id: string;
-  type: 'multiple-choice' | 'true-false' | 'short-answer';
+  type: 'multiple-choice' | 'true-false' | 'theory';
   question: string;
   options?: string[];
   correctAnswers: string[];

@@ -85,6 +85,49 @@ const examAttemptSchema = new mongoose.Schema({
       type: Number, // in bytes
       min: 0
     }
+  },
+  aiGradingResults: {
+    totalScore: {
+      type: Number,
+      min: 0
+    },
+    totalMaxScore: {
+      type: Number,
+      min: 0
+    },
+    results: [{
+      questionId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Question'
+      },
+      score: {
+        type: Number,
+        min: 0
+      },
+      maxScore: {
+        type: Number,
+        min: 0
+      },
+      feedback: {
+        type: String,
+        trim: true
+      },
+      aiPlatform: {
+        type: String,
+        trim: true
+      },
+      error: {
+        type: Boolean,
+        default: false
+      },
+      gradedAt: {
+        type: Date,
+        default: Date.now
+      }
+    }],
+    gradedAt: {
+      type: Date
+    }
   }
 }, {
   timestamps: true,

@@ -203,7 +203,7 @@ export function QuestionManagement() {
         'multiple-choice,"What is 2 + 2?",easy,1,"1","2","3","4","","","4","Basic arithmetic operation"',
         'multiple-choice,"Which are programming languages?",medium,2,"Python","Java","HTML","CSS","JavaScript","TypeScript","1,2,5,6","Programming languages vs markup/styling"',
         'true-false,"The Earth is round",easy,1,"","","","","","","true","Basic geography fact"',
-        'short-answer,"Name the capital of France",easy,2,"","","","","","","Paris","Basic geography knowledge"'
+        'theory,"Name the capital of France",easy,2,"","","","","","","Paris","Basic geography knowledge"'
       ].join('\n')
 
       // Create and download file
@@ -250,8 +250,8 @@ export function QuestionManagement() {
         return <Badge variant="default">MCQ</Badge>
       case 'true-false':
         return <Badge variant="secondary">T/F</Badge>
-      case 'short-answer':
-        return <Badge variant="outline">Short Answer</Badge>
+      case 'theory':
+        return <Badge variant="outline">Theory</Badge>
       default:
         return <Badge variant="secondary">{type}</Badge>
     }
@@ -527,8 +527,8 @@ function QuestionDetailsView({ question }: { question: Question }) {
         return <Badge variant="default">Multiple Choice</Badge>
       case 'true-false':
         return <Badge variant="secondary">True/False</Badge>
-      case 'short-answer':
-        return <Badge variant="outline">Short Answer</Badge>
+      case 'theory':
+        return <Badge variant="outline">Theory</Badge>
       default:
         return <Badge variant="secondary">{type}</Badge>
     }
@@ -594,7 +594,7 @@ function QuestionDetailsView({ question }: { question: Question }) {
         </div>
       )}
 
-      {question.type === 'short-answer' && (
+      {question.type === 'theory' && (
         <div>
           <Label className="text-sm font-medium text-muted-foreground">Sample Answer</Label>
           <div className="mt-1 p-3 bg-muted rounded-md">
@@ -626,7 +626,7 @@ function QuestionDetailsView({ question }: { question: Question }) {
 }
 
 function CreateQuestionForm({ onSuccess }: { onSuccess: () => void }) {
-  const [questionType, setQuestionType] = useState<'multiple-choice' | 'true-false' | 'short-answer'>('multiple-choice')
+  const [questionType, setQuestionType] = useState<'multiple-choice' | 'true-false' | 'theory'>('multiple-choice')
   const [options, setOptions] = useState(['', '', '', '', '', ''])
   const [correctAnswers, setCorrectAnswers] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
@@ -668,10 +668,10 @@ function CreateQuestionForm({ onSuccess }: { onSuccess: () => void }) {
       }
     }
 
-    if (questionType === 'short-answer') {
-      const shortAnswer = formData.get('shortAnswer') as string
-      if (!shortAnswer || shortAnswer.trim().length === 0) {
-        errors.shortAnswer = 'Please provide a sample answer'
+    if (questionType === 'theory') {
+      const theoryAnswer = formData.get('theoryAnswer') as string
+      if (!theoryAnswer || theoryAnswer.trim().length === 0) {
+        errors.theoryAnswer = 'Please provide a sample answer'
       }
     }
 
@@ -701,8 +701,8 @@ function CreateQuestionForm({ onSuccess }: { onSuccess: () => void }) {
       options: questionType === 'multiple-choice' ? options.filter(opt => opt.trim()) : undefined,
       correctAnswers: questionType === 'true-false'
         ? [formData.get('trueFalseAnswer') as string]
-        : questionType === 'short-answer'
-        ? [formData.get('shortAnswer') as string]
+        : questionType === 'theory'
+        ? [formData.get('theoryAnswer') as string]
         : correctAnswers
     }
 
@@ -751,7 +751,7 @@ function CreateQuestionForm({ onSuccess }: { onSuccess: () => void }) {
           <SelectContent>
             <SelectItem value="multiple-choice">Multiple Choice</SelectItem>
             <SelectItem value="true-false">True/False</SelectItem>
-            <SelectItem value="short-answer">Short Answer</SelectItem>
+            <SelectItem value="theory">Theory</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -851,19 +851,19 @@ function CreateQuestionForm({ onSuccess }: { onSuccess: () => void }) {
         </div>
       )}
 
-      {questionType === 'short-answer' && (
+      {questionType === 'theory' && (
         <div className="space-y-2">
-          <Label htmlFor="shortAnswer">Sample Answer *</Label>
+          <Label htmlFor="theoryAnswer">Sample Answer *</Label>
           <Textarea
-            id="shortAnswer"
-            name="shortAnswer"
+            id="theoryAnswer"
+            name="theoryAnswer"
             placeholder="Provide a sample answer..."
             required
             rows={2}
-            className={validationErrors.shortAnswer ? "border-red-500" : ""}
+            className={validationErrors.theoryAnswer ? "border-red-500" : ""}
           />
-          {validationErrors.shortAnswer && (
-            <p className="text-sm text-red-500">{validationErrors.shortAnswer}</p>
+          {validationErrors.theoryAnswer && (
+            <p className="text-sm text-red-500">{validationErrors.theoryAnswer}</p>
           )}
         </div>
       )}
@@ -921,8 +921,8 @@ function EditQuestionForm({ question, onSuccess }: { question: Question, onSucce
       options: questionType === 'multiple-choice' ? options.filter(opt => opt.trim()) : undefined,
       correctAnswers: questionType === 'true-false'
         ? [formData.get('trueFalseAnswer') as string]
-        : questionType === 'short-answer'
-        ? [formData.get('shortAnswer') as string]
+        : questionType === 'theory'
+        ? [formData.get('theoryAnswer') as string]
         : correctAnswers
     }
 
@@ -967,7 +967,7 @@ function EditQuestionForm({ question, onSuccess }: { question: Question, onSucce
           <SelectContent>
             <SelectItem value="multiple-choice">Multiple Choice</SelectItem>
             <SelectItem value="true-false">True/False</SelectItem>
-            <SelectItem value="short-answer">Short Answer</SelectItem>
+            <SelectItem value="theory">Theory</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -1053,12 +1053,12 @@ function EditQuestionForm({ question, onSuccess }: { question: Question, onSucce
         </div>
       )}
 
-      {questionType === 'short-answer' && (
+      {questionType === 'theory' && (
         <div className="space-y-2">
-          <Label htmlFor="shortAnswer">Sample Answer *</Label>
+          <Label htmlFor="theoryAnswer">Sample Answer *</Label>
           <Textarea
-            id="shortAnswer"
-            name="shortAnswer"
+            id="theoryAnswer"
+            name="theoryAnswer"
             defaultValue={question.correctAnswers[0]}
             rows={2}
           />

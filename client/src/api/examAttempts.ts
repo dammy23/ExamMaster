@@ -22,13 +22,27 @@ export interface ExamAttempt {
     recordingStatus: 'not_started' | 'recording' | 'completed' | 'failed';
     fileSize?: number;
   };
+  aiGradingResults?: {
+    totalScore: number;
+    totalMaxScore: number;
+    results: Array<{
+      questionId: string;
+      score: number;
+      maxScore: number;
+      feedback: string;
+      aiPlatform?: string;
+      error?: boolean;
+      gradedAt: string;
+    }>;
+    gradedAt: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
 
 export interface ExamQuestion {
   _id: string;
-  type: 'multiple-choice' | 'true-false' | 'short-answer';
+  type: 'multiple-choice' | 'true-false' | 'theory';
   question: string;
   options?: string[];
   marks: number;
@@ -67,7 +81,7 @@ export const saveExamAnswer = async (attemptId: string, questionId: string, answ
 // Description: Submit exam attempt
 // Endpoint: POST /api/exam-attempts/submit
 // Request: { attemptId: string }
-// Response: { success: boolean, score: number, percentage: number }
+// Response: { success: boolean, score: number, percentage: number, aiGradingCompleted: boolean, theoryQuestionsCount: number }
 export const submitExamAttempt = async (attemptId: string) => {
   try {
     const response = await api.post('/api/exam-attempts/submit', { attemptId });
@@ -194,6 +208,20 @@ export const getAdminRecentActivity = async () => {
     return response.data;
   } catch (error: any) {
     console.error('Get admin recent activity error:', error);
+    throw new Error(error?.response?.data?.error || error.message);
+  }
+};
+
+// Description: Grade theory questions for a specific exam attempt using AI
+// Endpoint: POST /api/exam-attempts/grade-theory/:attemptId
+// Request: {}
+// Response: { success: boolean, aiGradingResults: Object, totalScore: number, updatedPercentage: number, theoryQuestionsGraded: number }
+export const gradeTheoryQuestions = async (attemptId: string) => {
+  try {
+    const response = await api.post(`/api/exam-attempts/grade-theory/${attemptId}`);
+    return response.data;
+  } catch (error: any) {
+    console.error('Grade theory questions error:', error);
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
