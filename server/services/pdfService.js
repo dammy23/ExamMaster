@@ -1,7 +1,9 @@
 const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
 const puppeteer = require('puppeteer');
+const htmlPdf = require('html-pdf-node');
 const fs = require('fs').promises;
 const path = require('path');
+const { jsPDF } = require('jspdf');
 
 class PDFService {
   constructor() {
@@ -69,10 +71,45 @@ class PDFService {
       if (error.message.includes('Failed to launch the browser process') ||
           error.message.includes('libglib') ||
           error.message.includes('chrome: error while loading shared libraries')) {
-        console.log('PDFService - System dependencies not available, generating fallback response');
-        // Generate a simple HTML report as fallback
-        const fallbackHtml = await this.generateReportHTML(data, reportType);
-        return Buffer.from(fallbackHtml, 'utf8');
+        console.log('PDFService - System dependencies not available, using fallback PDF generator');
+
+        try {
+          // Use html-pdf-node as fallback first
+          const html = await this.generateReportHTML(data, reportType);
+          const options = {
+            format: 'A4',
+            printBackground: true,
+            margin: {
+              top: '20px',
+              bottom: '20px',
+              left: '20px',
+              right: '20px'
+            }
+          };
+
+          const file = { content: html };
+          console.log('PDFService - Generating PDF using html-pdf-node fallback method');
+          const pdfBuffer = await htmlPdf.generatePdf(file, options);
+          console.log('PDFService - html-pdf-node fallback PDF generated successfully');
+          return pdfBuffer;
+
+        } catch (fallbackError) {
+          console.error('PDFService - html-pdf-node fallback also failed:', fallbackError.message);
+
+          // Try jsPDF as second fallback
+          try {
+            console.log('PDFService - Using jsPDF as final fallback method');
+            const pdfBuffer = await this.generateSimplePDF(data, reportType);
+            console.log('PDFService - jsPDF fallback PDF generated successfully');
+            return pdfBuffer;
+          } catch (jsPdfError) {
+            console.error('PDFService - jsPDF fallback also failed:', jsPdfError.message);
+            // As last resort, return HTML content as text with PDF extension
+            const fallbackHtml = await this.generateReportHTML(data, reportType);
+            console.log('PDFService - Using HTML content as final fallback');
+            return Buffer.from(fallbackHtml, 'utf8');
+          }
+        }
       }
 
       throw new Error(`Failed to generate PDF report: ${error.message}`);
@@ -517,6 +554,142 @@ class PDFService {
         </div>
       </div>
     `;
+  }
+
+  /**
+   * Generate simple PDF using jsPDF (fallback method)
+   * @param {Object} data - Performance data
+   * @param {string} reportType - Type of report
+   * @returns {Promise<Buffer>} PDF buffer
+   */
+  async generateSimplePDF(data, reportType) {
+    try {
+      console.log(`PDFService - Creating simple PDF for ${reportType} report`);
+
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 20;
+      let yPosition = 30;
+
+      // Title
+      doc.setFontSize(20);
+      doc.text(this.getReportTitle(reportType), margin, yPosition);
+      yPosition += 20;
+
+      // Generated date
+      doc.setFontSize(10);
+      doc.text(`Generated on ${new Date().toLocaleDateString()}`, margin, yPosition);
+      yPosition += 20;
+
+      // Summary section
+      if (data.summary) {
+        doc.setFontSize(16);
+        doc.text('Summary', margin, yPosition);
+        yPosition += 15;
+
+        doc.setFontSize(12);
+        const summary = data.summary;
+
+        if (summary.totalExams !== undefined) {
+          doc.text(`Total Exams: ${summary.totalExams}`, margin, yPosition);
+          yPosition += 10;
+        }
+        if (summary.averageScore !== undefined) {
+          doc.text(`Average Score: ${summary.averageScore}%`, margin, yPosition);
+          yPosition += 10;
+        }
+        if (summary.highestScore !== undefined) {
+          doc.text(`Highest Score: ${summary.highestScore}%`, margin, yPosition);
+          yPosition += 10;
+        }
+        if (summary.passRate !== undefined) {
+          doc.text(`Pass Rate: ${summary.passRate}%`, margin, yPosition);
+          yPosition += 15;
+        }
+      }
+
+      // Details section
+      if (data.details && Array.isArray(data.details) && data.details.length > 0) {
+        doc.setFontSize(16);
+        doc.text('Detailed Analysis', margin, yPosition);
+        yPosition += 15;
+
+        doc.setFontSize(10);
+
+        // Add table headers based on report type
+        if (reportType === 'exam') {
+          doc.text('Student Name', margin, yPosition);
+          doc.text('Score', margin + 60, yPosition);
+          doc.text('Time Spent', margin + 100, yPosition);
+          doc.text('Status', margin + 140, yPosition);
+          yPosition += 10;
+
+          // Add line under headers
+          doc.line(margin, yPosition - 2, pageWidth - margin, yPosition - 2);
+          yPosition += 5;
+
+          // Add data rows
+          data.details.forEach((item, index) => {
+            if (yPosition > 270) { // Add new page if needed
+              doc.addPage();
+              yPosition = 30;
+            }
+
+            doc.text(item.studentName || 'N/A', margin, yPosition);
+            doc.text(`${item.score || 0}%`, margin + 60, yPosition);
+            doc.text(`${item.timeSpent || 0} min`, margin + 100, yPosition);
+            doc.text(item.status || 'N/A', margin + 140, yPosition);
+            yPosition += 8;
+          });
+        }
+      }
+
+      // Insights section
+      if (data.insights && Array.isArray(data.insights) && data.insights.length > 0) {
+        yPosition += 10;
+        if (yPosition > 250) {
+          doc.addPage();
+          yPosition = 30;
+        }
+
+        doc.setFontSize(16);
+        doc.text('Key Insights & Recommendations', margin, yPosition);
+        yPosition += 15;
+
+        doc.setFontSize(10);
+        data.insights.forEach((insight, index) => {
+          if (yPosition > 270) {
+            doc.addPage();
+            yPosition = 30;
+          }
+
+          doc.text(`• ${insight}`, margin, yPosition);
+          yPosition += 8;
+        });
+      }
+
+      // Footer
+      const totalPages = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.text('ExamMaster Performance Analysis Report - Generated by AI Assistant',
+                margin, doc.internal.pageSize.getHeight() - 10);
+        doc.text(`Page ${i} of ${totalPages}`,
+                pageWidth - margin - 20, doc.internal.pageSize.getHeight() - 10);
+      }
+
+      // Convert to buffer
+      const pdfArrayBuffer = doc.output('arraybuffer');
+      const pdfBuffer = Buffer.from(pdfArrayBuffer);
+
+      console.log(`PDFService - Simple PDF created successfully, size: ${pdfBuffer.length} bytes`);
+      return pdfBuffer;
+
+    } catch (error) {
+      console.error('PDFService - Error generating simple PDF:', error);
+      throw error;
+    }
   }
 
   /**
