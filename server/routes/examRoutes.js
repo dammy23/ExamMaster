@@ -45,6 +45,38 @@ router.get('/', requireUser, async (req, res) => {
   }
 });
 
+// Description: Get available exams for student dashboard
+// Endpoint: GET /api/exams/student/available
+// Request: {}
+// Response: { success: boolean, exams: Exam[] }
+router.get('/student/available', requireUser, async (req, res) => {
+  try {
+    console.log(`Getting available exams for student: ${req.user.email}`);
+
+    // Only allow students to access this endpoint
+    if (req.user.role === 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only students can access student-specific exam endpoints'
+      });
+    }
+
+    const exams = await ExamService.getAvailableExamsForStudent(req.user._id);
+
+    console.log(`Found ${exams.length} available exams for student: ${req.user.email}`);
+    return res.status(200).json({
+      success: true,
+      exams: exams
+    });
+  } catch (error) {
+    console.error(`Error getting available exams for student ${req.user.email}:`, error.message);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Get exam by ID
 router.get('/:id', requireUser, async (req, res) => {
   try {

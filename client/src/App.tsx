@@ -35,16 +35,37 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/seeding" element={<DatabaseSeeding />} />
-          {/* Fullscreen exam route without layout/sidebar */}
+          {/* Fullscreen routes without layout/sidebar */}
           <Route path="/exam-fullscreen/:id" element={
             <ProtectedRoute>
               <ExamAttempt />
             </ProtectedRoute>
           } />
+          {/* Student fullscreen dashboard */}
+          <Route path="/student" element={
+            <ProtectedRoute>
+              <StudentDashboard />
+            </ProtectedRoute>
+          } />
+          {/* Student exam routes (fullscreen) */}
+          <Route path="/student/exam/:id/instructions" element={
+            <ProtectedRoute>
+              <ExamInstructions />
+            </ProtectedRoute>
+          } />
+          <Route path="/student/exam/:id" element={
+            <ProtectedRoute>
+              <ExamAttempt />
+            </ProtectedRoute>
+          } />
+          <Route path="/student/results" element={
+            <ProtectedRoute>
+              <StudentResults />
+            </ProtectedRoute>
+          } />
           <Route path="/" element={<ProtectedRoute> <Layout /> </ProtectedRoute>}>
             <Route index element={<RoleDashboard />} />
             <Route path="admin" element={<AdminDashboard />} />
-            <Route path="student" element={<StudentDashboard />} />
             <Route path="admin/exams" element={<ExamManagement />} />
             <Route path="admin/exams/create" element={<CreateExam />} />
             <Route path="admin/exams/edit/:id" element={<EditExam />} />
@@ -57,9 +78,6 @@ function App() {
             <Route path="admin/ai-chat" element={<AIChat />} />
             <Route path="admin/settings" element={<SettingsPage />} />
             <Route path="admin/seeding" element={<DatabaseSeeding />} />
-            <Route path="student/exam/:id/instructions" element={<ExamInstructions />} />
-            <Route path="student/exam/:id" element={<ExamAttempt />} />
-            <Route path="student/results" element={<StudentResults />} />
           </Route>
           <Route path="*" element={<BlankPage />} />
         </Routes>

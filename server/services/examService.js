@@ -335,6 +335,34 @@ class ExamService {
       throw error;
     }
   }
+
+  // Get available exams for student dashboard
+  static async getAvailableExamsForStudent(studentId) {
+    try {
+      console.log('ExamService: Getting available exams for student:', studentId);
+
+      const now = new Date();
+
+      const query = {
+        $or: [
+          { status: 'active' },
+          { status: 'draft' }
+        ],
+        startDate: { $lte: now },
+        endDate: { $gte: now }
+      };
+
+      const exams = await Exam.find(query)
+        .populate('subject', 'name code description')
+        .sort({ startDate: 1 });
+
+      console.log(`ExamService: Found ${exams.length} available exams for student`);
+      return exams;
+    } catch (error) {
+      console.error('ExamService: Error getting available exams for student:', error.message);
+      throw new Error('Failed to retrieve available exams');
+    }
+  }
 }
 
 module.exports = ExamService;

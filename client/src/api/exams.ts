@@ -163,3 +163,16 @@ export const removeQuestionsFromExam = async (examId: string, questionIds: strin
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
+
+// Description: Get available exams for student dashboard
+// Endpoint: GET /api/exams/student/available
+// Request: {}
+// Response: { success: boolean, exams: Exam[] }
+export const getAvailableExamsForStudent = async () => {
+  try {
+    const response = await api.get('/api/exams/student/available');
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error?.response?.data?.error || error.message);
+  }
+};

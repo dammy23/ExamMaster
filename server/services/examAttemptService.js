@@ -1,7 +1,9 @@
 const ExamAttempt = require('../models/ExamAttempt.js');
 const Exam = require('../models/Exam.js');
 const Question = require('../models/Question.js');
+const User = require('../models/User.js');
 const AIGradingService = require('./aiGradingService.js');
+const emailService = require('./emailService.js');
 const mongoose = require('mongoose');
 
 class ExamAttemptService {
@@ -282,12 +284,43 @@ class ExamAttemptService {
 
       console.log('ExamAttemptService: Exam attempt submitted successfully with total score:', totalScore);
 
+      // Send email results if "Show Results Immediately" is enabled
+      if (exam && exam.showResultsImmediately) {
+        console.log('ExamAttemptService: Sending email results as showResultsImmediately is enabled');
+        try {
+          // Get student details
+          const student = await User.findById(studentId);
+          if (student && student.email) {
+            const passed = totalScore >= exam.passingMarks;
+
+            await emailService.sendExamResults(
+              student.email,
+              student.name || student.email,
+              exam.title,
+              totalScore,
+              attempt.percentage,
+              exam.totalMarks,
+              exam.passingMarks,
+              passed
+            );
+
+            console.log(`ExamAttemptService: Email sent successfully to ${student.email}`);
+          } else {
+            console.log('ExamAttemptService: Student email not found, skipping email notification');
+          }
+        } catch (emailError) {
+          console.error('ExamAttemptService: Error sending email results:', emailError.message);
+          // Don't fail the exam submission if email fails
+        }
+      }
+
       return {
         success: true,
         score: totalScore,
         percentage: attempt.percentage,
         aiGradingCompleted: aiGradingResults ? aiGradingResults.success : false,
-        theoryQuestionsCount: theoryQuestions.length
+        theoryQuestionsCount: theoryQuestions.length,
+        emailSent: exam && exam.showResultsImmediately
       };
     } catch (error) {
       console.error('ExamAttemptService: Error submitting exam attempt:', error.message);
@@ -506,20 +539,24 @@ class ExamAttemptService {
     }
   }
 
-  // Get recent exam results for student dashboard
+  // Get recent exam results for student dashboard (only show results for exams with showResultsImmediately enabled)
   static async getStudentRecentResults(studentId, limit = 3) {
     try {
       console.log('ExamAttemptService: Getting recent results for student:', studentId);
 
-      const attempts = await ExamAttempt.find({ 
+      const attempts = await ExamAttempt.find({
         studentId,
-        status: 'completed' 
+        status: 'completed'
       })
-        .populate('examId', 'title subject')
-        .sort({ endTime: -1 })
-        .limit(limit);
+        .populate('examId', 'title subject showResultsImmediately')
+        .sort({ endTime: -1 });
 
-      const recentResults = attempts.map(attempt => ({
+      // Filter to only include exams where showResultsImmediately is true
+      const filteredAttempts = attempts.filter(attempt =>
+        attempt.examId && attempt.examId.showResultsImmediately === true
+      );
+
+      const recentResults = filteredAttempts.slice(0, limit).map(attempt => ({
         _id: attempt._id,
         exam: attempt.examId.title,
         subject: attempt.examId.subject?.name || 'No Subject',
@@ -529,7 +566,7 @@ class ExamAttemptService {
         timeSpent: attempt.timeSpent || 0
       }));
 
-      console.log(`ExamAttemptService: Found ${recentResults.length} recent results for student`);
+      console.log(`ExamAttemptService: Found ${recentResults.length} recent results for student (filtered by showResultsImmediately)`);
       return recentResults;
     } catch (error) {
       console.error('ExamAttemptService: Error getting student recent results:', error.message);
