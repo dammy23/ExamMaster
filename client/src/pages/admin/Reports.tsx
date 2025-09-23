@@ -33,14 +33,12 @@ import {
 } from "lucide-react"
 import {
   getExamReports,
-  getStudentPerformanceReports,
   getQuestionAnalysis,
   getExamStudentScores,
   getExamPerformanceAnalysis,
   exportReport,
   triggerFileDownload,
   type ExamReport,
-  type StudentPerformance,
   type QuestionAnalysis,
   type ExamStudentReport,
   type PerformanceAnalysis
@@ -50,7 +48,6 @@ import { useToast } from "@/hooks/useToast"
 
 export function Reports() {
   const [examReports, setExamReports] = useState<ExamReport[]>([])
-  const [studentPerformances, setStudentPerformances] = useState<StudentPerformance[]>([])
   const [questionAnalysis, setQuestionAnalysis] = useState<QuestionAnalysis[]>([])
   const [exams, setExams] = useState<Exam[]>([])
   const [selectedExam, setSelectedExam] = useState<string>("all")
@@ -68,17 +65,16 @@ export function Reports() {
   const fetchReports = async () => {
     try {
       console.log('Fetching reports...')
-      const [examResponse, studentResponse, questionResponse, examsResponse] = await Promise.all([
+      const [examResponse, examsResponse] = await Promise.all([
         getExamReports(),
-        getStudentPerformanceReports(),
-        getQuestionAnalysis(),
         getExams()
       ])
 
       setExamReports((examResponse as any).reports)
-      setStudentPerformances((studentResponse as any).performances)
-      setQuestionAnalysis((questionResponse as any).analysis)
       setExams((examsResponse as any).exams || [])
+
+      // Fetch question analysis with current exam filter
+      await fetchQuestionAnalysis()
     } catch (error) {
       console.error('Error fetching reports:', error)
       toast({
@@ -88,6 +84,22 @@ export function Reports() {
       })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchQuestionAnalysis = async () => {
+    try {
+      console.log('Fetching question analysis for exam:', selectedExam === "all" ? 'all' : selectedExam)
+      const examIdForAnalysis = selectedExam === "all" ? undefined : selectedExam
+      const questionResponse = await getQuestionAnalysis(examIdForAnalysis)
+      setQuestionAnalysis((questionResponse as any).analysis)
+    } catch (error) {
+      console.error('Error fetching question analysis:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load question analysis",
+        variant: "destructive"
+      })
     }
   }
 
@@ -124,11 +136,18 @@ export function Reports() {
       setExamStudentReport(null)
       setPerformanceAnalysis(null)
     }
+
+    // Refresh question analysis when exam selection changes
+    fetchQuestionAnalysis()
   }, [selectedExam])
 
   // Separate effect to reset report type to avoid dependency issues
   useEffect(() => {
     if (selectedExam === "all" && (selectedReport === "exam-students" || selectedReport === "exam-analysis")) {
+      setSelectedReport("exam-overview")
+    }
+    // Reset to exam-overview if student-performance is selected (since it's removed)
+    if (selectedReport === "student-performance") {
       setSelectedReport("exam-overview")
     }
   }, [selectedExam, selectedReport])
@@ -207,7 +226,6 @@ export function Reports() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="exam-overview">Exam Overview</SelectItem>
-              <SelectItem value="student-performance">Student Performance</SelectItem>
               <SelectItem value="question-analysis">Question Analysis</SelectItem>
               {selectedExam && selectedExam !== "all" && (
                 <>
@@ -262,13 +280,13 @@ export function Reports() {
 
         <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900 border-purple-200 dark:border-purple-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Students</CardTitle>
-            <Users className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+            <CardTitle className="text-sm font-medium">Total Questions</CardTitle>
+            <BookOpen className="h-4 w-4 text-purple-600 dark:text-purple-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">{studentPerformances.length}</div>
+            <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">{questionAnalysis.length}</div>
             <p className="text-xs text-purple-600 dark:text-purple-400">
-              Taking exams
+              Analyzed
             </p>
           </CardContent>
         </Card>
@@ -341,67 +359,6 @@ export function Reports() {
         </Card>
       )}
 
-      {selectedReport === "student-performance" && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Student Performance Analysis
-            </CardTitle>
-            <CardDescription>
-              Individual student performance metrics and insights
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Student</TableHead>
-                    <TableHead>Exams Taken</TableHead>
-                    <TableHead>Average Score</TableHead>
-                    <TableHead>Best Score</TableHead>
-                    <TableHead>Progress</TableHead>
-                    <TableHead>Strengths</TableHead>
-                    <TableHead>Areas to Improve</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {studentPerformances.map((performance, index) => (
-                    <TableRow key={`student-performance-${performance.studentId}-${index}`}>
-                      <TableCell className="font-medium">{performance.studentName}</TableCell>
-                      <TableCell>{performance.totalExams}</TableCell>
-                      <TableCell>{performance.averageScore.toFixed(1)}%</TableCell>
-                      <TableCell>{performance.bestScore.toFixed(1)}%</TableCell>
-                      <TableCell>
-                        <Progress value={performance.averageScore} className="w-16 h-2" />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          {performance.strengths.slice(0, 2).map((strength, strengthIndex) => (
-                            <Badge key={`strength-${index}-${strengthIndex}`} variant="secondary" className="text-xs">
-                              {strength}
-                            </Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          {performance.weaknesses.slice(0, 2).map((weakness, weaknessIndex) => (
-                            <Badge key={`weakness-${index}-${weaknessIndex}`} variant="outline" className="text-xs">
-                              {weakness}
-                            </Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {selectedReport === "question-analysis" && (
         <Card>
@@ -542,6 +499,8 @@ export function Reports() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Student</TableHead>
+                    <TableHead>Student ID</TableHead>
+                    <TableHead>Group</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Score</TableHead>
                     <TableHead>Percentage</TableHead>
@@ -555,6 +514,8 @@ export function Reports() {
                   {examStudentReport.studentScores.map((student, index) => (
                     <TableRow key={`student-score-${student.studentId}-${index}`}>
                       <TableCell className="font-medium">{student.studentName}</TableCell>
+                      <TableCell className="text-muted-foreground">{student.studentIdNumber}</TableCell>
+                      <TableCell className="text-muted-foreground">{student.studentGroup}</TableCell>
                       <TableCell className="text-muted-foreground">{student.studentEmail}</TableCell>
                       <TableCell className="font-medium">{student.score}</TableCell>
                       <TableCell>

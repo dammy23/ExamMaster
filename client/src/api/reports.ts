@@ -15,6 +15,8 @@ export interface ExamReport {
 export interface StudentPerformance {
   studentId: string;
   studentName: string;
+  studentIdNumber: string;
+  studentGroup: string;
   totalExams: number;
   averageScore: number;
   bestScore: number;
@@ -37,6 +39,8 @@ export interface QuestionAnalysis {
 export interface StudentScore {
   studentId: string;
   studentName: string;
+  studentIdNumber: string;
+  studentGroup: string;
   studentEmail: string;
   score: number;
   percentage: number;
