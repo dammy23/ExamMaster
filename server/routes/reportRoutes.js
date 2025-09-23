@@ -164,16 +164,23 @@ router.get('/students', requireUser, async (req, res) => {
     const exams = await Exam.find({ createdBy: req.user._id });
     const examIds = exams.map(exam => exam._id);
 
-    // Get all attempts for these exams
+    // Get all attempts for these exams, excluding admin users
     const attempts = await ExamAttempt.find({
       examId: { $in: examIds },
       status: 'completed'
-    }).populate('studentId', 'name email studentId group');
+    }).populate({
+      path: 'studentId',
+      match: { role: { $ne: 'admin' } },
+      select: 'name email studentId group'
+    });
+
+    console.log(`Found ${attempts.length} attempts, filtering out admin users...`);
 
     // Group attempts by student
     const studentPerformanceMap = new Map();
 
     attempts.forEach(attempt => {
+      // Skip if studentId is null (filtered out admin users) or if studentId is missing
       if (!attempt.studentId) return;
 
       const studentId = attempt.studentId._id.toString();
@@ -221,7 +228,7 @@ router.get('/students', requireUser, async (req, res) => {
       };
     });
 
-    console.log(`Found ${performances.length} student performance reports for user: ${req.user.email}`);
+    console.log(`Found ${performances.length} student performance reports for user: ${req.user.email} (admin users excluded)`);
     return res.status(200).json({
       success: true,
       performances
@@ -360,31 +367,37 @@ router.get('/exam/:examId/students', requireUser, async (req, res) => {
       });
     }
 
-    // Get all attempts for this exam
+    // Get all attempts for this exam, excluding admin users
     const attempts = await ExamAttempt.find({
       examId: examId,
       status: { $in: ['completed', 'submitted'] }
     })
-    .populate('studentId', 'name email studentId group')
+    .populate({
+      path: 'studentId',
+      match: { role: { $ne: 'admin' } },
+      select: 'name email studentId group'
+    })
     .sort({ createdAt: -1 });
 
-    // Calculate student scores and performance data
-    const studentScores = attempts.map(attempt => ({
-      studentId: attempt.studentId._id,
-      studentName: attempt.studentId.name,
-      studentIdNumber: attempt.studentId.studentId || 'N/A',
-      studentGroup: attempt.studentId.group || 'N/A',
-      studentEmail: attempt.studentId.email,
-      score: attempt.score || 0,
-      percentage: attempt.percentage || 0,
-      timeSpent: attempt.timeSpent || 0,
-      startTime: attempt.startTime,
-      endTime: attempt.endTime,
-      status: attempt.status,
-      tabSwitches: attempt.tabSwitches || 0,
-      attemptNumber: attempt.attemptNumber || 1,
-      isPassed: (attempt.score || 0) >= exam.passingMarks
-    }));
+    // Calculate student scores and performance data, filtering out admin users
+    const studentScores = attempts
+      .filter(attempt => attempt.studentId) // Filter out null studentId (admin users)
+      .map(attempt => ({
+        studentId: attempt.studentId._id,
+        studentName: attempt.studentId.name,
+        studentIdNumber: attempt.studentId.studentId || 'N/A',
+        studentGroup: attempt.studentId.group || 'N/A',
+        studentEmail: attempt.studentId.email,
+        score: attempt.score || 0,
+        percentage: attempt.percentage || 0,
+        timeSpent: attempt.timeSpent || 0,
+        startTime: attempt.startTime,
+        endTime: attempt.endTime,
+        status: attempt.status,
+        tabSwitches: attempt.tabSwitches || 0,
+        attemptNumber: attempt.attemptNumber || 1,
+        isPassed: (attempt.score || 0) >= exam.passingMarks
+      }));
 
     // Calculate exam statistics
     const totalStudents = studentScores.length;
@@ -403,7 +416,7 @@ router.get('/exam/:examId/students', requireUser, async (req, res) => {
         studentScores.reduce((sum, s) => sum + s.timeSpent, 0) / studentScores.length : 0
     };
 
-    console.log(`Found ${studentScores.length} student scores for exam ${examId}`);
+    console.log(`Found ${studentScores.length} student scores for exam ${examId} (admin users excluded)`);
     return res.status(200).json({
       success: true,
       exam: {
@@ -452,12 +465,16 @@ router.get('/exam/:examId/analysis', requireUser, async (req, res) => {
       });
     }
 
-    // Get all attempts for this exam
+    // Get all attempts for this exam, excluding admin users
     const attempts = await ExamAttempt.find({
       examId: examId,
       status: { $in: ['completed', 'submitted'] }
     })
-    .populate('studentId', 'name email studentId group');
+    .populate({
+      path: 'studentId',
+      match: { role: { $ne: 'admin' } },
+      select: 'name email studentId group'
+    });
 
     const totalAttempts = attempts.length;
     const scores = attempts.filter(a => a.score !== undefined).map(a => a.score);
@@ -577,7 +594,11 @@ router.post('/export', requireUser, async (req, res) => {
           const attempts = await ExamAttempt.find({
             examId: examId,
             status: { $in: ['completed', 'submitted'] }
-          }).populate('studentId', 'name email studentId group');
+          }).populate({
+            path: 'studentId',
+            match: { role: { $ne: 'admin' } },
+            select: 'name email studentId group'
+          });
 
           const scores = attempts.map(a => a.score || 0);
           const passRate = attempts.length > 0 ?
@@ -597,15 +618,17 @@ router.post('/export', requireUser, async (req, res) => {
               highestScore: scores.length > 0 ? Math.max(...scores) : 0,
               passRate: Math.round(passRate)
             },
-            details: attempts.map(attempt => ({
-              studentName: attempt.studentId.name,
-              studentIdNumber: attempt.studentId.studentId || 'N/A',
-              studentGroup: attempt.studentId.group || 'N/A',
-              score: attempt.score || 0,
-              timeSpent: attempt.timeSpent || 0,
-              status: attempt.status,
-              submissionDate: attempt.endTime ? attempt.endTime.toLocaleDateString() : 'N/A'
-            })),
+            details: attempts
+              .filter(attempt => attempt.studentId) // Filter out admin users
+              .map(attempt => ({
+                studentName: attempt.studentId.name,
+                studentIdNumber: attempt.studentId.studentId || 'N/A',
+                studentGroup: attempt.studentId.group || 'N/A',
+                score: attempt.score || 0,
+                timeSpent: attempt.timeSpent || 0,
+                status: attempt.status,
+                submissionDate: attempt.endTime ? attempt.endTime.toLocaleDateString() : 'N/A'
+              })),
             scoreDistribution: [
               { range: '90-100', count: scores.filter(s => s >= 90).length },
               { range: '80-89', count: scores.filter(s => s >= 80 && s < 90).length },
@@ -632,9 +655,15 @@ router.post('/export', requireUser, async (req, res) => {
           const allAttempts = await ExamAttempt.find({
             examId: { $in: exams.map(e => e._id) },
             status: { $in: ['completed', 'submitted'] }
-          }).populate('studentId', 'name studentId group');
+          }).populate({
+            path: 'studentId',
+            match: { role: { $ne: 'admin' } },
+            select: 'name studentId group'
+          });
 
-          const allScores = allAttempts.map(a => a.score || 0);
+          // Filter out attempts with null studentId (admin users) and calculate scores
+          const validAttempts = allAttempts.filter(a => a.studentId);
+          const allScores = validAttempts.map(a => a.score || 0);
           const avgScore = allScores.length > 0 ? allScores.reduce((sum, score) => sum + score, 0) / allScores.length : 0;
 
           reportData = {
@@ -646,7 +675,7 @@ router.post('/export', requireUser, async (req, res) => {
               passRate: 0 // Calculate based on individual exam pass rates
             },
             details: exams.map(exam => {
-              const examAttempts = allAttempts.filter(a => a.examId.toString() === exam._id.toString());
+              const examAttempts = validAttempts.filter(a => a.examId.toString() === exam._id.toString());
               const examScores = examAttempts.map(a => a.score || 0);
               return {
                 examTitle: exam.title,
@@ -658,7 +687,7 @@ router.post('/export', requireUser, async (req, res) => {
             }),
             insights: [
               `Total ${exams.length} exams created`,
-              `${allAttempts.length} total attempts across all exams`,
+              `${validAttempts.length} total student attempts across all exams`,
               `Average performance is ${Math.round(avgScore)}%`
             ]
           };
@@ -712,13 +741,19 @@ router.post('/export', requireUser, async (req, res) => {
         const attempts = await ExamAttempt.find({
           examId: examId,
           status: { $in: ['completed', 'submitted'] }
-        }).populate('studentId', 'name email studentId group');
+        }).populate({
+          path: 'studentId',
+          match: { role: { $ne: 'admin' } },
+          select: 'name email studentId group'
+        });
 
         // CSV Header
         csvContent = 'Student Name,Student ID,Group,Email,Score,Percentage,Time Spent (min),Status,Tab Switches,Result\n';
 
-        // CSV Data
+        // CSV Data - filter out attempts with null studentId (admin users)
         attempts.forEach(attempt => {
+          if (!attempt.studentId) return; // Skip admin users
+
           const score = attempt.score || 0;
           const percentage = attempt.percentage || 0;
           const timeSpent = Math.round((attempt.timeSpent || 0) / 60);
