@@ -44,6 +44,8 @@ import {
   type PerformanceAnalysis
 } from "@/api/reports"
 import { getExams, type Exam } from "@/api/exams"
+import { generateReactPDF } from "@/api/pdfExport"
+import { exportReportAsCSV } from "@/utils/csvExport"
 import { useToast } from "@/hooks/useToast"
 
 export function Reports() {
@@ -155,17 +157,44 @@ export function Reports() {
   const handleExportReport = async (format: 'pdf' | 'csv') => {
     try {
       console.log('Exporting report:', selectedReport, format, 'for exam:', selectedExam)
-      const examIdToUse = selectedExam === "all" ? undefined : selectedExam
-      const response = await exportReport(selectedReport, examIdToUse, format)
-      const result = response as any
 
-      toast({
-        title: "Export Complete",
-        description: `Report exported successfully as ${format.toUpperCase()}`
-      })
+      if (format === 'csv') {
+        // Use client-side CSV export
+        exportReportAsCSV(selectedReport, {
+          examReports,
+          questionAnalysis,
+          examStudentReport,
+          performanceAnalysis
+        })
 
-      // Trigger authenticated download using the secure URL
-      triggerFileDownload(result.downloadUrl, result.filename || `report.${format}`)
+        toast({
+          title: "Export Complete",
+          description: "Report exported successfully as CSV"
+        })
+      } else if (format === 'pdf') {
+        // Use React PDF rendering
+        const reportData = {
+          selectedReport,
+          selectedExam,
+          examReports,
+          questionAnalysis,
+          examStudentReport,
+          performanceAnalysis,
+          exams,
+          generatedAt: new Date().toISOString()
+        }
+
+        const response = await generateReactPDF(reportData, selectedReport)
+        const result = response as any
+
+        toast({
+          title: "Export Complete",
+          description: "Report exported successfully as PDF"
+        })
+
+        // Trigger authenticated download using the secure URL
+        triggerFileDownload(result.downloadUrl, result.filename || `report.pdf`)
+      }
     } catch (error: any) {
       console.error('Error exporting report:', error)
       toast({

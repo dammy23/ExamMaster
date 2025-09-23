@@ -4,6 +4,7 @@ const ExamAttempt = require('../models/ExamAttempt.js');
 const Exam = require('../models/Exam.js');
 const User = require('../models/User.js');
 const pdfService = require('../services/pdfService.js');
+const reactPdfService = require('../services/reactPdfService.js');
 const mongoose = require('mongoose');
 const { verifyDownloadToken, generateSecureDownloadUrl } = require('../utils/downloadTokens.js');
 const jwt = require('jsonwebtoken');
@@ -551,6 +552,96 @@ router.get('/exam/:examId/analysis', requireUser, async (req, res) => {
     });
   } catch (error) {
     console.error(`Error getting performance analysis for exam ${req.params.examId}:`, error.message);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Description: Generate PDF from React PDF component
+// Endpoint: POST /api/reports/generate-pdf
+// Request: { reportData: object, reportType: string }
+// Response: { success: boolean, downloadUrl: string, filename: string }
+router.post('/generate-pdf', requireUser, async (req, res) => {
+  try {
+    const { reportData, reportType } = req.body;
+    console.log(`Generating React PDF for user: ${req.user.email}, type: ${reportType}`);
+
+    // Only allow admin users
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only admin users can generate PDF reports'
+      });
+    }
+
+    if (!reportData || !reportType) {
+      return res.status(400).json({
+        success: false,
+        error: 'Report data and report type are required'
+      });
+    }
+
+    try {
+      // Generate PDF using React PDF service
+      const pdfBuffer = await reactPdfService.generatePDFFromReactData(reportData, reportType);
+      const filename = `react-report-${reportType}-${Date.now()}.pdf`;
+      const filePath = await reactPdfService.savePDFToFile(pdfBuffer, filename);
+
+      const downloadUrl = generateSecureDownloadUrl(req.user._id.toString(), filename);
+
+      console.log(`React PDF report generated successfully for user: ${req.user.email}`);
+      return res.status(200).json({
+        success: true,
+        downloadUrl,
+        filename
+      });
+    } catch (pdfError) {
+      console.error('React PDF generation failed:', pdfError.message);
+
+      // Fallback to original PDF service
+      console.log('Attempting fallback to original PDF service');
+
+      // Transform data for fallback service
+      const fallbackData = {
+        title: `${reportType} Report`,
+        summary: {
+          totalExams: reportData.examReports ? reportData.examReports.length : 0,
+          averageScore: reportData.examReports && reportData.examReports.length > 0
+            ? reportData.examReports.reduce((sum, r) => sum + r.averageScore, 0) / reportData.examReports.length
+            : 0,
+          highestScore: reportData.examReports && reportData.examReports.length > 0
+            ? Math.max(...reportData.examReports.map(r => r.averageScore))
+            : 0,
+          passRate: reportData.examReports && reportData.examReports.length > 0
+            ? reportData.examReports.reduce((sum, r) => sum + r.passRate, 0) / reportData.examReports.length
+            : 0
+        },
+        details: reportData.examReports || reportData.examStudentReport?.studentScores || [],
+        insights: [
+          `Report generated on ${new Date().toLocaleDateString()}`,
+          `Generated using fallback PDF method`,
+          reportData.examReports ? `Contains data for ${reportData.examReports.length} exams` : 'Detailed report data'
+        ]
+      };
+
+      const fallbackBuffer = await pdfService.generateSimplePDF(fallbackData, 'exam');
+      const fallbackFilename = `fallback-report-${reportType}-${Date.now()}.pdf`;
+      const fallbackPath = await pdfService.savePDFToFile(fallbackBuffer, fallbackFilename);
+
+      const fallbackDownloadUrl = generateSecureDownloadUrl(req.user._id.toString(), fallbackFilename);
+
+      console.log(`Fallback PDF report generated for user: ${req.user.email}`);
+      return res.status(200).json({
+        success: true,
+        downloadUrl: fallbackDownloadUrl,
+        filename: fallbackFilename,
+        message: 'PDF generated using fallback method due to rendering issues'
+      });
+    }
+  } catch (error) {
+    console.error(`Error generating React PDF for user ${req.user.email}:`, error.message, error.stack);
     return res.status(500).json({
       success: false,
       error: error.message
