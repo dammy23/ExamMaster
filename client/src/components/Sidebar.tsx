@@ -73,11 +73,11 @@ const adminNavItems = [
     href: "/admin/settings",
     icon: Settings,
   },
-  {
-    title: "Database Seeding",
-    href: "/admin/seeding",
-    icon: Database,
-  },
+  // {
+  //   title: "Database Seeding",
+  //   href: "/admin/seeding",
+  //   icon: Database,
+  // },
 ]
 
 const studentNavItems = [
