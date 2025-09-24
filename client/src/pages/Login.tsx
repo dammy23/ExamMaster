@@ -56,7 +56,7 @@ export function Login() {
         </div>
 
         {/* Always show seeding info for first-time users */}
-        <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+        {/* <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
           <Info className="h-4 w-4 text-blue-600" />
           <AlertDescription className="text-blue-800 dark:text-blue-200">
             <strong>First time user?</strong> You need to{" "}
@@ -65,7 +65,7 @@ export function Login() {
             </Link>{" "}
             before logging in.
           </AlertDescription>
-        </Alert>
+        </Alert> */}
 
         {showSeedingHint && (
           <Alert variant="destructive">
@@ -118,20 +118,20 @@ export function Login() {
               </Button>
 
               <div className="text-sm text-center space-y-2">
-                <p className="text-muted-foreground">
+                {/* <p className="text-muted-foreground">
                   Don't have an account?{" "}
                   <Link to="/register" className="font-medium text-primary hover:underline">
                     Sign up
                   </Link>
-                </p>
+                </p> */}
                 <div className="flex items-center justify-center gap-2">
-                  <Link 
+                  {/* <Link 
                     to="/seeding" 
                     className="flex items-center gap-1 text-sm bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-800 dark:text-blue-200 px-3 py-1 rounded-md transition-colors"
                   >
                     <Database className="h-3 w-3" />
                     Set up database
-                  </Link>
+                  </Link> */}
                 </div>
               </div>
             </CardFooter>
