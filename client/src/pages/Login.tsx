@@ -48,12 +48,20 @@ export function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-6">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold tracking-tight">CBE System</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Computer-Based Examination Platform
-          </p>
-        </div>
+      <div className="text-center">
+  {/* Logo */}
+  <img
+    src="https://management.lascon.edu.ng/uploads/img_zoc98jm46fbnd4i.png"
+    alt="CBE Logo"
+    className="mx-auto h-40 w-auto mb-4"
+  />
+
+  <h2 className="text-3xl font-bold tracking-tight">CBE System</h2>
+  <p className="mt-2 text-sm text-muted-foreground">
+    Computer-Based Examination Platform
+  </p>
+</div>
+
 
         {/* Always show seeding info for first-time users */}
         {/* <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
@@ -135,7 +143,7 @@ export function Login() {
         </Card>
 
         {/* Sample credentials info */}
-        <Card className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        {/* <Card className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm">Sample Credentials</CardTitle>
           </CardHeader>
@@ -150,7 +158,7 @@ export function Login() {
               (Create these accounts first using the seeding page)
             </p>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
     </div>
   )
