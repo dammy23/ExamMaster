@@ -42,7 +42,7 @@ export interface ExamAttempt {
 
 export interface ExamQuestion {
   _id: string;
-  type: 'multiple-choice' | 'true-false' | 'theory';
+  type: 'multiple-choice' | 'true-false' | 'theory'| 'short-answer';
   question: string;
   options?: string[];
   marks: number;

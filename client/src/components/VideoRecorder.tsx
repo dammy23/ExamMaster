@@ -429,7 +429,7 @@ export function VideoRecorder({ attemptId, onRecordingComplete }: VideoRecorderP
           </div>
 
           {/* Controls - Only show stop button if auto-recording */}
-          {isRecording && (
+          {/*isRecording && (
             <div className="flex items-center justify-center">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -454,7 +454,7 @@ export function VideoRecorder({ attemptId, onRecordingComplete }: VideoRecorderP
                 </AlertDialogContent>
               </AlertDialog>
             </div>
-          )}
+          )*/}
 
           {/* Status Information */}
           <div className="text-xs text-center text-gray-600">

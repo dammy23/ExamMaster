@@ -558,7 +558,7 @@ export function ExamAttempt() {
         </div>
       </div>
 
-      <div className="pt-20 max-w-7xl mx-auto">
+      <div className="pt-20 max-w-12xl mx-auto">
         <div className="grid gap-6 lg:grid-cols-4">
           {/* Question Navigation */}
           <Card className="lg:col-span-1">
@@ -660,7 +660,7 @@ export function ExamAttempt() {
                   </RadioGroup>
                 )}
 
-                {currentQuestion.type === 'short-answer' && (
+                {(currentQuestion.type === 'theory' || currentQuestion.type === 'short-answer') && (
                   <Textarea
                     placeholder="Enter your answer here..."
                     value={answers[currentQuestion._id] as string || ""}

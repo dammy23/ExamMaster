@@ -230,7 +230,7 @@ class ExamAttemptService {
                   totalScore += question.marks;
                 }
               }
-            } else if (question.type === 'theory') {
+            } else if (question.type === 'theory' || question.type === 'short-answer') {
               // Collect theory questions for AI grading
               theoryQuestions.push({
                 questionId: question._id.toString(),
