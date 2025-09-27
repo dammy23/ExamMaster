@@ -33,6 +33,7 @@ const userSchema = new mongoose.Schema({
   // Additional fields for student users
   studentId: {
     type: String,
+    uppercase: true,
     trim: true,
     sparse: true, // Allows null values but ensures uniqueness when present
     index: true

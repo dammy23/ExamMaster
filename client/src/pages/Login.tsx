@@ -71,11 +71,7 @@ export function Login() {
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              <strong>Account not found!</strong> Please{" "}
-              <Link to="/seeding" className="underline font-medium">
-                visit the seeding page
-              </Link>{" "}
-              to create the admin and student accounts first.
+              <strong>Account not found!</strong> Please enter the correct login credentials
             </AlertDescription>
           </Alert>
         )}
@@ -84,16 +80,16 @@ export function Login() {
           <CardHeader>
             <CardTitle>Sign in to your account</CardTitle>
             <CardDescription>
-              Enter your email and password to access the system
+              Enter your email/student id and password to access the system
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Email/Student ID</Label>
                 <Input
                   id="email"
-                  type="email"
+                  type="text"
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}

@@ -39,15 +39,23 @@ class UserService {
     try {
       console.log(`UserService: Getting user by email: ${email}`);
       const user = await User.findOne({ email: email.toLowerCase() });
-      if (user) {
-        console.log(`UserService: Found user: ${user.email}, ID: ${user._id}, Role: ${user.role}`);
-        console.log(`UserService: User has password: ${!!user.password}`);
-      } else {
-        console.log(`UserService: No user found with email: ${email}`);
-      }
+     
       return user;
     } catch (error) {
       console.error(`UserService: Error getting user by email ${email}:`, error.message);
+      throw error;
+    }
+  }
+
+  // Get user by studentId
+  static async getUserByStudentId(studentId) {
+    try {
+      console.log(`UserService: Getting user by student Id: ${studentId}`);
+      const user = await User.findOne({ studentId: studentId.toUpperCase() });
+     
+      return user;
+    } catch (error) {
+      console.error(`UserService: Error getting user by email/student id ${email}:`, error.message);
       throw error;
     }
   }

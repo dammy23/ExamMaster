@@ -24,20 +24,22 @@ router.post('/login', async (req, res) => {
     }
 
     console.log(`Attempting to find user with email: ${email}`);
-    const user = await UserService.getUserByEmail(email);
+    let user = await UserService.getUserByEmail(email);
 
     if (!user) {
-      console.log(`Login failed: User not found for email: ${email}`);
-      return res.status(400).json({
-        success: false,
-        error: 'Email or password is incorrect. If this is your first time, please visit /seeding to create initial users.'
-      });
+       user = await UserService.getUserByStudentId(email);
+
+      if (!user) {
+        console.log(`Login failed: User not found for email: ${email}`);
+        return res.status(400).json({
+          success: false,
+          error: 'Email/Student ID or password is incorrect.'
+        });
+      }
     }
 
-    console.log(`User found: ${user.email}, ID: ${user._id}, Role: ${user.role}`);
-    console.log(`User password hash exists: ${!!user.password}`);
-
-    console.log(`Validating password for user: ${email}`);
+    console.log(user);
+        
     const isValidPassword = await UserService.validatePassword(password, user.password);
     console.log(`Password validation result: ${isValidPassword}`);
 
