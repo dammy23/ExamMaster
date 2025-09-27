@@ -19,13 +19,23 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Set up image tags
+        id: vars
+        run: |
+          echo "IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}/exam-master" >> $GITHUB_ENV
+          echo "BUILD_TAG=${{ github.run_number }}" >> $GITHUB_ENV
+          echo "SHA_TAG=${{ github.sha }}" >> $GITHUB_ENV
+
       - name: Build Docker image
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/exam-master:latest .
+          docker build \
+            -t $IMAGE_NAME:latest \
+            -t $IMAGE_NAME:$BUILD_TAG .
 
-      - name: Push Docker image
+      - name: Push Docker images
         run: |
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/exam-master:latest
+          docker push $IMAGE_NAME:latest
+          docker push $IMAGE_NAME:$BUILD_TAG
 
   deploy:
     needs: build
