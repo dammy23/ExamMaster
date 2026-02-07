@@ -60,7 +60,7 @@ export function ExamQuestions() {
       
       const [examResponse, questionsResponse] = await Promise.all([
         getExamById(examId!),
-        getQuestions({})
+        getQuestions({ limit: 10000 }) // Fetch all available questions (no limit)
       ])
       
       setExam(examResponse.exam)
