@@ -84,12 +84,12 @@ class ExamAttemptService {
         };
       }
 
-      // Check attempt limits
+      // Check attempt limits (skip if unlimited attempts - maxAttempts === 0)
       const completedAttempts = existingAttempts.filter(attempt => 
         attempt.status === 'completed' || attempt.status === 'submitted'
       );
       
-      if (completedAttempts.length >= exam.maxAttempts) {
+      if (exam.maxAttempts > 0 && completedAttempts.length >= exam.maxAttempts) {
         throw new Error(`You have exceeded the maximum number of attempts (${exam.maxAttempts}) for this exam.`);
       }
 
@@ -100,8 +100,8 @@ class ExamAttemptService {
       
       console.log(`Creating attempt number ${nextAttemptNumber} for student ${studentId}`);
 
-      // Validate attempt number doesn't exceed maximum
-      if (nextAttemptNumber > exam.maxAttempts) {
+      // Validate attempt number doesn't exceed maximum (skip if unlimited attempts - maxAttempts === 0)
+      if (exam.maxAttempts > 0 && nextAttemptNumber > exam.maxAttempts) {
         throw new Error(`Cannot create attempt ${nextAttemptNumber}. Maximum attempts allowed: ${exam.maxAttempts}`);
       }
 
