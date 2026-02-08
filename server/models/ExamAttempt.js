@@ -45,6 +45,10 @@ const examAttemptSchema = new mongoose.Schema({
   flaggedQuestions: [{
     type: mongoose.Schema.Types.ObjectId
   }],
+  selectedQuestions: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Question'
+  }],
   tabSwitches: {
     type: Number,
     default: 0

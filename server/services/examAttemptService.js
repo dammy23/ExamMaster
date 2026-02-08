@@ -74,8 +74,19 @@ class ExamAttemptService {
         const totalTimeSeconds = exam.duration * 60;
         const remainingTime = Math.max(0, totalTimeSeconds - elapsedSeconds);
         
-        // Return existing attempt with questions (already populated from the exam query above)
-        const questions = exam.questions.map(question => ({
+        // Use the selected questions stored in the attempt
+        // If no selectedQuestions stored (old attempts), use all exam questions
+        let questionsToReturn;
+        if (activeAttempt.selectedQuestions && activeAttempt.selectedQuestions.length > 0) {
+          // Get the questions that were originally selected for this attempt
+          const selectedQuestionIds = activeAttempt.selectedQuestions.map(id => id.toString());
+          questionsToReturn = exam.questions.filter(q => selectedQuestionIds.includes(q._id.toString()));
+        } else {
+          // Fallback to all questions for backward compatibility
+          questionsToReturn = exam.questions;
+        }
+        
+        const questions = questionsToReturn.map(question => ({
           _id: question._id,
           type: question.type,
           question: question.question,
@@ -140,6 +151,10 @@ class ExamAttemptService {
         const shuffled = [...exam.questions].sort(() => Math.random() - 0.5);
         selectedQuestions = shuffled.slice(0, exam.questionsPerExam);
       }
+      
+      // Store the selected question IDs in the attempt
+      savedAttempt.selectedQuestions = selectedQuestions.map(q => q._id);
+      await savedAttempt.save();
       
       const questions = selectedQuestions.map(question => ({
         _id: question._id,
