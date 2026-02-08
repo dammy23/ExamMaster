@@ -1,13 +1,13 @@
-import { useEffect, useState } from "react"
-import { useParams, useNavigate } from "react-router-dom"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { Progress } from "@/components/ui/progress"
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,7 +17,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
 import {
   Clock,
   ChevronLeft,
@@ -26,165 +26,178 @@ import {
   AlertTriangle,
   CheckCircle,
   Menu,
-  X
-} from "lucide-react"
+  X,
+} from "lucide-react";
 import {
   startExamAttempt,
   saveExamAnswer,
   submitExamAttempt,
   logExamActivity,
-  type ExamQuestion
-} from "@/api/examAttempts"
-import { getExamById } from "@/api/exams"
-import { useToast } from "@/hooks/useToast"
+  type ExamQuestion,
+} from "@/api/examAttempts";
+import { getExamById } from "@/api/exams";
+import { useToast } from "@/hooks/useToast";
 
 export function MobileExamAttempt() {
-  const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
-  const { toast } = useToast()
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
-  const [exam, setExam] = useState<any>(null)
-  const [questions, setQuestions] = useState<ExamQuestion[]>([])
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
-  const [answers, setAnswers] = useState<{ [questionId: string]: string | string[] }>({})
-  const [timeRemaining, setTimeRemaining] = useState(0)
-  const [attemptId, setAttemptId] = useState<string>("")
-  const [loading, setLoading] = useState(true)
-  const [showSubmitDialog, setShowSubmitDialog] = useState(false)
-  const [showNavigation, setShowNavigation] = useState(false)
+  const [exam, setExam] = useState<any>(null);
+  const [questions, setQuestions] = useState<ExamQuestion[]>([]);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState<{
+    [questionId: string]: string | string[];
+  }>({});
+  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [attemptId, setAttemptId] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+  const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [showNavigation, setShowNavigation] = useState(false);
 
   useEffect(() => {
     if (id) {
-      initializeExam()
+      initializeExam();
     }
 
     // Prevent page refresh/close
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault()
-      e.returnValue = 'Are you sure you want to leave? Your exam progress may be lost.'
-      return 'Are you sure you want to leave?'
-    }
+      e.preventDefault();
+      e.returnValue =
+        "Are you sure you want to leave? Your exam progress may be lost.";
+      return "Are you sure you want to leave?";
+    };
 
-    window.addEventListener('beforeunload', handleBeforeUnload)
+    window.addEventListener("beforeunload", handleBeforeUnload);
 
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload)
-    }
-  }, [id])
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [id]);
 
   // Timer effect
   useEffect(() => {
     if (timeRemaining > 0) {
       const timer = setTimeout(() => {
-        setTimeRemaining(timeRemaining - 1)
-      }, 1000)
+        setTimeRemaining(timeRemaining - 1);
+      }, 1000);
 
-      return () => clearTimeout(timer)
+      return () => clearTimeout(timer);
     } else if (timeRemaining === 0 && attemptId && questions.length > 0) {
-      handleAutoSubmit()
+      handleAutoSubmit();
     }
-  }, [timeRemaining])
+  }, [timeRemaining]);
 
   // Auto-save answers
   useEffect(() => {
     if (attemptId && currentQuestion) {
-      const answer = answers[currentQuestion._id]
+      const answer = answers[currentQuestion._id];
       if (answer !== undefined) {
-        saveExamAnswer(attemptId, currentQuestion._id, answer)
-          .catch(error => console.error('Error saving answer:', error))
+        saveExamAnswer(attemptId, currentQuestion._id, answer).catch((error) =>
+          console.error("Error saving answer:", error),
+        );
       }
     }
-  }, [answers, currentQuestionIndex, attemptId])
+  }, [answers, currentQuestionIndex, attemptId]);
 
   const initializeExam = async () => {
     try {
-      setLoading(true)
-      const examResponse = await getExamById(id!)
-      setExam(examResponse.exam)
+      setLoading(true);
+      const examResponse = await getExamById(id!);
+      setExam(examResponse.exam);
 
-      const attemptResponse = await startExamAttempt(id!)
-      setAttemptId(attemptResponse.attemptId)
-      setQuestions(attemptResponse.questions)
-      setTimeRemaining(attemptResponse.remainingTime)
+      const attemptResponse = await startExamAttempt(id!);
+      setAttemptId(attemptResponse.attemptId);
+      setQuestions(attemptResponse.questions);
+      setTimeRemaining(
+        attemptResponse.remainingTime || examResponse.exam.duration * 60,
+      ); // Use remainingTime from attempt or fallback to full duration
 
       // Pre-populate saved answers
-      const savedAnswers: any = {}
+      const savedAnswers: any = {};
       attemptResponse.questions.forEach((q: any) => {
         if (q.studentAnswer !== undefined && q.studentAnswer !== null) {
-          savedAnswers[q._id] = q.studentAnswer
+          savedAnswers[q._id] = q.studentAnswer;
         }
-      })
-      setAnswers(savedAnswers)
+      });
+      setAnswers(savedAnswers);
 
       toast({
         title: "Exam Started",
-        description: "Good luck! Remember to submit before time runs out."
-      })
+        description: "Good luck! Remember to submit before time runs out.",
+      });
     } catch (error: any) {
-      console.error('Error initializing exam:', error)
+      console.error("Error initializing exam:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to start exam",
-        variant: "destructive"
-      })
-      navigate("/student")
+        variant: "destructive",
+      });
+      navigate("/student");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleAutoSubmit = async () => {
     try {
-      await submitExamAttempt(attemptId)
+      await submitExamAttempt(attemptId);
       toast({
         title: "Time's Up!",
-        description: "Your exam has been automatically submitted."
-      })
-      navigate("/student/results")
+        description: "Your exam has been automatically submitted.",
+      });
+      navigate("/student/results");
     } catch (error: any) {
-      console.error('Error auto-submitting exam:', error)
+      console.error("Error auto-submitting exam:", error);
       toast({
         title: "Error",
         description: "Failed to submit exam automatically",
-        variant: "destructive"
-      })
+        variant: "destructive",
+      });
     }
-  }
+  };
 
   const handleSubmit = async () => {
     try {
-      await submitExamAttempt(attemptId)
+      await submitExamAttempt(attemptId);
       toast({
         title: "Success",
-        description: "Your exam has been submitted successfully!"
-      })
-      navigate("/student/results")
+        description: "Your exam has been submitted successfully!",
+      });
+      navigate("/student/results");
     } catch (error: any) {
-      console.error('Error submitting exam:', error)
+      console.error("Error submitting exam:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to submit exam",
-        variant: "destructive"
-      })
+        variant: "destructive",
+      });
     }
-  }
+  };
 
-  const handleAnswerChange = (questionId: string, answer: string | string[]) => {
-    setAnswers(prev => ({
+  const handleAnswerChange = (
+    questionId: string,
+    answer: string | string[],
+  ) => {
+    setAnswers((prev) => ({
       ...prev,
-      [questionId]: answer
-    }))
-  }
+      [questionId]: answer,
+    }));
+  };
 
   const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600)
-    const minutes = Math.floor((seconds % 3600) / 60)
-    const secs = seconds % 60
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-  }
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
 
-  const currentQuestion = questions[currentQuestionIndex]
-  const progress = ((currentQuestionIndex + 1) / questions.length) * 100
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().substring(0, 2)}`;
+    }
+    return `${minutes}:${secs.toString().substring(0, 2)}`;
+  };
+
+  const currentQuestion = questions[currentQuestionIndex];
+  const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
 
   if (loading) {
     return (
@@ -194,7 +207,7 @@ export function MobileExamAttempt() {
           <p className="text-muted-foreground">Loading exam...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (!currentQuestion) {
@@ -204,18 +217,20 @@ export function MobileExamAttempt() {
           <CardContent className="pt-6 text-center">
             <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
             <h2 className="text-xl font-bold mb-2">No Questions Available</h2>
-            <p className="text-muted-foreground mb-4">This exam has no questions.</p>
+            <p className="text-muted-foreground mb-4">
+              This exam has no questions.
+            </p>
             <Button onClick={() => navigate("/student")}>
               Back to Dashboard
             </Button>
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
-  const answeredCount = Object.keys(answers).length
-  const unansweredCount = questions.length - answeredCount
+  const answeredCount = Object.keys(answers).length;
+  const unansweredCount = questions.length - answeredCount;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex flex-col">
@@ -230,21 +245,30 @@ export function MobileExamAttempt() {
               onClick={() => setShowNavigation(!showNavigation)}
               className="ml-2"
             >
-              {showNavigation ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              {showNavigation ? (
+                <X className="h-5 w-5" />
+              ) : (
+                <Menu className="h-5 w-5" />
+              )}
             </Button>
           </div>
-          
+
           <div className="flex items-center gap-3 text-sm">
             <div className="flex items-center gap-1.5 bg-primary/10 px-3 py-1.5 rounded-full">
               <Clock className="h-4 w-4 text-primary" />
-              <span className="font-mono font-semibold">{formatTime(timeRemaining)}</span>
+              <span className="font-mono font-semibold">
+                {formatTime(timeRemaining)}
+              </span>
             </div>
             <div className="flex-1 text-center">
               <span className="font-semibold">{currentQuestionIndex + 1}</span>
-              <span className="text-muted-foreground"> / {questions.length}</span>
+              <span className="text-muted-foreground">
+                {" "}
+                / {questions.length}
+              </span>
             </div>
           </div>
-          
+
           <Progress value={progress} className="h-2 mt-3" />
         </div>
 
@@ -256,16 +280,18 @@ export function MobileExamAttempt() {
                 <button
                   key={q._id}
                   onClick={() => {
-                    setCurrentQuestionIndex(idx)
-                    setShowNavigation(false)
+                    setCurrentQuestionIndex(idx);
+                    setShowNavigation(false);
                   }}
                   className={`
                     aspect-square rounded-lg font-semibold text-sm transition-all
-                    ${idx === currentQuestionIndex 
-                      ? 'bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2' 
-                      : answers[q._id] !== undefined
-                      ? 'bg-green-100 text-green-800 border-2 border-green-300'
-                      : 'bg-background border-2 border-border hover:border-primary/50'}
+                    ${
+                      idx === currentQuestionIndex
+                        ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2"
+                        : answers[q._id] !== undefined
+                          ? "bg-green-100 text-green-800 border-2 border-green-300"
+                          : "bg-background border-2 border-border hover:border-primary/50"
+                    }
                   `}
                 >
                   {idx + 1}
@@ -295,13 +321,14 @@ export function MobileExamAttempt() {
                 Q{currentQuestionIndex + 1}
               </Badge>
               <div className="flex-1">
-                <div 
+                <div
                   className="text-base leading-relaxed"
                   dangerouslySetInnerHTML={{ __html: currentQuestion.question }}
                 />
                 <div className="flex items-center gap-2 mt-2">
                   <Badge variant="secondary" className="text-xs">
-                    {currentQuestion.marks} {currentQuestion.marks === 1 ? 'mark' : 'marks'}
+                    {currentQuestion.marks}{" "}
+                    {currentQuestion.marks === 1 ? "mark" : "marks"}
                   </Badge>
                   <Badge variant="secondary" className="text-xs capitalize">
                     {currentQuestion.difficulty}
@@ -312,18 +339,24 @@ export function MobileExamAttempt() {
 
             {/* Answer Options */}
             <div className="mt-6 space-y-3">
-              {currentQuestion.type === 'multiple-choice' && (
+              {currentQuestion.type === "multiple-choice" && (
                 <RadioGroup
-                  value={answers[currentQuestion._id] as string || ""}
-                  onValueChange={(value) => handleAnswerChange(currentQuestion._id, value)}
+                  value={(answers[currentQuestion._id] as string) || ""}
+                  onValueChange={(value) =>
+                    handleAnswerChange(currentQuestion._id, value)
+                  }
                 >
                   {currentQuestion.options?.map((option, idx) => (
-                    <div 
+                    <div
                       key={idx}
                       className="flex items-start space-x-3 p-3 border rounded-lg hover:border-primary/50 transition-colors"
                     >
-                      <RadioGroupItem value={option} id={`option-${idx}`} className="mt-0.5" />
-                      <Label 
+                      <RadioGroupItem
+                        value={option}
+                        id={`option-${idx}`}
+                        className="mt-0.5"
+                      />
+                      <Label
                         htmlFor={`option-${idx}`}
                         className="flex-1 cursor-pointer leading-relaxed"
                         dangerouslySetInnerHTML={{ __html: option }}
@@ -333,26 +366,40 @@ export function MobileExamAttempt() {
                 </RadioGroup>
               )}
 
-              {currentQuestion.type === 'true-false' && (
+              {currentQuestion.type === "true-false" && (
                 <RadioGroup
-                  value={answers[currentQuestion._id] as string || ""}
-                  onValueChange={(value) => handleAnswerChange(currentQuestion._id, value)}
+                  value={(answers[currentQuestion._id] as string) || ""}
+                  onValueChange={(value) =>
+                    handleAnswerChange(currentQuestion._id, value)
+                  }
                 >
                   <div className="flex items-center space-x-3 p-4 border rounded-lg hover:border-primary/50">
                     <RadioGroupItem value="true" id="true" />
-                    <Label htmlFor="true" className="flex-1 cursor-pointer text-base">True</Label>
+                    <Label
+                      htmlFor="true"
+                      className="flex-1 cursor-pointer text-base"
+                    >
+                      True
+                    </Label>
                   </div>
                   <div className="flex items-center space-x-3 p-4 border rounded-lg hover:border-primary/50">
                     <RadioGroupItem value="false" id="false" />
-                    <Label htmlFor="false" className="flex-1 cursor-pointer text-base">False</Label>
+                    <Label
+                      htmlFor="false"
+                      className="flex-1 cursor-pointer text-base"
+                    >
+                      False
+                    </Label>
                   </div>
                 </RadioGroup>
               )}
 
-              {currentQuestion.type === 'short-answer' && (
+              {currentQuestion.type === "short-answer" && (
                 <Textarea
-                  value={answers[currentQuestion._id] as string || ""}
-                  onChange={(e) => handleAnswerChange(currentQuestion._id, e.target.value)}
+                  value={(answers[currentQuestion._id] as string) || ""}
+                  onChange={(e) =>
+                    handleAnswerChange(currentQuestion._id, e.target.value)
+                  }
                   placeholder="Type your answer here..."
                   rows={6}
                   className="text-base"
@@ -369,7 +416,9 @@ export function MobileExamAttempt() {
           <Button
             variant="outline"
             size="lg"
-            onClick={() => setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))}
+            onClick={() =>
+              setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))
+            }
             disabled={currentQuestionIndex === 0}
             className="flex-1"
           >
@@ -389,7 +438,11 @@ export function MobileExamAttempt() {
           ) : (
             <Button
               size="lg"
-              onClick={() => setCurrentQuestionIndex(Math.min(questions.length - 1, currentQuestionIndex + 1))}
+              onClick={() =>
+                setCurrentQuestionIndex(
+                  Math.min(questions.length - 1, currentQuestionIndex + 1),
+                )
+              }
               className="flex-1"
             >
               Next
@@ -416,16 +469,21 @@ export function MobileExamAttempt() {
                 </div>
                 <div className="flex justify-between">
                   <span>Answered:</span>
-                  <span className="font-semibold text-green-600">{answeredCount}</span>
+                  <span className="font-semibold text-green-600">
+                    {answeredCount}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Unanswered:</span>
-                  <span className="font-semibold text-red-600">{unansweredCount}</span>
+                  <span className="font-semibold text-red-600">
+                    {unansweredCount}
+                  </span>
                 </div>
               </div>
               {unansweredCount > 0 && (
                 <p className="text-yellow-600 text-sm">
-                  ⚠️ You have {unansweredCount} unanswered question{unansweredCount > 1 ? 's' : ''}.
+                  ⚠️ You have {unansweredCount} unanswered question
+                  {unansweredCount > 1 ? "s" : ""}.
                 </p>
               )}
             </AlertDialogDescription>
@@ -440,5 +498,5 @@ export function MobileExamAttempt() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  )
+  );
 }

@@ -78,9 +78,14 @@ class ExamAttemptService {
         // If no selectedQuestions stored (old attempts), use all exam questions
         let questionsToReturn;
         if (activeAttempt.selectedQuestions && activeAttempt.selectedQuestions.length > 0) {
-          // Get the questions that were originally selected for this attempt
-          const selectedQuestionIds = activeAttempt.selectedQuestions.map(id => id.toString());
-          questionsToReturn = exam.questions.filter(q => selectedQuestionIds.includes(q._id.toString()));
+          // Get the questions in the SAME ORDER they were originally selected
+          // Create a map for quick lookup
+          const questionMap = new Map(exam.questions.map(q => [q._id.toString(), q]));
+          
+          // Map the stored question IDs back to full question objects in original order
+          questionsToReturn = activeAttempt.selectedQuestions
+            .map(id => questionMap.get(id.toString()))
+            .filter(q => q !== undefined); // Filter out any questions that no longer exist
         } else {
           // Fallback to all questions for backward compatibility
           questionsToReturn = exam.questions;
@@ -141,18 +146,23 @@ class ExamAttemptService {
       const savedAttempt = await attempt.save();
 
       // Get questions for this exam
-      let selectedQuestions = exam.questions;
+      let selectedQuestions = [...exam.questions];
       
-      // If questionsPerExam is set, randomly select that many questions
+      // Step 1: If questionsPerExam is set, randomly select that many questions
       if (exam.questionsPerExam && exam.questionsPerExam > 0 && exam.questionsPerExam < exam.questions.length) {
         console.log(`Randomly selecting ${exam.questionsPerExam} questions from ${exam.questions.length} available questions`);
         
         // Shuffle array and take first N questions
-        const shuffled = [...exam.questions].sort(() => Math.random() - 0.5);
-        selectedQuestions = shuffled.slice(0, exam.questionsPerExam);
+        selectedQuestions = selectedQuestions.sort(() => Math.random() - 0.5).slice(0, exam.questionsPerExam);
       }
       
-      // Store the selected question IDs in the attempt
+      // Step 2: If randomizeQuestions is enabled, shuffle the selected questions
+      if (exam.randomizeQuestions) {
+        console.log('Randomizing question order for exam attempt');
+        selectedQuestions = selectedQuestions.sort(() => Math.random() - 0.5);
+      }
+      
+      // Store the selected question IDs in their randomized order
       savedAttempt.selectedQuestions = selectedQuestions.map(q => q._id);
       await savedAttempt.save();
       
