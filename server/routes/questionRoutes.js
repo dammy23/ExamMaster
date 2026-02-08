@@ -194,58 +194,116 @@ router.post('/bulk-upload', requireUser, upload.single('file'), async (req, res)
     // Handle both file upload and direct JSON data
     if (req.file) {
       // File upload handling
-      console.log('Processing CSV file:', req.file.originalname);
+      console.log('Processing file:', req.file.originalname);
       
       const questions = [];
       const filePath = req.file.path;
+      const fileExtension = path.extname(req.file.originalname).toLowerCase();
       
-      // Parse CSV file
-      const parseCSV = () => {
-        return new Promise((resolve, reject) => {
-          fs.createReadStream(filePath)
-            .pipe(csv())
-            .on('data', (data) => {
-              // Normalize column names
-              const normalizedData = {};
-              Object.keys(data).forEach(key => {
-                const normalizedKey = key.toLowerCase().replace(/\s+/g, '');
-                normalizedData[normalizedKey] = data[key] ? data[key].trim() : '';
-              });
-              
-              // Map CSV columns to question fields
-              const questionData = {
-                type: normalizedData.type || normalizedData.questiontype,
-                question: normalizedData.question || normalizedData.questiontext,
-                difficulty: normalizedData.difficulty || 'easy',
-                marks: parseInt(normalizedData.marks || normalizedData.points || 1),
-                explanation: normalizedData.explanation || normalizedData.hint || ''
-              };
-
-              // Handle options and correct answers based on question type
-              if (questionData.type === 'multiple-choice') {
-                questionData.options = [];
-                const optionFields = ['option1', 'option2', 'option3', 'option4', 'option5', 'option6'];
-                optionFields.forEach(field => {
-                  if (normalizedData[field] && normalizedData[field].trim()) {
-                    questionData.options.push(normalizedData[field].trim());
-                  }
+      // Check if file is JSON
+      if (fileExtension === '.json') {
+        console.log('Processing JSON file');
+        
+        try {
+          const fileContent = fs.readFileSync(filePath, 'utf8');
+          const jsonData = JSON.parse(fileContent);
+          
+          // Validate that it's an array
+          if (!Array.isArray(jsonData)) {
+            fs.unlinkSync(filePath);
+            return res.status(400).json({
+              success: false,
+              error: 'JSON file must contain an array of questions'
+            });
+          }
+          
+          // Process each question from JSON
+          jsonData.forEach((item, index) => {
+            const questionData = {
+              type: item.type,
+              question: item.question,
+              difficulty: item.difficulty || 'easy',
+              marks: parseInt(item.marks) || 1,
+              explanation: item.explanation || ''
+            };
+            
+            // Handle options and correct answers based on question type
+            if (questionData.type === 'multiple-choice') {
+              questionData.options = item.options || [];
+              questionData.correctAnswers = item.correctAnswers || [];
+            } else if (questionData.type === 'true-false') {
+              questionData.options = ['True', 'False'];
+              questionData.correctAnswers = item.correctAnswers || [];
+            } else if (questionData.type === 'short-answer') {
+              questionData.correctAnswers = item.correctAnswers || [];
+            }
+            
+            // Validate required fields
+            if (questionData.question && questionData.type && questionData.correctAnswers && questionData.correctAnswers.length > 0) {
+              questions.push(questionData);
+            } else {
+              console.warn(`Skipping invalid question at index ${index}: missing required fields`);
+            }
+          });
+          
+          console.log(`Parsed ${questions.length} questions from JSON file`);
+          
+        } catch (jsonError) {
+          fs.unlinkSync(filePath);
+          return res.status(400).json({
+            success: false,
+            error: `Invalid JSON file: ${jsonError.message}`
+          });
+        }
+        
+      } else {
+        // Parse CSV file (existing logic)
+        const parseCSV = () => {
+          return new Promise((resolve, reject) => {
+            fs.createReadStream(filePath)
+              .pipe(csv())
+              .on('data', (data) => {
+                // Normalize column names
+                const normalizedData = {};
+                Object.keys(data).forEach(key => {
+                  const normalizedKey = key.toLowerCase().replace(/\s+/g, '');
+                  normalizedData[normalizedKey] = data[key] ? data[key].trim() : '';
                 });
                 
-                // Get correct answers - prioritize option numbers format
-                const correctAnswer = normalizedData.correctanswer || normalizedData.correctanswers || '';
-                if (correctAnswer) {
-                  // Check if the correctAnswer contains numbers (new format)
-                  const answerValue = correctAnswer.trim();
-                  const isNumericFormat = /^[1-6](,[1-6])*$/.test(answerValue);
+                // Map CSV columns to question fields
+                const questionData = {
+                  type: normalizedData.type || normalizedData.questiontype,
+                  question: normalizedData.question || normalizedData.questiontext,
+                  difficulty: normalizedData.difficulty || 'easy',
+                  marks: parseInt(normalizedData.marks || normalizedData.points || 1),
+                  explanation: normalizedData.explanation || normalizedData.hint || ''
+                };
+
+                // Handle options and correct answers based on question type
+                if (questionData.type === 'multiple-choice') {
+                  questionData.options = [];
+                  const optionFields = ['option1', 'option2', 'option3', 'option4', 'option5', 'option6'];
+                  optionFields.forEach(field => {
+                    if (normalizedData[field] && normalizedData[field].trim()) {
+                      questionData.options.push(normalizedData[field].trim());
+                    }
+                  });
                   
-                  if (isNumericFormat) {
-                    // New format: option numbers (1,2,3,4,5,6)
-                    console.log('Processing correctAnswer in numeric format:', answerValue);
-                    const optionNumbers = answerValue.split(',').map(num => parseInt(num.trim()));
+                  // Get correct answers - prioritize option numbers format
+                  const correctAnswer = normalizedData.correctanswer || normalizedData.correctanswers || '';
+                  if (correctAnswer) {
+                    // Check if the correctAnswer contains numbers (new format)
+                    const answerValue = correctAnswer.trim();
+                    const isNumericFormat = /^[1-6](,[1-6])*$/.test(answerValue);
                     
-                    // Validate option numbers
-                    const invalidNumbers = optionNumbers.filter(num => num < 1 || num > 6);
-                    const outOfRangeNumbers = optionNumbers.filter(num => num > questionData.options.length);
+                    if (isNumericFormat) {
+                      // New format: option numbers (1,2,3,4,5,6)
+                      console.log('Processing correctAnswer in numeric format:', answerValue);
+                      const optionNumbers = answerValue.split(',').map(num => parseInt(num.trim()));
+                      
+                      // Validate option numbers
+                      const invalidNumbers = optionNumbers.filter(num => num < 1 || num > 6);
+                      const outOfRangeNumbers = optionNumbers.filter(num => num > questionData.options.length);
                     
                     if (invalidNumbers.length > 0) {
                       console.error(`Invalid option numbers found: ${invalidNumbers.join(', ')} - must be between 1-6 for question: ${questionData.question?.substring(0, 50)}...`);
@@ -305,6 +363,7 @@ router.post('/bulk-upload', requireUser, upload.single('file'), async (req, res)
       };
 
       await parseCSV();
+      }
       
       // Clean up uploaded file
       fs.unlinkSync(filePath);

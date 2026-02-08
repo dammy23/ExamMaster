@@ -231,6 +231,76 @@ export function QuestionManagement() {
     }
   }
 
+  const handleDownloadJsonTemplate = () => {
+    try {
+      console.log('Downloading questions JSON template...')
+      
+      const jsonTemplate = [
+        {
+          "tempId": "q-001",
+          "type": "multiple-choice",
+          "question": "What is 2 + 2?",
+          "options": ["1", "2", "3", "4"],
+          "correctAnswers": ["4"],
+          "explanation": "Basic arithmetic operation",
+          "marks": 1,
+          "difficulty": "easy"
+        },
+        {
+          "tempId": "q-002",
+          "type": "multiple-choice",
+          "question": "Which are programming languages? (Select all that apply)",
+          "options": ["Python", "Java", "HTML", "CSS", "JavaScript", "TypeScript"],
+          "correctAnswers": ["Python", "Java", "JavaScript", "TypeScript"],
+          "explanation": "Programming languages vs markup/styling",
+          "marks": 2,
+          "difficulty": "medium"
+        },
+        {
+          "tempId": "q-003",
+          "type": "true-false",
+          "question": "The Earth is round",
+          "correctAnswers": ["True"],
+          "explanation": "Basic geography fact",
+          "marks": 1,
+          "difficulty": "easy"
+        },
+        {
+          "tempId": "q-004",
+          "type": "short-answer",
+          "question": "Name the capital of France",
+          "correctAnswers": ["Paris"],
+          "explanation": "Basic geography knowledge",
+          "marks": 2,
+          "difficulty": "easy"
+        }
+      ]
+
+      // Create and download file
+      const blob = new Blob([JSON.stringify(jsonTemplate, null, 2)], { type: 'application/json' })
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(blob)
+      link.setAttribute('href', url)
+      link.setAttribute('download', 'questions_template.json')
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      toast({
+        title: "Success",
+        description: "JSON template downloaded successfully"
+      })
+    } catch (error: any) {
+      console.error('Error downloading JSON template:', error)
+      toast({
+        title: "Error",
+        description: "Failed to download JSON template",
+        variant: "destructive"
+      })
+    }
+  }
+
   const getDifficultyBadge = (difficulty: string) => {
     switch (difficulty) {
       case 'easy':
@@ -275,17 +345,29 @@ export function QuestionManagement() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            className="gap-2"
-            onClick={() => handleDownloadTemplate()}
-          >
-            <Download className="h-4 w-4" />
-            Download Template
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Download className="h-4 w-4" />
+                Download Template
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuLabel>Select Format</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleDownloadTemplate}>
+                <FileText className="mr-2 h-4 w-4" />
+                CSV Template
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleDownloadJsonTemplate}>
+                <FileText className="mr-2 h-4 w-4" />
+                JSON Template
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <input
             type="file"
-            accept=".csv,.xlsx"
+            accept=".csv,.xlsx,.json"
             onChange={handleBulkUpload}
             className="hidden"
             id="bulk-upload"
@@ -294,7 +376,7 @@ export function QuestionManagement() {
             <Button variant="outline" className="gap-2" asChild>
               <span>
                 <Upload className="h-4 w-4" />
-                Bulk Upload
+                Bulk Upload (CSV/JSON)
               </span>
             </Button>
           </label>
