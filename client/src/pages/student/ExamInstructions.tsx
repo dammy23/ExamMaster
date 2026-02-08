@@ -122,6 +122,13 @@ export function ExamInstructions() {
   const canStartExam = () => {
     if (!exam) return false
     const timeStatus = getTimeUntilStart()
+    
+    // If mobile is enabled, ignore fullscreen requirement
+    if (exam.mobileEnabled) {
+      const { fullScreen, ...otherChecks } = systemCheck
+      return timeStatus?.type === 'available' && Object.values(otherChecks).every(check => check === true)
+    }
+    
     return timeStatus?.type === 'available' && Object.values(systemCheck).every(check => check === true)
   }
 
@@ -246,7 +253,6 @@ export function ExamInstructions() {
   }
 
   const timeStatus = getTimeUntilStart()
-  const allChecksPass = Object.values(systemCheck).every(check => check === true)
 
   return (
     <div className="space-y-6">
@@ -428,10 +434,19 @@ export function ExamInstructions() {
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${systemCheck.fullScreen ? 'bg-green-500' : 'bg-red-500'}`} />
+                  <div className={`w-2 h-2 rounded-full ${
+                    exam.mobileEnabled 
+                      ? 'bg-gray-400' 
+                      : systemCheck.fullScreen ? 'bg-green-500' : 'bg-red-500'
+                  }`} />
                   <span className="text-sm">Fullscreen Support</span>
+                  {exam.mobileEnabled && (
+                    <Badge variant="outline" className="text-xs ml-1">Optional</Badge>
+                  )}
                 </div>
-                {systemCheck.fullScreen ? (
+                {exam.mobileEnabled ? (
+                  <CheckCircle2 className="h-4 w-4 text-gray-400" />
+                ) : systemCheck.fullScreen ? (
                   <CheckCircle2 className="h-4 w-4 text-green-500" />
                 ) : (
                   <AlertTriangle className="h-4 w-4 text-red-500" />
@@ -486,14 +501,14 @@ export function ExamInstructions() {
                 </div>
               )}
 
-              {!allChecksPass && (
+              {!canStartExam() && timeStatus?.type === 'available' && (
                 <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
                   <div className="flex items-center gap-2 text-red-700">
                     <AlertTriangle className="h-4 w-4" />
                     <span className="text-sm font-medium">System Requirements Not Met</span>
                   </div>
                   <p className="text-xs text-red-600 mt-1">
-                    Please ensure all system checks pass before starting the exam.
+                    Please ensure all required system checks pass before starting the exam.
                   </p>
                 </div>
               )}
@@ -568,7 +583,7 @@ export function ExamInstructions() {
                 <Button size="lg" className="w-full" disabled>
                   {timeStatus?.type === 'starts' && `Exam starts in ${timeStatus.time}`}
                   {timeStatus?.type === 'expired' && 'Exam has expired'}
-                  {timeStatus?.type === 'available' && !allChecksPass && 'System requirements not met'}
+                  {timeStatus?.type === 'available' && !canStartExam() && 'System requirements not met'}
                 </Button>
               )}
               
