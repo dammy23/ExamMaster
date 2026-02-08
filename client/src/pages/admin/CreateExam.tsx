@@ -38,8 +38,10 @@ interface ExamFormData {
   randomizeOptions: boolean
   negativeMarking: boolean
   negativeMarkingValue: number
+  unlimitedAttempts: boolean
   maxAttempts: number
   videoRecording: boolean
+  mobileEnabled: boolean
   assignedGroups: string[]
 }
 
@@ -67,8 +69,10 @@ export function CreateExam() {
       randomizeOptions: true,
       negativeMarking: false,
       negativeMarkingValue: 0.25,
+      unlimitedAttempts: false,
       maxAttempts: 1,
       videoRecording: false,
+      mobileEnabled: false,
       assignedGroups: []
     }
   })
@@ -109,6 +113,7 @@ export function CreateExam() {
   }
 
   const negativeMarking = watch("negativeMarking")
+  const unlimitedAttempts = watch("unlimitedAttempts")
 
   // Helper function to estimate payload size
   const estimatePayloadSize = (data: any) => {
@@ -132,6 +137,7 @@ export function CreateExam() {
         totalMarks: Number(data.totalMarks),
         passingMarks: Number(data.passingMarks),
         negativeMarkingValue: Number(data.negativeMarkingValue),
+        maxAttempts: data.unlimitedAttempts ? 0 : Number(data.maxAttempts),
         status: 'draft',
         totalQuestions: 0,
         assignedStudents: [],
@@ -527,25 +533,47 @@ export function CreateExam() {
                   </div>
                 )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="maxAttempts">No. of Allowed Attempts</Label>
-                  <Input
-                    id="maxAttempts"
-                    type="number"
-                    {...register("maxAttempts", {
-                      required: "Number of attempts is required",
-                      min: { value: 1, message: "Must be at least 1 attempt" },
-                      max: { value: 10, message: "Cannot exceed 10 attempts" }
-                    })}
-                    placeholder="1"
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Unlimited Attempts</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Students can take this exam unlimited times
+                    </p>
+                  </div>
+                  <Switch
+                    checked={watch("unlimitedAttempts")}
+                    onCheckedChange={(checked) => {
+                      setValue("unlimitedAttempts", checked)
+                      if (checked) {
+                        setValue("maxAttempts", 0)
+                      } else {
+                        setValue("maxAttempts", 1)
+                      }
+                    }}
                   />
-                  {errors.maxAttempts && (
-                    <p className="text-sm text-red-600">{errors.maxAttempts.message}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    Maximum number of times a student can attempt this exam
-                  </p>
                 </div>
+
+                {!unlimitedAttempts && (
+                  <div className="space-y-2">
+                    <Label htmlFor="maxAttempts">No. of Allowed Attempts</Label>
+                    <Input
+                      id="maxAttempts"
+                      type="number"
+                      {...register("maxAttempts", {
+                        required: "Number of attempts is required",
+                        min: { value: 1, message: "Must be at least 1 attempt" },
+                        max: { value: 10, message: "Cannot exceed 10 attempts" }
+                      })}
+                      placeholder="1"
+                    />
+                    {errors.maxAttempts && (
+                      <p className="text-sm text-red-600">{errors.maxAttempts.message}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Maximum number of times a student can attempt this exam
+                    </p>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
@@ -557,6 +585,19 @@ export function CreateExam() {
                   <Switch
                     checked={watch("videoRecording")}
                     onCheckedChange={(checked) => setValue("videoRecording", checked)}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Allow Mobile Devices</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Students can take this exam on mobile devices
+                    </p>
+                  </div>
+                  <Switch
+                    checked={watch("mobileEnabled")}
+                    onCheckedChange={(checked) => setValue("mobileEnabled", checked)}
                   />
                 </div>
               </div>
