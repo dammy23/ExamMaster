@@ -293,7 +293,7 @@ export function ExamInstructions() {
                 </div>
                 <div className="flex items-center gap-2">
                   <FileText className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">{exam.totalQuestions || 'N/A'} questions</span>
+                  <span className="text-sm font-medium">{exam.questionsPerExam || 'N/A'} questions</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Target className="h-4 w-4 text-muted-foreground" />
