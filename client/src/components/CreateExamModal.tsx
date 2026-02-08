@@ -38,6 +38,8 @@ interface CreateExamFormData {
   negativeMarkingValue: number
   unlimitedAttempts: boolean
   maxAttempts: number
+  videoRecording: boolean
+  mobileEnabled: boolean
 }
 
 interface CreateExamModalProps {
@@ -85,7 +87,9 @@ export function CreateExamModal({
       negativeMarking: false,
       negativeMarkingValue: 0.25,
       unlimitedAttempts: false,
-      maxAttempts: 1
+      maxAttempts: 1,
+      videoRecording: false,
+      mobileEnabled: false
     }
   })
 
@@ -168,6 +172,8 @@ export function CreateExamModal({
         negativeMarking: data.negativeMarking,
         negativeMarkingValue: data.negativeMarking ? data.negativeMarkingValue : 0,
         maxAttempts: data.unlimitedAttempts ? 0 : data.maxAttempts,
+        videoRecording: data.videoRecording,
+        mobileEnabled: data.mobileEnabled,
         status: 'draft'
       }
 
@@ -529,6 +535,24 @@ export function CreateExamModal({
                       disabled={creating}
                     />
                     <Label htmlFor="randomizeOptions">Randomize Options</Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="videoRecording"
+                      {...register('videoRecording')}
+                      disabled={creating}
+                    />
+                    <Label htmlFor="videoRecording">Enable Video Recording</Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="mobileEnabled"
+                      {...register('mobileEnabled')}
+                      disabled={creating}
+                    />
+                    <Label htmlFor="mobileEnabled">Allow Mobile Devices</Label>
                   </div>
                 </div>
               </div>

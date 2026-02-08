@@ -16,6 +16,7 @@ import { Subjects } from "./pages/admin/Subjects"
 import { StudentManagement } from "./pages/admin/StudentManagement"
 import { Reports } from "./pages/admin/Reports"
 import { ExamAttempt } from "./pages/student/ExamAttempt"
+import { MobileExamAttempt } from "./pages/student/MobileExamAttempt"
 import { ExamInstructions } from "./pages/student/ExamInstructions"
 import { StudentResults } from "./pages/student/StudentResults"
 import { CreateExam } from "./pages/admin/CreateExam"
@@ -56,6 +57,11 @@ function App() {
           <Route path="/student/exam/:id" element={
             <ProtectedRoute>
               <ExamAttempt />
+            </ProtectedRoute>
+          } />
+          <Route path="/student/exam/:id/mobile" element={
+            <ProtectedRoute>
+              <MobileExamAttempt />
             </ProtectedRoute>
           } />
           <Route path="/student/results" element={

@@ -40,6 +40,7 @@ interface ExamFormData {
   unlimitedAttempts: boolean
   maxAttempts: number
   videoRecording: boolean
+  mobileEnabled: boolean
   assignedGroups: string[]
 }
 
@@ -134,6 +135,7 @@ export function EditExam() {
         unlimitedAttempts: exam.maxAttempts === 0,
         maxAttempts: exam.maxAttempts === 0 ? 1 : exam.maxAttempts,
         videoRecording: exam.videoRecording || false,
+        mobileEnabled: exam.mobileEnabled || false,
         assignedGroups: exam.assignedGroups || []
       })
 
@@ -597,6 +599,19 @@ export function EditExam() {
                   <Switch
                     checked={watch("videoRecording")}
                     onCheckedChange={(checked) => setValue("videoRecording", checked)}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Allow Mobile Devices</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Students can take this exam on mobile devices
+                    </p>
+                  </div>
+                  <Switch
+                    checked={watch("mobileEnabled")}
+                    onCheckedChange={(checked) => setValue("mobileEnabled", checked)}
                   />
                 </div>
               </div>

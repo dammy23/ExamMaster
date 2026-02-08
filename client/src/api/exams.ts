@@ -25,6 +25,8 @@ export interface Exam {
   negativeMarking: boolean;
   negativeMarkingValue: number;
   maxAttempts: number; // 0 means unlimited
+  videoRecording: boolean;
+  mobileEnabled: boolean;
   assignedStudents: string[];
   assignedGroups: string[];
   questions: string[];

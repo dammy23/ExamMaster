@@ -28,10 +28,12 @@ import {
   ArrowLeft,
   Shield,
   Eye,
-  MonitorCheck
+  MonitorCheck,
+  Smartphone
 } from "lucide-react"
 import { getExamById } from "@/api/exams"
 import { useToast } from "@/hooks/useToast"
+import { isMobileDevice, getDeviceType } from "@/utils/deviceDetection"
 
 export function ExamInstructions() {
   const { id } = useParams<{ id: string }>()
@@ -46,6 +48,8 @@ export function ExamInstructions() {
     javascript: true,
     connection: true
   })
+  const [deviceType] = useState(getDeviceType())
+  const [isMobile] = useState(isMobileDevice())
 
   useEffect(() => {
     if (id) {
@@ -127,6 +131,28 @@ export function ExamInstructions() {
         title: "Cannot Start Exam",
         description: "Please ensure all system requirements are met and the exam is available.",
         variant: "destructive"
+      })
+      return
+    }
+
+    // Check if user is on mobile device
+    if (isMobile) {
+      // Check if exam allows mobile devices
+      if (!exam.mobileEnabled) {
+        toast({
+          title: "Mobile Not Allowed",
+          description: "This exam cannot be taken on mobile devices. Please use a desktop or laptop computer.",
+          variant: "destructive"
+        })
+        return
+      }
+
+      // Redirect to mobile exam page
+      console.log('Starting mobile exam:', id)
+      navigate(`/student/exam/${id}/mobile`)
+      toast({
+        title: "Mobile Exam Started",
+        description: "Make sure you have a stable connection.",
       })
       return
     }
@@ -423,6 +449,42 @@ export function ExamInstructions() {
                   <AlertTriangle className="h-4 w-4 text-red-500" />
                 )}
               </div>
+
+              <Separator />
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Smartphone className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Device Type</span>
+                </div>
+                <Badge variant="outline" className="capitalize">
+                  {deviceType}
+                </Badge>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${exam.mobileEnabled ? 'bg-green-500' : 'bg-gray-400'}`} />
+                  <span className="text-sm">Mobile Support</span>
+                </div>
+                {exam.mobileEnabled ? (
+                  <Badge variant="outline" className="text-green-600 border-green-600">Enabled</Badge>
+                ) : (
+                  <Badge variant="outline" className="text-gray-600">Disabled</Badge>
+                )}
+              </div>
+
+              {isMobile && !exam.mobileEnabled && (
+                <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                  <div className="flex items-center gap-2 text-orange-700">
+                    <Smartphone className="h-4 w-4" />
+                    <span className="text-sm font-medium">Mobile Device Detected</span>
+                  </div>
+                  <p className="text-xs text-orange-600 mt-1">
+                    This exam is not available on mobile devices. Please use a desktop or laptop computer.
+                  </p>
+                </div>
+              )}
 
               {!allChecksPass && (
                 <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
