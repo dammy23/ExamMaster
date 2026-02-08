@@ -40,6 +40,8 @@ interface ExamFormData {
   negativeMarkingValue: number
   unlimitedAttempts: boolean
   maxAttempts: number
+  questionsPerExam?: number
+  useRandomQuestions: boolean
   videoRecording: boolean
   mobileEnabled: boolean
   assignedGroups: string[]
@@ -71,6 +73,8 @@ export function CreateExam() {
       negativeMarkingValue: 0.25,
       unlimitedAttempts: false,
       maxAttempts: 1,
+      useRandomQuestions: false,
+      questionsPerExam: undefined,
       videoRecording: false,
       mobileEnabled: false,
       assignedGroups: []
@@ -114,6 +118,7 @@ export function CreateExam() {
 
   const negativeMarking = watch("negativeMarking")
   const unlimitedAttempts = watch("unlimitedAttempts")
+  const useRandomQuestions = watch("useRandomQuestions")
 
   // Helper function to estimate payload size
   const estimatePayloadSize = (data: any) => {
@@ -138,6 +143,7 @@ export function CreateExam() {
         passingMarks: Number(data.passingMarks),
         negativeMarkingValue: Number(data.negativeMarkingValue),
         maxAttempts: data.unlimitedAttempts ? 0 : Number(data.maxAttempts),
+        questionsPerExam: data.useRandomQuestions && data.questionsPerExam ? Number(data.questionsPerExam) : null,
         status: 'draft',
         totalQuestions: 0,
         assignedStudents: [],
@@ -571,6 +577,45 @@ export function CreateExam() {
                     )}
                     <p className="text-xs text-muted-foreground">
                       Maximum number of times a student can attempt this exam
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Random Question Selection</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Randomly select a subset of questions for each exam attempt
+                    </p>
+                  </div>
+                  <Switch
+                    checked={watch("useRandomQuestions")}
+                    onCheckedChange={(checked) => {
+                      setValue("useRandomQuestions", checked)
+                      if (!checked) {
+                        setValue("questionsPerExam", undefined)
+                      }
+                    }}
+                  />
+                </div>
+
+                {useRandomQuestions && (
+                  <div className="space-y-2">
+                    <Label htmlFor="questionsPerExam">Questions Per Exam Attempt</Label>
+                    <Input
+                      id="questionsPerExam"
+                      type="number"
+                      {...register("questionsPerExam", {
+                        required: useRandomQuestions ? "Number of questions is required" : false,
+                        min: { value: 1, message: "Must be at least 1 question" }
+                      })}
+                      placeholder="e.g., 20"
+                    />
+                    {errors.questionsPerExam && (
+                      <p className="text-sm text-red-600">{errors.questionsPerExam.message}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      If you assign 50 questions and set this to 20, each student will get 20 randomly selected questions
                     </p>
                   </div>
                 )}

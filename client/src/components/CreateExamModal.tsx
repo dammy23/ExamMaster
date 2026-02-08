@@ -38,6 +38,8 @@ interface CreateExamFormData {
   negativeMarkingValue: number
   unlimitedAttempts: boolean
   maxAttempts: number
+  questionsPerExam?: number
+  useRandomQuestions: boolean
   videoRecording: boolean
   mobileEnabled: boolean
 }
@@ -88,6 +90,8 @@ export function CreateExamModal({
       negativeMarkingValue: 0.25,
       unlimitedAttempts: false,
       maxAttempts: 1,
+      useRandomQuestions: false,
+      questionsPerExam: undefined,
       videoRecording: false,
       mobileEnabled: false
     }
@@ -95,6 +99,7 @@ export function CreateExamModal({
 
   const watchNegativeMarking = watch('negativeMarking')
   const watchUnlimitedAttempts = watch('unlimitedAttempts')
+  const watchUseRandomQuestions = watch('useRandomQuestions')
 
   // Load subjects when modal opens
   useEffect(() => {
@@ -172,6 +177,7 @@ export function CreateExamModal({
         negativeMarking: data.negativeMarking,
         negativeMarkingValue: data.negativeMarking ? data.negativeMarkingValue : 0,
         maxAttempts: data.unlimitedAttempts ? 0 : data.maxAttempts,
+        questionsPerExam: data.useRandomQuestions && data.questionsPerExam ? Number(data.questionsPerExam) : null,
         videoRecording: data.videoRecording,
         mobileEnabled: data.mobileEnabled,
         status: 'draft'
@@ -554,6 +560,48 @@ export function CreateExamModal({
                     />
                     <Label htmlFor="mobileEnabled">Allow Mobile Devices</Label>
                   </div>
+                </div>
+
+                <div className="md:col-span-2 space-y-3 border-t pt-4">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="useRandomQuestions"
+                      {...register('useRandomQuestions')}
+                      disabled={creating}
+                      onCheckedChange={(checked) => {
+                        setValue('useRandomQuestions', checked)
+                        if (!checked) {
+                          setValue('questionsPerExam', undefined)
+                        }
+                      }}
+                    />
+                    <Label htmlFor="useRandomQuestions">Random Question Selection</Label>
+                  </div>
+                  <p className="text-sm text-muted-foreground ml-7">
+                    Randomly select a subset of questions for each exam attempt
+                  </p>
+
+                  {watchUseRandomQuestions && (
+                    <div className="ml-7">
+                      <Label htmlFor="questionsPerExam">Questions Per Exam Attempt</Label>
+                      <Input
+                        id="questionsPerExam"
+                        type="number"
+                        {...register('questionsPerExam', {
+                          required: watchUseRandomQuestions ? 'Number of questions is required' : false,
+                          min: { value: 1, message: 'Must be at least 1 question' }
+                        })}
+                        placeholder="e.g., 20"
+                        disabled={creating}
+                      />
+                      {errors.questionsPerExam && (
+                        <p className="text-sm text-red-600 mt-1">{errors.questionsPerExam.message}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-1">
+                        If you assign 50 questions and set this to 20, each student will get 20 randomly selected questions
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>

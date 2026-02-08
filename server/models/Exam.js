@@ -42,6 +42,17 @@ const examSchema = new mongoose.Schema({
     default: 0,
     min: [0, 'Total questions cannot be negative']
   },
+  questionsPerExam: {
+    type: Number,
+    default: null,
+    min: [1, 'Questions per exam must be at least 1'],
+    validate: {
+      validator: function(v) {
+        return v === null || v === undefined || v >= 1;
+      },
+      message: 'Questions per exam must be at least 1 or null (use all questions)'
+    }
+  },
   totalMarks: {
     type: Number,
     required: true,

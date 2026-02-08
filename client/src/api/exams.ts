@@ -15,6 +15,7 @@ export interface Exam {
   endDate: string;
   status: 'draft' | 'active' | 'completed' | 'archived';
   totalQuestions: number;
+  questionsPerExam?: number | null;
   totalMarks: number;
   passingMarks: number;
   instructions: string;
