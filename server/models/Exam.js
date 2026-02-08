@@ -98,8 +98,14 @@ const examSchema = new mongoose.Schema({
   maxAttempts: {
     type: Number,
     default: 1,
-    min: [1, 'Maximum attempts must be at least 1'],
-    max: [10, 'Maximum attempts cannot exceed 10']
+    min: [0, 'Maximum attempts cannot be negative'], // 0 means unlimited
+    max: [10, 'Maximum attempts cannot exceed 10'],
+    validate: {
+      validator: function(v) {
+        return v === 0 || v >= 1;
+      },
+      message: 'Maximum attempts must be 0 (unlimited) or at least 1'
+    }
   },
   videoRecording: {
     type: Boolean,

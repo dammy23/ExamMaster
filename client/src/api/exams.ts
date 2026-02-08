@@ -24,6 +24,7 @@ export interface Exam {
   randomizeOptions: boolean;
   negativeMarking: boolean;
   negativeMarkingValue: number;
+  maxAttempts: number; // 0 means unlimited
   assignedStudents: string[];
   assignedGroups: string[];
   questions: string[];

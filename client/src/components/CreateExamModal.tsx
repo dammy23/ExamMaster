@@ -36,6 +36,8 @@ interface CreateExamFormData {
   randomizeOptions: boolean
   negativeMarking: boolean
   negativeMarkingValue: number
+  unlimitedAttempts: boolean
+  maxAttempts: number
 }
 
 interface CreateExamModalProps {
@@ -81,11 +83,14 @@ export function CreateExamModal({
       randomizeQuestions: true,
       randomizeOptions: true,
       negativeMarking: false,
-      negativeMarkingValue: 0.25
+      negativeMarkingValue: 0.25,
+      unlimitedAttempts: false,
+      maxAttempts: 1
     }
   })
 
   const watchNegativeMarking = watch('negativeMarking')
+  const watchUnlimitedAttempts = watch('unlimitedAttempts')
 
   // Load subjects when modal opens
   useEffect(() => {
@@ -162,6 +167,7 @@ export function CreateExamModal({
         randomizeOptions: data.randomizeOptions,
         negativeMarking: data.negativeMarking,
         negativeMarkingValue: data.negativeMarking ? data.negativeMarkingValue : 0,
+        maxAttempts: data.unlimitedAttempts ? 0 : data.maxAttempts,
         status: 'draft'
       }
 
@@ -432,6 +438,37 @@ export function CreateExamModal({
                       />
                       {errors.negativeMarkingValue && (
                         <p className="text-sm text-red-600 mt-1">{errors.negativeMarkingValue.message}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="md:col-span-2">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Switch
+                      id="unlimitedAttempts"
+                      {...register('unlimitedAttempts')}
+                      disabled={creating}
+                    />
+                    <Label htmlFor="unlimitedAttempts">Unlimited Attempts</Label>
+                  </div>
+
+                  {!watchUnlimitedAttempts && (
+                    <div>
+                      <Label htmlFor="maxAttempts">Maximum Attempts</Label>
+                      <Input
+                        id="maxAttempts"
+                        type="number"
+                        {...register('maxAttempts', {
+                          required: !watchUnlimitedAttempts && 'Maximum attempts is required',
+                          min: { value: 1, message: 'Attempts must be at least 1' },
+                          max: { value: 10, message: 'Attempts cannot exceed 10' }
+                        })}
+                        placeholder="1"
+                        disabled={creating}
+                      />
+                      {errors.maxAttempts && (
+                        <p className="text-sm text-red-600 mt-1">{errors.maxAttempts.message}</p>
                       )}
                     </div>
                   )}
