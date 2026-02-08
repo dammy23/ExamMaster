@@ -338,7 +338,7 @@ export function ExamAttempt() {
       setExam(examData)
       setQuestions(attemptData.questions)
       setAttemptId(attemptData.attemptId)
-      setTimeRemaining(examData.duration * 60) // Convert minutes to seconds
+      setTimeRemaining(attemptData.remainingTime || examData.duration * 60) // Use remainingTime from attempt or fallback to full duration
       setVideoRecordingEnabled(attemptData.videoRecording || false)
       setAttemptNumber(attemptData.attemptNumber || 1)
       setMaxAttempts(attemptData.maxAttempts || 1)

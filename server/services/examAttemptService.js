@@ -66,6 +66,14 @@ class ExamAttemptService {
       const activeAttempt = existingAttempts.find(attempt => attempt.status === 'in-progress');
       if (activeAttempt) {
         console.log(`Student has existing active attempt: ${activeAttempt._id}`);
+        
+        // Calculate remaining time
+        const startTime = new Date(activeAttempt.startTime);
+        const now = new Date();
+        const elapsedSeconds = Math.floor((now.getTime() - startTime.getTime()) / 1000);
+        const totalTimeSeconds = exam.duration * 60;
+        const remainingTime = Math.max(0, totalTimeSeconds - elapsedSeconds);
+        
         // Return existing attempt with questions (already populated from the exam query above)
         const questions = exam.questions.map(question => ({
           _id: question._id,
@@ -80,7 +88,8 @@ class ExamAttemptService {
           questions: questions,
           videoRecording: exam.videoRecording,
           attemptNumber: activeAttempt.attemptNumber,
-          maxAttempts: exam.maxAttempts
+          maxAttempts: exam.maxAttempts,
+          remainingTime: remainingTime
         };
       }
 
@@ -120,14 +129,28 @@ class ExamAttemptService {
 
       const savedAttempt = await attempt.save();
 
-      // Get questions for this exam (already populated from the exam query above)
-      const questions = exam.questions.map(question => ({
+      // Get questions for this exam
+      let selectedQuestions = exam.questions;
+      
+      // If questionsPerExam is set, randomly select that many questions
+      if (exam.questionsPerExam && exam.questionsPerExam > 0 && exam.questionsPerExam < exam.questions.length) {
+        console.log(`Randomly selecting ${exam.questionsPerExam} questions from ${exam.questions.length} available questions`);
+        
+        // Shuffle array and take first N questions
+        const shuffled = [...exam.questions].sort(() => Math.random() - 0.5);
+        selectedQuestions = shuffled.slice(0, exam.questionsPerExam);
+      }
+      
+      const questions = selectedQuestions.map(question => ({
         _id: question._id,
         type: question.type,
         question: question.question,
         options: question.options || [],
         marks: question.marks
       }));
+
+      // Calculate remaining time (full duration since it's a new attempt)
+      const remainingTime = exam.duration * 60; // Convert minutes to seconds
 
       console.log('ExamAttemptService: Exam attempt started successfully with ID:', savedAttempt._id);
       console.log(`ExamAttemptService: Loaded ${questions.length} questions for exam attempt`);
@@ -137,7 +160,8 @@ class ExamAttemptService {
         questions: questions,
         videoRecording: exam.videoRecording,
         attemptNumber: nextAttemptNumber,
-        maxAttempts: exam.maxAttempts
+        maxAttempts: exam.maxAttempts,
+        remainingTime: remainingTime
       };
     } catch (error) {
       console.error('ExamAttemptService: Error starting exam attempt:', error.message);
