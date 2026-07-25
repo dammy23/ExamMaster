@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { RichTextEditor } from "@/components/ui/rich-text-editor"
+import { LoadingState } from "@/components/ui/loading-state"
+import { EmptyState } from "@/components/ui/empty-state"
 import {
   Select,
   SelectContent,
@@ -17,7 +17,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -50,7 +49,47 @@ import {
   Eye
 } from "lucide-react"
 import { getQuestions, createQuestion, deleteQuestion, bulkUploadQuestions, getQuestionById, updateQuestion, type Question } from "@/api/questions"
+import { QuestionForm, type QuestionPayload } from "@/components/admin/QuestionForm"
 import { useToast } from "@/hooks/useToast"
+
+function getDifficultyBadge(difficulty: string) {
+  switch (difficulty) {
+    case 'easy':
+      return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">Easy</Badge>
+    case 'medium':
+      return <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">Medium</Badge>
+    case 'hard':
+      return <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">Hard</Badge>
+    default:
+      return <Badge variant="secondary">{difficulty}</Badge>
+  }
+}
+
+function getTypeBadge(type: string) {
+  switch (type) {
+    case 'multiple-choice':
+      return <Badge variant="default">MCQ</Badge>
+    case 'true-false':
+      return <Badge variant="secondary">T/F</Badge>
+    case 'theory':
+      return <Badge variant="outline">Theory</Badge>
+    default:
+      return <Badge variant="secondary">{type}</Badge>
+  }
+}
+
+function getTypeBadgeVerbose(type: string) {
+  switch (type) {
+    case 'multiple-choice':
+      return <Badge variant="default">Multiple Choice</Badge>
+    case 'true-false':
+      return <Badge variant="secondary">True/False</Badge>
+    case 'theory':
+      return <Badge variant="outline">Theory</Badge>
+    default:
+      return <Badge variant="secondary">{type}</Badge>
+  }
+}
 
 export function QuestionManagement() {
   const [questions, setQuestions] = useState<Question[]>([])
@@ -61,6 +100,8 @@ export function QuestionManagement() {
   const [showDetailsDialog, setShowDetailsDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null)
+  const [creating, setCreating] = useState(false)
+  const [updating, setUpdating] = useState(false)
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -75,7 +116,6 @@ export function QuestionManagement() {
 
   const fetchQuestions = async () => {
     try {
-      console.log('Fetching questions...')
       setLoading(true)
       const response = await getQuestions({
         page: pagination.currentPage,
@@ -87,7 +127,6 @@ export function QuestionManagement() {
       setQuestions(response.questions)
       setPagination(response.pagination)
     } catch (error: any) {
-      console.error('Error fetching questions:', error)
       toast({
         title: "Error",
         description: error.message || "Failed to load questions",
@@ -100,12 +139,10 @@ export function QuestionManagement() {
 
   const handleQuestionClick = async (questionId: string) => {
     try {
-      console.log('Fetching question details for ID:', questionId)
       const response = await getQuestionById(questionId)
       setSelectedQuestion(response.question)
       setShowDetailsDialog(true)
     } catch (error: any) {
-      console.error('Error fetching question details:', error)
       toast({
         title: "Error",
         description: error.message || "Failed to load question details",
@@ -116,12 +153,10 @@ export function QuestionManagement() {
 
   const handleEditClick = async (questionId: string) => {
     try {
-      console.log('Fetching question for editing, ID:', questionId)
       const response = await getQuestionById(questionId)
       setSelectedQuestion(response.question)
       setShowEditDialog(true)
     } catch (error: any) {
-      console.error('Error fetching question for editing:', error)
       toast({
         title: "Error",
         description: error.message || "Failed to load question for editing",
@@ -132,7 +167,6 @@ export function QuestionManagement() {
 
   const handleDeleteQuestion = async (questionId: string) => {
     try {
-      console.log('Deleting question:', questionId)
       await deleteQuestion(questionId)
       setQuestions(questions.filter(q => q._id !== questionId))
       toast({
@@ -140,7 +174,6 @@ export function QuestionManagement() {
         description: "Question deleted successfully"
       })
     } catch (error: any) {
-      console.error('Error deleting question:', error)
       toast({
         title: "Error",
         description: error.message || "Failed to delete question",
@@ -149,12 +182,54 @@ export function QuestionManagement() {
     }
   }
 
+  const handleCreateQuestion = async (payload: QuestionPayload) => {
+    setCreating(true)
+    try {
+      await createQuestion(payload)
+      toast({
+        title: "Success",
+        description: "Question created successfully"
+      })
+      setShowCreateDialog(false)
+      fetchQuestions()
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create question",
+        variant: "destructive"
+      })
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  const handleUpdateQuestion = async (questionId: string, payload: QuestionPayload) => {
+    setUpdating(true)
+    try {
+      await updateQuestion(questionId, payload)
+      toast({
+        title: "Success",
+        description: "Question updated successfully"
+      })
+      setShowEditDialog(false)
+      setSelectedQuestion(null)
+      fetchQuestions()
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update question",
+        variant: "destructive"
+      })
+    } finally {
+      setUpdating(false)
+    }
+  }
+
   const handleBulkUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
 
     try {
-      console.log('Uploading questions file:', file.name)
       const response = await bulkUploadQuestions(file)
 
       toast({
@@ -162,13 +237,8 @@ export function QuestionManagement() {
         description: `${response.imported} questions imported successfully`
       })
 
-      if (response.errors && response.errors.length > 0) {
-        console.warn('Upload errors:', response.errors)
-      }
-
       fetchQuestions()
     } catch (error: any) {
-      console.error('Error uploading questions:', error)
       toast({
         title: "Error",
         description: error.message || "Failed to upload questions",
@@ -179,12 +249,9 @@ export function QuestionManagement() {
 
   const handleDownloadTemplate = () => {
     try {
-      console.log('Downloading questions CSV template...')
-      
-      // Create CSV content with separate columns for each option
       const csvHeaders = [
         'type',
-        'question', 
+        'question',
         'difficulty',
         'marks',
         'option1',
@@ -196,17 +263,15 @@ export function QuestionManagement() {
         'correctAnswer',
         'explanation'
       ]
-      
+
       const csvContent = [
         csvHeaders.join(','),
-        // Add sample rows with example data showing the new format using option numbers
         'multiple-choice,"What is 2 + 2?",easy,1,"1","2","3","4","","","4","Basic arithmetic operation"',
         'multiple-choice,"Which are programming languages?",medium,2,"Python","Java","HTML","CSS","JavaScript","TypeScript","1,2,5,6","Programming languages vs markup/styling"',
         'true-false,"The Earth is round",easy,1,"","","","","","","true","Basic geography fact"',
         'theory,"Name the capital of France",easy,2,"","","","","","","Paris","Basic geography knowledge"'
       ].join('\n')
 
-      // Create and download file
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
       const link = document.createElement('a')
       const url = URL.createObjectURL(blob)
@@ -222,9 +287,8 @@ export function QuestionManagement() {
         description: "CSV template downloaded successfully"
       })
     } catch (error: any) {
-      console.error('Error downloading template:', error)
       toast({
-        title: "Error", 
+        title: "Error",
         description: "Failed to download CSV template",
         variant: "destructive"
       })
@@ -233,8 +297,6 @@ export function QuestionManagement() {
 
   const handleDownloadJsonTemplate = () => {
     try {
-      console.log('Downloading questions JSON template...')
-      
       const jsonTemplate = [
         {
           "tempId": "q-001",
@@ -276,7 +338,6 @@ export function QuestionManagement() {
         }
       ]
 
-      // Create and download file
       const blob = new Blob([JSON.stringify(jsonTemplate, null, 2)], { type: 'application/json' })
       const link = document.createElement('a')
       const url = URL.createObjectURL(blob)
@@ -292,7 +353,6 @@ export function QuestionManagement() {
         description: "JSON template downloaded successfully"
       })
     } catch (error: any) {
-      console.error('Error downloading JSON template:', error)
       toast({
         title: "Error",
         description: "Failed to download JSON template",
@@ -301,38 +361,8 @@ export function QuestionManagement() {
     }
   }
 
-  const getDifficultyBadge = (difficulty: string) => {
-    switch (difficulty) {
-      case 'easy':
-        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">Easy</Badge>
-      case 'medium':
-        return <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">Medium</Badge>
-      case 'hard':
-        return <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">Hard</Badge>
-      default:
-        return <Badge variant="secondary">{difficulty}</Badge>
-    }
-  }
-
-  const getTypeBadge = (type: string) => {
-    switch (type) {
-      case 'multiple-choice':
-        return <Badge variant="default">MCQ</Badge>
-      case 'true-false':
-        return <Badge variant="secondary">T/F</Badge>
-      case 'theory':
-        return <Badge variant="outline">Theory</Badge>
-      default:
-        return <Badge variant="secondary">{type}</Badge>
-    }
-  }
-
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    )
+    return <LoadingState label="Loading questions..." />
   }
 
   return (
@@ -394,11 +424,10 @@ export function QuestionManagement() {
                   Add a new question to your question bank
                 </DialogDescription>
               </DialogHeader>
-              <CreateQuestionForm
-                onSuccess={() => {
-                  setShowCreateDialog(false)
-                  fetchQuestions()
-                }}
+              <QuestionForm
+                mode="create"
+                onSubmit={handleCreateQuestion}
+                submitting={creating}
               />
             </DialogContent>
           </Dialog>
@@ -436,21 +465,21 @@ export function QuestionManagement() {
             </Select>
           </div>
 
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Question</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Difficulty</TableHead>
-                  <TableHead>Marks</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {questions.length > 0 ? (
-                  questions.map((question) => (
+          {questions.length > 0 ? (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Question</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Difficulty</TableHead>
+                    <TableHead>Marks</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {questions.map((question) => (
                     <TableRow
                       key={question._id}
                       className="cursor-pointer hover:bg-muted/50"
@@ -505,21 +534,17 @@ export function QuestionManagement() {
                         </DropdownMenu>
                       </TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
-                      <div className="text-muted-foreground">
-                        {searchTerm || filterDifficulty !== "all"
-                          ? "No questions found matching your filters."
-                          : "No questions created yet."}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <EmptyState
+              title={searchTerm || filterDifficulty !== "all" ? "No questions found" : "No questions created yet"}
+              description={searchTerm || filterDifficulty !== "all" ? "No questions match your filters." : "Add your first question to get started."}
+              action={!searchTerm && filterDifficulty === "all" ? { label: "Add Question", onClick: () => setShowCreateDialog(true) } : undefined}
+            />
+          )}
 
           {pagination.totalPages > 1 && (
             <div className="flex items-center justify-between mt-4">
@@ -574,13 +599,19 @@ export function QuestionManagement() {
             </DialogDescription>
           </DialogHeader>
           {selectedQuestion && (
-            <EditQuestionForm
-              question={selectedQuestion}
-              onSuccess={() => {
-                setShowEditDialog(false)
-                setSelectedQuestion(null)
-                fetchQuestions()
+            <QuestionForm
+              mode="edit"
+              initialValues={{
+                type: selectedQuestion.type,
+                question: selectedQuestion.question,
+                options: selectedQuestion.options,
+                correctAnswers: selectedQuestion.correctAnswers || [],
+                difficulty: selectedQuestion.difficulty,
+                marks: selectedQuestion.marks,
+                explanation: selectedQuestion.explanation || ''
               }}
+              onSubmit={(payload) => handleUpdateQuestion(selectedQuestion._id, payload)}
+              submitting={updating}
             />
           )}
         </DialogContent>
@@ -590,38 +621,12 @@ export function QuestionManagement() {
 }
 
 function QuestionDetailsView({ question }: { question: Question }) {
-  const getDifficultyBadge = (difficulty: string) => {
-    switch (difficulty) {
-      case 'easy':
-        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">Easy</Badge>
-      case 'medium':
-        return <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">Medium</Badge>
-      case 'hard':
-        return <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">Hard</Badge>
-      default:
-        return <Badge variant="secondary">{difficulty}</Badge>
-    }
-  }
-
-  const getTypeBadge = (type: string) => {
-    switch (type) {
-      case 'multiple-choice':
-        return <Badge variant="default">Multiple Choice</Badge>
-      case 'true-false':
-        return <Badge variant="secondary">True/False</Badge>
-      case 'theory':
-        return <Badge variant="outline">Theory</Badge>
-      default:
-        return <Badge variant="secondary">{type}</Badge>
-    }
-  }
-
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label className="text-sm font-medium text-muted-foreground">Type</Label>
-          <div className="mt-1">{getTypeBadge(question.type)}</div>
+          <div className="mt-1">{getTypeBadgeVerbose(question.type)}</div>
         </div>
         <div>
           <Label className="text-sm font-medium text-muted-foreground">Difficulty</Label>
@@ -704,464 +709,5 @@ function QuestionDetailsView({ question }: { question: Question }) {
         </div>
       </div>
     </div>
-  )
-}
-
-function CreateQuestionForm({ onSuccess }: { onSuccess: () => void }) {
-  const [questionType, setQuestionType] = useState<'multiple-choice' | 'true-false' | 'theory'>('multiple-choice')
-  const [options, setOptions] = useState(['', '', '', '', '', ''])
-  const [correctAnswers, setCorrectAnswers] = useState<string[]>([])
-  const [loading, setLoading] = useState(false)
-  const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({})
-  const [questionText, setQuestionText] = useState('')
-  const [explanationText, setExplanationText] = useState('')
-  const { toast } = useToast()
-
-  const validateForm = (formData: FormData) => {
-    const errors: {[key: string]: string} = {}
-
-    const marks = formData.get('marks') as string
-
-    if (!questionText || questionText.replace(/<[^>]*>/g, '').trim().length < 10) {
-      errors.question = 'Question must be at least 10 characters long'
-    }
-
-    if (!marks || parseInt(marks) < 1) {
-      errors.marks = 'Marks must be at least 1'
-    }
-
-    if (questionType === 'multiple-choice') {
-      const validOptions = options.filter(opt => opt.trim())
-      if (validOptions.length < 4) {
-        errors.options = 'Multiple choice questions must have at least 4 options'
-      }
-      if (validOptions.length > 6) {
-        errors.options = 'Multiple choice questions can have at most 6 options'
-      }
-      if (correctAnswers.length === 0) {
-        errors.correctAnswers = 'Please select at least one correct answer'
-      }
-    }
-
-    if (questionType === 'true-false') {
-      const trueFalseAnswer = formData.get('trueFalseAnswer') as string
-      if (!trueFalseAnswer) {
-        errors.trueFalseAnswer = 'Please select the correct answer'
-      }
-    }
-
-    if (questionType === 'theory') {
-      const theoryAnswer = formData.get('theoryAnswer') as string
-      if (!theoryAnswer || theoryAnswer.trim().length === 0) {
-        errors.theoryAnswer = 'Please provide a sample answer'
-      }
-    }
-
-    return errors
-  }
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setLoading(true)
-    setValidationErrors({})
-
-    const formData = new FormData(e.currentTarget)
-
-    const errors = validateForm(formData)
-    if (Object.keys(errors).length > 0) {
-      setValidationErrors(errors)
-      setLoading(false)
-      return
-    }
-
-    const questionData = {
-      type: questionType,
-      question: questionText,
-      difficulty: formData.get('difficulty') as 'easy' | 'medium' | 'hard',
-      marks: parseInt(formData.get('marks') as string),
-      explanation: explanationText,
-      options: questionType === 'multiple-choice' ? options.filter(opt => opt.trim()) : undefined,
-      correctAnswers: questionType === 'true-false'
-        ? [formData.get('trueFalseAnswer') as string]
-        : questionType === 'theory'
-        ? [formData.get('theoryAnswer') as string]
-        : correctAnswers
-    }
-
-    try {
-      console.log('Creating question:', questionData)
-      await createQuestion(questionData)
-      toast({
-        title: "Success",
-        description: "Question created successfully"
-      })
-      onSuccess()
-    } catch (error: any) {
-      console.error('Error creating question:', error)
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create question",
-        variant: "destructive"
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="question">Question *</Label>
-        <RichTextEditor
-          value={questionText}
-          onChange={setQuestionText}
-          placeholder="Enter your question here (minimum 10 characters)..."
-          height="150px"
-          className={validationErrors.question ? "border-red-500" : ""}
-        />
-        {validationErrors.question && (
-          <p className="text-sm text-red-500">{validationErrors.question}</p>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="type">Question Type *</Label>
-        <Select value={questionType} onValueChange={(value: any) => setQuestionType(value)}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="multiple-choice">Multiple Choice</SelectItem>
-            <SelectItem value="true-false">True/False</SelectItem>
-            <SelectItem value="theory">Theory</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="difficulty">Difficulty *</Label>
-          <Select name="difficulty" required>
-            <SelectTrigger>
-              <SelectValue placeholder="Select difficulty" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="easy">Easy</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="hard">Hard</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="marks">Marks *</Label>
-          <Input
-            id="marks"
-            name="marks"
-            type="number"
-            min="1"
-            placeholder="5"
-            required
-            className={validationErrors.marks ? "border-red-500" : ""}
-          />
-          {validationErrors.marks && (
-            <p className="text-sm text-red-500">{validationErrors.marks}</p>
-          )}
-        </div>
-      </div>
-
-      {questionType === 'multiple-choice' && (
-        <div className="space-y-2">
-          <Label>Options * (Minimum 4, Maximum 6)</Label>
-          {options.map((option, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <Input
-                placeholder={`Option ${index + 1}${index < 4 ? ' (Required)' : ' (Optional)'}`}
-                value={option}
-                onChange={(e) => {
-                  const newOptions = [...options]
-                  newOptions[index] = e.target.value
-                  setOptions(newOptions)
-                }}
-                className={index < 4 ? "border-blue-200" : ""}
-              />
-              <input
-                type="checkbox"
-                checked={correctAnswers.includes(option) && option.trim() !== ''}
-                onChange={(e) => {
-                  if (option.trim() === '') return // Don't allow selecting empty options
-                  
-                  if (e.target.checked) {
-                    setCorrectAnswers([...correctAnswers, option])
-                  } else {
-                    setCorrectAnswers(correctAnswers.filter(ans => ans !== option))
-                  }
-                }}
-                disabled={option.trim() === ''}
-                className="w-4 h-4"
-              />
-              <Label className="text-xs">Correct</Label>
-            </div>
-          ))}
-          <p className="text-sm text-muted-foreground">
-            Fill at least 4 options (first 4 are required). You can add up to 6 options total.
-          </p>
-          {validationErrors.options && (
-            <p className="text-sm text-red-500">{validationErrors.options}</p>
-          )}
-          {validationErrors.correctAnswers && (
-            <p className="text-sm text-red-500">{validationErrors.correctAnswers}</p>
-          )}
-        </div>
-      )}
-
-      {questionType === 'true-false' && (
-        <div className="space-y-2">
-          <Label htmlFor="trueFalseAnswer">Correct Answer *</Label>
-          <Select name="trueFalseAnswer" required>
-            <SelectTrigger className={validationErrors.trueFalseAnswer ? "border-red-500" : ""}>
-              <SelectValue placeholder="Select correct answer" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="true">True</SelectItem>
-              <SelectItem value="false">False</SelectItem>
-            </SelectContent>
-          </Select>
-          {validationErrors.trueFalseAnswer && (
-            <p className="text-sm text-red-500">{validationErrors.trueFalseAnswer}</p>
-          )}
-        </div>
-      )}
-
-      {questionType === 'theory' && (
-        <div className="space-y-2">
-          <Label htmlFor="theoryAnswer">Sample Answer *</Label>
-          <Textarea
-            id="theoryAnswer"
-            name="theoryAnswer"
-            placeholder="Provide a sample answer..."
-            required
-            rows={2}
-            className={validationErrors.theoryAnswer ? "border-red-500" : ""}
-          />
-          {validationErrors.theoryAnswer && (
-            <p className="text-sm text-red-500">{validationErrors.theoryAnswer}</p>
-          )}
-        </div>
-      )}
-
-<div className="space-y-2">
-        <Label htmlFor="explanation">Explanation (Optional)</Label>
-        <RichTextEditor
-          value={explanationText}
-          onChange={setExplanationText}
-          placeholder="Add explanation to help students understand..."
-          height="120px"
-        />
-      </div>
-
-      <DialogFooter>
-        <Button type="submit" disabled={loading}>
-          {loading ? "Saving..." : "Create Question"}
-        </Button>
-      </DialogFooter>
-    </form>
-  )
-}
-
-function EditQuestionForm({ question, onSuccess }: { question: Question, onSuccess: () => void }) {
-  const [questionType, setQuestionType] = useState(question.type)
-  const [options, setOptions] = useState(() => {
-    const defaultOptions = ['', '', '', '', '', '']
-    if (question.options) {
-      question.options.forEach((opt, index) => {
-        if (index < 6) defaultOptions[index] = opt
-      })
-    }
-    return defaultOptions
-  })
-  const [correctAnswers, setCorrectAnswers] = useState<string[]>(question.correctAnswers || [])
-  const [loading, setLoading] = useState(false)
-  const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({})
-  const [questionText, setQuestionText] = useState(question.question)
-  const [explanationText, setExplanationText] = useState(question.explanation || '')
-  const { toast } = useToast()
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setLoading(true)
-    setValidationErrors({})
-
-    const formData = new FormData(e.currentTarget)
-
-    const updatedQuestion = {
-      type: questionType,
-      question: questionText,
-      difficulty: formData.get('difficulty') as 'easy' | 'medium' | 'hard',
-      marks: parseInt(formData.get('marks') as string),
-      explanation: explanationText,
-      options: questionType === 'multiple-choice' ? options.filter(opt => opt.trim()) : undefined,
-      correctAnswers: questionType === 'true-false'
-        ? [formData.get('trueFalseAnswer') as string]
-        : questionType === 'theory'
-        ? [formData.get('theoryAnswer') as string]
-        : correctAnswers
-    }
-
-    try {
-      console.log('Updating question:', updatedQuestion)
-      await updateQuestion(question._id, updatedQuestion)
-      toast({
-        title: "Success",
-        description: "Question updated successfully"
-      })
-      onSuccess()
-    } catch (error: any) {
-      console.error('Error updating question:', error)
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update question",
-        variant: "destructive"
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="question">Question *</Label>
-        <RichTextEditor
-          value={questionText}
-          onChange={setQuestionText}
-          placeholder="Enter your question here (minimum 10 characters)..."
-          height="150px"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="type">Question Type *</Label>
-        <Select value={questionType} onValueChange={(value: any) => setQuestionType(value)}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="multiple-choice">Multiple Choice</SelectItem>
-            <SelectItem value="true-false">True/False</SelectItem>
-            <SelectItem value="theory">Theory</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="difficulty">Difficulty *</Label>
-          <Select name="difficulty" defaultValue={question.difficulty}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="easy">Easy</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="hard">Hard</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="marks">Marks *</Label>
-          <Input
-            id="marks"
-            name="marks"
-            type="number"
-            min="1"
-            defaultValue={question.marks}
-          />
-        </div>
-      </div>
-
-      {questionType === 'multiple-choice' && (
-        <div className="space-y-2">
-          <Label>Options * (Minimum 4, Maximum 6)</Label>
-          {options.map((option, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <Input
-                placeholder={`Option ${index + 1}${index < 4 ? ' (Required)' : ' (Optional)'}`}
-                value={option}
-                onChange={(e) => {
-                  const newOptions = [...options]
-                  newOptions[index] = e.target.value
-                  setOptions(newOptions)
-                }}
-                className={index < 4 ? "border-blue-200" : ""}
-              />
-              <input
-                type="checkbox"
-                checked={correctAnswers.includes(option) && option.trim() !== ''}
-                onChange={(e) => {
-                  if (option.trim() === '') return // Don't allow selecting empty options
-                  
-                  if (e.target.checked) {
-                    setCorrectAnswers([...correctAnswers, option])
-                  } else {
-                    setCorrectAnswers(correctAnswers.filter(ans => ans !== option))
-                  }
-                }}
-                disabled={option.trim() === ''}
-                className="w-4 h-4"
-              />
-              <Label className="text-xs">Correct</Label>
-            </div>
-          ))}
-          <p className="text-sm text-muted-foreground">
-            Fill at least 4 options (first 4 are required). You can add up to 6 options total.
-          </p>
-        </div>
-      )}
-
-      {questionType === 'true-false' && (
-        <div className="space-y-2">
-          <Label htmlFor="trueFalseAnswer">Correct Answer *</Label>
-          <Select name="trueFalseAnswer" defaultValue={question.correctAnswers[0]}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="true">True</SelectItem>
-              <SelectItem value="false">False</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
-      {questionType === 'theory' && (
-        <div className="space-y-2">
-          <Label htmlFor="theoryAnswer">Sample Answer *</Label>
-          <Textarea
-            id="theoryAnswer"
-            name="theoryAnswer"
-            defaultValue={question.correctAnswers[0]}
-            rows={2}
-          />
-        </div>
-      )}
-
-      <div className="space-y-2">
-        <Label htmlFor="explanation">Explanation (Optional)</Label>
-        <RichTextEditor
-          value={explanationText}
-          onChange={setExplanationText}
-          placeholder="Add explanation to help students understand..."
-          height="120px"
-        />
-      </div>
-
-      <DialogFooter>
-        <Button type="submit" disabled={loading}>
-          {loading ? "Saving..." : "Update Question"}
-        </Button>
-      </DialogFooter>
-    </form>
   )
 }
