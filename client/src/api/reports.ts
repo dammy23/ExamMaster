@@ -12,20 +12,6 @@ export interface ExamReport {
   averageTimeSpent: number;
 }
 
-export interface StudentPerformance {
-  studentId: string;
-  studentName: string;
-  studentIdNumber: string;
-  studentGroup: string;
-  totalExams: number;
-  averageScore: number;
-  bestScore: number;
-  worstScore: number;
-  totalTimeSpent: number;
-  strengths: string[];
-  weaknesses: string[];
-}
-
 export interface QuestionAnalysis {
   questionId: string;
   question: string;
@@ -120,20 +106,6 @@ export const getExamReports = async () => {
     return response.data;
   } catch (error: any) {
     console.error('Get exam reports error:', error);
-    throw new Error(error?.response?.data?.error || error.message);
-  }
-};
-
-// Description: Get student performance reports
-// Endpoint: GET /api/reports/students
-// Request: {}
-// Response: { performances: StudentPerformance[] }
-export const getStudentPerformanceReports = async () => {
-  try {
-    const response = await api.get('/api/reports/students');
-    return response.data;
-  } catch (error: any) {
-    console.error('Get student performance reports error:', error);
     throw new Error(error?.response?.data?.error || error.message);
   }
 };

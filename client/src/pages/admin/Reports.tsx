@@ -66,7 +66,6 @@ export function Reports() {
 
   const fetchReports = async () => {
     try {
-      console.log('Fetching reports...')
       const [examResponse, examsResponse] = await Promise.all([
         getExamReports(),
         getExams()
@@ -78,7 +77,6 @@ export function Reports() {
       // Fetch question analysis with current exam filter
       await fetchQuestionAnalysis()
     } catch (error) {
-      console.error('Error fetching reports:', error)
       toast({
         title: "Error",
         description: "Failed to load reports",
@@ -91,12 +89,10 @@ export function Reports() {
 
   const fetchQuestionAnalysis = async () => {
     try {
-      console.log('Fetching question analysis for exam:', selectedExam === "all" ? 'all' : selectedExam)
       const examIdForAnalysis = selectedExam === "all" ? undefined : selectedExam
       const questionResponse = await getQuestionAnalysis(examIdForAnalysis)
       setQuestionAnalysis((questionResponse as any).analysis)
     } catch (error) {
-      console.error('Error fetching question analysis:', error)
       toast({
         title: "Error",
         description: "Failed to load question analysis",
@@ -110,7 +106,6 @@ export function Reports() {
 
     setLoadingExamData(true)
     try {
-      console.log('Fetching exam-specific data for exam:', examId)
       const [studentScoresResponse, analysisResponse] = await Promise.all([
         getExamStudentScores(examId),
         getExamPerformanceAnalysis(examId)
@@ -119,7 +114,6 @@ export function Reports() {
       setExamStudentReport(studentScoresResponse)
       setPerformanceAnalysis(analysisResponse.analysis)
     } catch (error) {
-      console.error('Error fetching exam-specific data:', error)
       toast({
         title: "Error",
         description: "Failed to load exam data",
@@ -148,16 +142,10 @@ export function Reports() {
     if (selectedExam === "all" && (selectedReport === "exam-students" || selectedReport === "exam-analysis")) {
       setSelectedReport("exam-overview")
     }
-    // Reset to exam-overview if student-performance is selected (since it's removed)
-    if (selectedReport === "student-performance") {
-      setSelectedReport("exam-overview")
-    }
   }, [selectedExam, selectedReport])
 
   const handleExportReport = async (format: 'pdf' | 'csv') => {
     try {
-      console.log('Exporting report:', selectedReport, format, 'for exam:', selectedExam)
-
       if (format === 'csv') {
         // Use client-side CSV export
         exportReportAsCSV(selectedReport, {
@@ -196,7 +184,6 @@ export function Reports() {
         triggerFileDownload(result.downloadUrl, result.filename || `report.pdf`)
       }
     } catch (error: any) {
-      console.error('Error exporting report:', error)
       toast({
         title: "Error",
         description: error.message || "Failed to export report",
