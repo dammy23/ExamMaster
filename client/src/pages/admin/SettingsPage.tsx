@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { Link } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -536,6 +537,7 @@ export function SettingsPage() {
         <TabsList>
           <TabsTrigger value="general">General Settings</TabsTrigger>
           <TabsTrigger value="ai-platforms">AI Platforms</TabsTrigger>
+          <TabsTrigger value="advanced">Advanced</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-6">
@@ -962,6 +964,25 @@ export function SettingsPage() {
               </div>
             </>
           )}
+        </TabsContent>
+
+        <TabsContent value="advanced" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                <Database className="h-4 w-4" />
+                Database Seeding
+              </CardTitle>
+              <CardDescription>
+                Developer tool for populating the database with sample data. Not part of day-to-day administration.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" asChild>
+                <Link to="/admin/seeding">Open Database Seeding</Link>
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
