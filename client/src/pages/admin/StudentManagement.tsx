@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { StatusBadge } from "@/components/ui/status-badge"
+import { LoadingState } from "@/components/ui/loading-state"
+import { EmptyState } from "@/components/ui/empty-state"
 import {
   Select,
   SelectContent,
@@ -37,13 +40,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
-  Plus,
   Search,
   Users,
   MoreHorizontal,
   Edit,
-  Trash2,
   UserPlus,
+  UserX,
+  UserCheck,
   GraduationCap,
   Upload,
   Download
@@ -71,7 +74,6 @@ export function StudentManagement() {
 
   const fetchData = async () => {
     try {
-      console.log('Fetching students and groups...')
       const [studentsResponse, groupsResponse] = await Promise.all([
         getStudents(),
         getStudentGroups()
@@ -80,7 +82,6 @@ export function StudentManagement() {
       setStudents((studentsResponse as any).students)
       setGroups((groupsResponse as any).groups)
     } catch (error) {
-      console.error('Error fetching data:', error)
       toast({
         title: "Error",
         description: "Failed to load student data",
@@ -93,9 +94,6 @@ export function StudentManagement() {
 
   const handleDownloadStudentTemplate = () => {
     try {
-      console.log('Downloading students CSV template...')
-      
-      // Create CSV content
       const csvHeaders = [
         'name',
         'email',
@@ -103,16 +101,14 @@ export function StudentManagement() {
         'studentId',
         'group'
       ]
-      
+
       const csvContent = [
         csvHeaders.join(','),
-        // Add sample row with example data
         'John Doe,john.doe@example.com,password123,STU001,2025/2026',
         'Jane Smith,jane.smith@example.com,password456,STU002,2025/2026',
         'Bob Johnson,bob.johnson@example.com,password789,STU003,2024/2025'
       ].join('\n')
 
-      // Create and download file
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
       const link = document.createElement('a')
       const url = URL.createObjectURL(blob)
@@ -128,19 +124,12 @@ export function StudentManagement() {
         description: "CSV template downloaded successfully"
       })
     } catch (error: any) {
-      console.error('Error downloading template:', error)
       toast({
-        title: "Error", 
+        title: "Error",
         description: "Failed to download CSV template",
         variant: "destructive"
       })
     }
-  }
-
-  const getStatusBadge = (status: string) => {
-    return status === 'active'
-      ? <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">Active</Badge>
-      : <Badge variant="secondary">Inactive</Badge>
   }
 
   const getPerformanceBadge = (score: number) => {
@@ -151,7 +140,6 @@ export function StudentManagement() {
   }
 
   const handleEditStudent = (student: Student) => {
-    console.log('Opening edit dialog for student:', student._id)
     setSelectedStudent(student)
     setShowEditStudentDialog(true)
   }
@@ -166,22 +154,38 @@ export function StudentManagement() {
     if (!selectedStudent) return
 
     try {
-      console.log('Updating student:', selectedStudent._id, formData)
       await updateStudent(selectedStudent._id, formData)
-      
+
       setShowEditStudentDialog(false)
       setSelectedStudent(null)
       fetchData()
-      
+
       toast({
         title: "Success",
         description: "Student updated successfully"
       })
     } catch (error: any) {
-      console.error('Error updating student:', error)
       toast({
         title: "Error",
         description: error.message || "Failed to update student",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleToggleStudentStatus = async (student: Student) => {
+    const nextStatus = student.status === 'active' ? 'inactive' : 'active'
+    try {
+      await updateStudent(student._id, { status: nextStatus })
+      setStudents(students.map(s => s._id === student._id ? { ...s, status: nextStatus } : s))
+      toast({
+        title: "Success",
+        description: `Student ${nextStatus === 'active' ? 'reactivated' : 'deactivated'} successfully`
+      })
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update student status",
         variant: "destructive"
       })
     }
@@ -198,11 +202,7 @@ export function StudentManagement() {
   })
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    )
+    return <LoadingState label="Loading students..." />
   }
 
   return (
@@ -215,8 +215,8 @@ export function StudentManagement() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="gap-2"
             onClick={() => handleDownloadStudentTemplate()}
           >
@@ -296,17 +296,17 @@ export function StudentManagement() {
       {/* Groups Overview */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {groups.map((group) => (
-          <Card key={group._id} className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-blue-200 dark:border-blue-800">
+          <Card key={group._id}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-300">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
                 {group.name}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-700 dark:text-blue-300 mb-1">
+              <div className="text-2xl font-semibold mb-1">
                 {group.studentCount}
               </div>
-              <p className="text-xs text-blue-600 dark:text-blue-400">
+              <p className="text-xs text-muted-foreground">
                 Students enrolled
               </p>
             </CardContent>
@@ -361,24 +361,24 @@ export function StudentManagement() {
             </Select>
           </div>
 
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Student ID</TableHead>
-                  <TableHead>Group</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Exams Taken</TableHead>
-                  <TableHead>Average Score</TableHead>
-                  <TableHead>Performance</TableHead>
-                  <TableHead>Enrolled</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredStudents.length > 0 ? (
-                  filteredStudents.map((student) => (
+          {filteredStudents.length > 0 ? (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Student</TableHead>
+                    <TableHead>Student ID</TableHead>
+                    <TableHead>Group</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Exams Taken</TableHead>
+                    <TableHead>Average Score</TableHead>
+                    <TableHead>Performance</TableHead>
+                    <TableHead>Enrolled</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredStudents.map((student) => (
                     <TableRow key={student._id}>
                       <TableCell>
                         <div>
@@ -388,13 +388,13 @@ export function StudentManagement() {
                       </TableCell>
                       <TableCell className="font-mono">{student.studentId || 'N/A'}</TableCell>
                       <TableCell>{student.group || 'Not assigned'}</TableCell>
-                      <TableCell>{getStatusBadge(student.status)}</TableCell>
+                      <TableCell><StatusBadge status={student.status === 'active' ? 'active' : 'archived'} /></TableCell>
                       <TableCell>{(student as any).totalExamsAttempted || 0}</TableCell>
                       <TableCell>
                         {(student as any).averageScore ? `${((student as any).averageScore).toFixed(1)}%` : 'N/A'}
                       </TableCell>
                       <TableCell>
-                        {(student as any).averageScore ? getPerformanceBadge((student as any).averageScore) : 
+                        {(student as any).averageScore ? getPerformanceBadge((student as any).averageScore) :
                          <Badge variant="secondary">No data</Badge>}
                       </TableCell>
                       <TableCell>
@@ -414,33 +414,35 @@ export function StudentManagement() {
                               <Edit className="mr-2 h-4 w-4" />
                               Edit Student
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              View Performance
-                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600 focus:text-red-600">
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Remove Student
+                            <DropdownMenuItem onClick={() => handleToggleStudentStatus(student)}>
+                              {student.status === 'active' ? (
+                                <>
+                                  <UserX className="mr-2 h-4 w-4" />
+                                  Deactivate
+                                </>
+                              ) : (
+                                <>
+                                  <UserCheck className="mr-2 h-4 w-4" />
+                                  Reactivate
+                                </>
+                              )}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8">
-                      <div className="text-muted-foreground">
-                        {searchTerm || filterGroup !== "all" || filterStatus !== "all"
-                          ? "No students found matching your filters."
-                          : "No students enrolled yet."}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <EmptyState
+              title={searchTerm || filterGroup !== "all" || filterStatus !== "all" ? "No students found" : "No students enrolled yet"}
+              description={searchTerm || filterGroup !== "all" || filterStatus !== "all" ? "No students match your filters." : "Add your first student to get started."}
+              action={!searchTerm && filterGroup === "all" && filterStatus === "all" ? { label: "Add Student", onClick: () => setShowAddStudentDialog(true) } : undefined}
+            />
+          )}
         </CardContent>
       </Card>
 
@@ -454,7 +456,7 @@ export function StudentManagement() {
             </DialogDescription>
           </DialogHeader>
           {selectedStudent && (
-            <EditStudentForm 
+            <EditStudentForm
               student={selectedStudent}
               groups={groups}
               onSuccess={handleEditStudentSubmit}
@@ -466,11 +468,11 @@ export function StudentManagement() {
   )
 }
 
-function EditStudentForm({ 
-  student, 
-  groups, 
-  onSuccess 
-}: { 
+function EditStudentForm({
+  student,
+  groups,
+  onSuccess
+}: {
   student: Student;
   groups: StudentGroup[];
   onSuccess: (data: {
@@ -489,7 +491,7 @@ function EditStudentForm({
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
-    
+
     const name = formData.get('name') as string
     const email = formData.get('email') as string
     const studentId = formData.get('studentId') as string
@@ -516,7 +518,6 @@ function EditStudentForm({
         status
       })
     } catch (error: any) {
-      console.error('Error in form submission:', error)
       toast({
         title: "Error",
         description: "Failed to update student",
@@ -620,7 +621,6 @@ function CreateGroupForm({ onSuccess }: { onSuccess: () => void }) {
     }
 
     try {
-      console.log('Creating student group:', groupData)
       await createStudentGroup(groupData)
       toast({
         title: "Success",
@@ -628,7 +628,6 @@ function CreateGroupForm({ onSuccess }: { onSuccess: () => void }) {
       })
       onSuccess()
     } catch (error) {
-      console.error('Error creating group:', error)
       toast({
         title: "Error",
         description: "Failed to create student group",
@@ -692,7 +691,6 @@ function AddStudentForm({ groups, onSuccess }: { groups: StudentGroup[]; onSucce
     }
 
     try {
-      console.log('Creating student:', { ...studentData, password: '[HIDDEN]' })
       await createStudent(studentData)
       toast({
         title: "Success",
@@ -700,7 +698,6 @@ function AddStudentForm({ groups, onSuccess }: { groups: StudentGroup[]; onSucce
       })
       onSuccess()
     } catch (error: any) {
-      console.error('Error creating student:', error.message)
       toast({
         title: "Error",
         description: error.message || "Failed to create student",
@@ -821,21 +818,15 @@ function BulkUploadForm({ onSuccess }: { onSuccess: () => void }) {
     setLoading(true)
 
     try {
-      console.log('Uploading CSV file:', file.name)
       const result = await bulkUploadStudents(file)
-      
+
       toast({
         title: "Success",
         description: `Imported ${result.imported} students successfully${result.errors && result.errors.length > 0 ? ` with ${result.errors.length} errors` : ''}`
       })
-      
-      if (result.errors && result.errors.length > 0) {
-        console.log('Bulk upload errors:', result.errors)
-      }
-      
+
       onSuccess()
     } catch (error: any) {
-      console.error('Error uploading file:', error.message)
       toast({
         title: "Error",
         description: error.message || "Failed to upload students",
