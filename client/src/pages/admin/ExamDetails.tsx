@@ -1,11 +1,20 @@
 import { useState, useEffect } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { ArrowLeft, Edit, Users, Clock, FileText, Calendar, Settings, Target, AlertCircle } from "lucide-react"
-import { getExamById, type Exam } from "@/api/exams"
+import { StatusBadge } from "@/components/ui/status-badge"
+import { LoadingState } from "@/components/ui/loading-state"
+import { EmptyState } from "@/components/ui/empty-state"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { ArrowLeft, Edit, Users, Clock, FileText, Calendar, Settings, Target, ChevronDown } from "lucide-react"
+import { getExamById, updateExam, type Exam } from "@/api/exams"
+import { getAvailableStatusActions } from "@/lib/examStatus"
 import { useToast } from "@/hooks/useToast"
 
 export function ExamDetails() {
@@ -23,11 +32,9 @@ export function ExamDetails() {
 
   const fetchExam = async () => {
     try {
-      console.log('Fetching exam details for exam:', id)
       const response = await getExamById(id!)
       setExam(response.exam)
     } catch (error: any) {
-      console.error('Error fetching exam details:', error)
       toast({
         title: "Error",
         description: error.message || "Failed to load exam details",
@@ -39,43 +46,39 @@ export function ExamDetails() {
     }
   }
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'active':
-        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">Active</Badge>
-      case 'draft':
-        return <Badge variant="secondary">Draft</Badge>
-      case 'completed':
-        return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">Completed</Badge>
-      case 'archived':
-        return <Badge variant="outline">Archived</Badge>
-      default:
-        return <Badge variant="secondary">{status}</Badge>
+  const handleStatusChange = async (nextStatus: Exam['status']) => {
+    if (!exam) return
+    try {
+      const response = await updateExam(exam._id, { status: nextStatus })
+      setExam(response.exam)
+      toast({
+        title: "Success",
+        description: "Exam status updated"
+      })
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update exam status",
+        variant: "destructive"
+      })
     }
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    )
+    return <LoadingState label="Loading exam..." />
   }
 
   if (!exam) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Exam not found</h3>
-          <p className="text-muted-foreground mb-4">The exam you're looking for doesn't exist or you don't have access to it.</p>
-          <Button onClick={() => navigate("/admin/exams")}>
-            Back to Exams
-          </Button>
-        </div>
-      </div>
+      <EmptyState
+        title="Exam not found"
+        description="The exam you're looking for doesn't exist or you don't have access to it."
+        action={{ label: "Back to Exams", onClick: () => navigate("/admin/exams") }}
+      />
     )
   }
+
+  const statusActions = getAvailableStatusActions(exam.status)
 
   return (
     <div className="space-y-6">
@@ -118,8 +121,38 @@ export function ExamDetails() {
             <CardTitle className="text-sm font-medium">Status</CardTitle>
             <Settings className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            {getStatusBadge(exam.status)}
+          <CardContent className="space-y-3">
+            <StatusBadge status={exam.status} />
+            {statusActions.length === 1 && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full"
+                onClick={() => handleStatusChange(statusActions[0].nextStatus)}
+              >
+                {statusActions[0].label}
+              </Button>
+            )}
+            {statusActions.length > 1 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline" className="w-full gap-1">
+                    Change Status
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {statusActions.map((action) => (
+                    <DropdownMenuItem
+                      key={action.nextStatus}
+                      onSelect={() => handleStatusChange(action.nextStatus)}
+                    >
+                      {action.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </CardContent>
         </Card>
 
