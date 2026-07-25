@@ -24,6 +24,7 @@ import { CreateExam } from "./pages/admin/CreateExam"
 import { EditExam } from "./pages/admin/EditExam"
 import { ExamDetails } from "./pages/admin/ExamDetails"
 import { ExamQuestions } from "./pages/admin/ExamQuestions"
+import { StudentVideoReview } from "./pages/admin/StudentVideoReview"
 import { DatabaseSeeding } from "./pages/admin/DatabaseSeeding"
 import { SettingsPage } from "./pages/admin/SettingsPage"
 import { AIChat } from "./pages/admin/AIChat"
@@ -79,6 +80,8 @@ function App() {
             <Route path="admin/exams/edit/:id" element={<EditExam />} />
             <Route path="admin/exams/:id/details" element={<ExamDetails />} />
             <Route path="admin/exams/:examId/questions" element={<ExamQuestions />} />
+            <Route path="admin/exams/:examId/video-review" element={<StudentVideoReview />} />
+            <Route path="admin/exams/:examId/video-review/:attemptId" element={<StudentVideoReview />} />
             <Route path="admin/questions" element={<QuestionManagement />} />
             <Route path="admin/subjects" element={<Subjects />} />
             <Route path="admin/students" element={<StudentManagement />} />
