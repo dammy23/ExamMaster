@@ -212,6 +212,20 @@ export const getAdminRecentActivity = async () => {
   }
 };
 
+// Description: Get the count of exam attempts pending manual grading
+// Endpoint: GET /api/exam-attempts/admin/pending-grading-count
+// Request: {}
+// Response: { success: boolean, count: number }
+export const getPendingGradingCount = async () => {
+  try {
+    const response = await api.get('/api/exam-attempts/admin/pending-grading-count');
+    return response.data;
+  } catch (error: any) {
+    console.error('Get pending grading count error:', error);
+    throw new Error(error?.response?.data?.error || error.message);
+  }
+};
+
 // Description: Grade theory questions for a specific exam attempt using AI
 // Endpoint: POST /api/exam-attempts/grade-theory/:attemptId
 // Request: {}
