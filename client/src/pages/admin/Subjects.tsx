@@ -3,6 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { StatusBadge } from "@/components/ui/status-badge"
+import { LoadingState } from "@/components/ui/loading-state"
+import { EmptyState } from "@/components/ui/empty-state"
 import {
   Dialog,
   DialogContent,
@@ -60,11 +63,9 @@ export function Subjects() {
 
   const fetchSubjects = async () => {
     try {
-      console.log('Fetching subjects...')
       const response = await getSubjects() as any
       setSubjects(response.subjects)
     } catch (error: any) {
-      console.error('Error fetching subjects:', error)
       toast({
         title: "Error",
         description: "Failed to load subjects",
@@ -98,19 +99,17 @@ export function Subjects() {
     if (!selectedSubject) return
 
     try {
-      console.log('Deleting subject:', selectedSubject._id)
       await deleteSubject(selectedSubject._id)
-      
+
       setShowDeleteDialog(false)
       setSelectedSubject(null)
       fetchSubjects()
-      
+
       toast({
         title: "Success",
         description: "Subject deleted successfully"
       })
     } catch (error: any) {
-      console.error('Error deleting subject:', error)
       toast({
         title: "Error",
         description: error.message || "Failed to delete subject",
@@ -120,25 +119,21 @@ export function Subjects() {
   }
 
   const filteredSubjects = subjects.filter(subject => {
-    const matchesSearch = 
+    const matchesSearch =
       subject.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       subject.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (subject.description && subject.description.toLowerCase().includes(searchTerm.toLowerCase()))
-    
-    const matchesStatus = 
-      filterStatus === "all" || 
-      (filterStatus === "active" && subject.isActive) || 
+
+    const matchesStatus =
+      filterStatus === "all" ||
+      (filterStatus === "active" && subject.isActive) ||
       (filterStatus === "inactive" && !subject.isActive)
-    
+
     return matchesSearch && matchesStatus
   })
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    )
+    return <LoadingState label="Loading subjects..." />
   }
 
   return (
@@ -182,7 +177,7 @@ export function Subjects() {
             </p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -199,7 +194,7 @@ export function Subjects() {
             </p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -259,29 +254,21 @@ export function Subjects() {
             </Button>
           </div>
 
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredSubjects.length === 0 ? (
+          {filteredSubjects.length > 0 ? (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      {searchTerm || filterStatus !== "all" 
-                        ? "No subjects match your search criteria" 
-                        : "No subjects created yet. Create your first subject to get started."}
-                    </TableCell>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Code</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ) : (
-                  filteredSubjects.map((subject) => (
+                </TableHeader>
+                <TableBody>
+                  {filteredSubjects.map((subject) => (
                     <TableRow key={subject._id}>
                       <TableCell>
                         <div className="flex items-center space-x-2">
@@ -298,12 +285,7 @@ export function Subjects() {
                         </span>
                       </TableCell>
                       <TableCell>
-                        <Badge 
-                          variant={subject.isActive ? "default" : "secondary"}
-                          className={subject.isActive ? "bg-green-100 text-green-800" : ""}
-                        >
-                          {subject.isActive ? "Active" : "Inactive"}
-                        </Badge>
+                        <StatusBadge status={subject.isActive ? 'active' : 'archived'} />
                       </TableCell>
                       <TableCell>
                         {new Date(subject.createdAt).toLocaleDateString()}
@@ -342,11 +324,17 @@ export function Subjects() {
                         </DropdownMenu>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <EmptyState
+              title={searchTerm || filterStatus !== "all" ? "No subjects found" : "No subjects created yet"}
+              description={searchTerm || filterStatus !== "all" ? "No subjects match your search criteria." : "Create your first subject to get started."}
+              action={!searchTerm && filterStatus === "all" ? { label: "Add Subject", onClick: () => setShowCreateDialog(true) } : undefined}
+            />
+          )}
         </CardContent>
       </Card>
 
@@ -360,9 +348,9 @@ export function Subjects() {
             </DialogDescription>
           </DialogHeader>
           {selectedSubject && (
-            <SubjectForm 
-              subject={selectedSubject} 
-              onSuccess={handleEditSuccess} 
+            <SubjectForm
+              subject={selectedSubject}
+              onSuccess={handleEditSuccess}
             />
           )}
         </DialogContent>
@@ -378,8 +366,8 @@ export function Subjects() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => {
                 setShowDeleteDialog(false)
                 setSelectedSubject(null)
@@ -387,8 +375,8 @@ export function Subjects() {
             >
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={handleDelete}
             >
               Delete

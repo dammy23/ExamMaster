@@ -94,16 +94,13 @@ export function SubjectForm({ subject, onSuccess }: SubjectFormProps) {
       }
       
       if (isEditing && subject) {
-        console.log('Updating subject:', subject._id, submitData)
         await updateSubject(subject._id, submitData)
       } else {
-        console.log('Creating new subject:', submitData)
         await createSubject(submitData)
       }
-      
+
       onSuccess()
     } catch (error: any) {
-      console.error('Error saving subject:', error)
       toast({
         title: "Error",
         description: error.message || `Failed to ${isEditing ? 'update' : 'create'} subject`,
