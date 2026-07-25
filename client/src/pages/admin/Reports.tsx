@@ -202,9 +202,9 @@ export function Reports() {
   }
 
   const getDifficultyColor = (rating: number | null | undefined) => {
-    if (!rating || rating <= 2) return "text-green-600"
-    if (rating <= 3) return "text-yellow-600"
-    return "text-red-600"
+    if (!rating || rating <= 2) return "text-status-success-foreground"
+    if (rating <= 3) return "text-status-warning-foreground"
+    return "text-status-danger-foreground"
   }
 
   if (loading) {
@@ -394,55 +394,63 @@ export function Reports() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Question</TableHead>
-                    <TableHead>Attempts</TableHead>
-                    <TableHead>Correct</TableHead>
-                    <TableHead>Success Rate</TableHead>
-                    <TableHead>Difficulty</TableHead>
-                    <TableHead>Avg Time</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {questionAnalysis.map((analysis, index) => (
-                    <TableRow key={`question-analysis-${analysis.questionId}-${index}`}>
-                      <TableCell className="max-w-md">
-                        <div className="truncate font-medium">
-                          {analysis.question}
-                        </div>
-                      </TableCell>
-                      <TableCell>{analysis.totalAttempts}</TableCell>
-                      <TableCell>{analysis.correctAnswers}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Progress
-                            value={(analysis.correctAnswers / analysis.totalAttempts) * 100}
-                            className="w-16 h-2"
-                          />
-                          <span className="text-sm">
-                            {((analysis.correctAnswers / analysis.totalAttempts) * 100).toFixed(1)}%
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className={`font-medium ${getDifficultyColor(analysis.difficultyRating || 0)}`}>
-                          {analysis.difficultyRating ? analysis.difficultyRating.toFixed(1) : 'N/A'}/5
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {analysis.averageTimeSpent}s
-                        </div>
-                      </TableCell>
+            {questionAnalysis.length > 0 ? (
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Question</TableHead>
+                      <TableHead>Attempts</TableHead>
+                      <TableHead>Correct</TableHead>
+                      <TableHead>Success Rate</TableHead>
+                      <TableHead>Difficulty</TableHead>
+                      <TableHead>Avg Time</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {questionAnalysis.map((analysis, index) => (
+                      <TableRow key={`question-analysis-${analysis.questionId}-${index}`}>
+                        <TableCell className="max-w-md">
+                          <div className="truncate font-medium">
+                            {analysis.question}
+                          </div>
+                        </TableCell>
+                        <TableCell>{analysis.totalAttempts}</TableCell>
+                        <TableCell>{analysis.correctAnswers}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Progress
+                              value={(analysis.correctAnswers / analysis.totalAttempts) * 100}
+                              className="w-16 h-2"
+                            />
+                            <span className="text-sm">
+                              {((analysis.correctAnswers / analysis.totalAttempts) * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className={`font-medium ${getDifficultyColor(analysis.difficultyRating || 0)}`}>
+                            {analysis.difficultyRating ? analysis.difficultyRating.toFixed(1) : 'N/A'}/5
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {analysis.averageTimeSpent}s
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <EmptyState
+                icon={TrendingUp}
+                title="No question data yet"
+                description="Question analysis will appear once students have attempted questions."
+              />
+            )}
           </CardContent>
         </Card>
       )}
