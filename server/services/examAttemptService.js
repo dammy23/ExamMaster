@@ -800,6 +800,37 @@ class ExamAttemptService {
       return new Date(date).toLocaleDateString();
     }
   }
+
+  static async getPendingGradingCount() {
+    try {
+      console.log('ExamAttemptService: Counting attempts pending manual grading...');
+
+      const attempts = await ExamAttempt.find({
+        status: 'completed',
+        'aiGradingResults.gradedAt': { $exists: false }
+      }).populate({
+        path: 'examId',
+        populate: {
+          path: 'questions'
+        }
+      });
+
+      let count = 0;
+      for (const attempt of attempts) {
+        if (!attempt.examId || !attempt.examId.questions) continue;
+        const hasUngradedTheory = attempt.examId.questions.some(
+          (q) => q.type === 'theory' && attempt.answers.get(q._id.toString())
+        );
+        if (hasUngradedTheory) count++;
+      }
+
+      console.log(`ExamAttemptService: ${count} attempts pending manual grading`);
+      return count;
+    } catch (error) {
+      console.error('ExamAttemptService: Error counting pending grading:', error.message);
+      throw error;
+    }
+  }
 }
 
 module.exports = ExamAttemptService;

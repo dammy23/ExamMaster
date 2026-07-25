@@ -507,6 +507,33 @@ router.get('/admin/recent-activity', requireUser, async (req, res) => {
   }
 });
 
+router.get('/admin/pending-grading-count', requireUser, async (req, res) => {
+  try {
+    console.log(`Getting pending grading count for admin: ${req.user.email}`);
+
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only admin users can view pending grading count'
+      });
+    }
+
+    const count = await ExamAttemptService.getPendingGradingCount();
+
+    return res.status(200).json({
+      success: true,
+      count: count
+    });
+  } catch (error) {
+    console.error(`Error getting pending grading count for admin ${req.user.email}:`, error.message);
+
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Description: Grade theory questions for a specific exam attempt using AI
 // Endpoint: POST /api/exam-attempts/grade-theory/:attemptId
 // Request: { }
