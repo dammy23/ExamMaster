@@ -18,6 +18,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Progress } from "@/components/ui/progress"
+import { LoadingState } from "@/components/ui/loading-state"
+import { EmptyState } from "@/components/ui/empty-state"
 import {
   BarChart3,
   Download,
@@ -193,10 +195,10 @@ export function Reports() {
   }
 
   const getPassRateBadge = (rate: number) => {
-    if (rate >= 90) return <Badge className="bg-green-600">Excellent</Badge>
-    if (rate >= 80) return <Badge className="bg-blue-500">Good</Badge>
-    if (rate >= 70) return <Badge className="bg-yellow-500">Average</Badge>
-    return <Badge className="bg-red-500">Needs Attention</Badge>
+    if (rate >= 90) return <Badge className="bg-status-success text-status-success-foreground">Excellent</Badge>
+    if (rate >= 80) return <Badge className="bg-status-info text-status-info-foreground">Good</Badge>
+    if (rate >= 70) return <Badge className="bg-status-warning text-status-warning-foreground">Average</Badge>
+    return <Badge className="bg-status-danger text-status-danger-foreground">Needs Attention</Badge>
   }
 
   const getDifficultyColor = (rating: number | null | undefined) => {
@@ -206,11 +208,7 @@ export function Reports() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    )
+    return <LoadingState label="Loading reports..." />
   }
 
   return (
@@ -264,61 +262,61 @@ export function Reports() {
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-blue-200 dark:border-blue-800">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Exams</CardTitle>
-            <BarChart3 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Exams</CardTitle>
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{examReports.length}</div>
-            <p className="text-xs text-blue-600 dark:text-blue-400">
+            <div className="text-2xl font-semibold">{examReports.length}</div>
+            <p className="text-xs text-muted-foreground">
               Conducted this semester
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 border-green-200 dark:border-green-800">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Average Pass Rate</CardTitle>
-            <Target className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Average Pass Rate</CardTitle>
+            <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-700 dark:text-green-300">
-              {examReports.length > 0 
+            <div className="text-2xl font-semibold">
+              {examReports.length > 0
                 ? (examReports.reduce((sum, report) => sum + report.passRate, 0) / examReports.length).toFixed(1)
                 : 0}%
             </div>
-            <p className="text-xs text-green-600 dark:text-green-400">
+            <p className="text-xs text-muted-foreground">
               Across all exams
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900 border-purple-200 dark:border-purple-800">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Questions</CardTitle>
-            <BookOpen className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Questions</CardTitle>
+            <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">{questionAnalysis.length}</div>
-            <p className="text-xs text-purple-600 dark:text-purple-400">
+            <div className="text-2xl font-semibold">{questionAnalysis.length}</div>
+            <p className="text-xs text-muted-foreground">
               Analyzed
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900 border-orange-200 dark:border-orange-800">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Score</CardTitle>
-            <Award className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Avg Score</CardTitle>
+            <Award className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-700 dark:text-orange-300">
-              {examReports.length > 0 
+            <div className="text-2xl font-semibold">
+              {examReports.length > 0
                 ? (examReports.reduce((sum, report) => sum + report.averageScore, 0) / examReports.length).toFixed(1)
                 : 0}%
             </div>
-            <p className="text-xs text-orange-600 dark:text-orange-400">
+            <p className="text-xs text-muted-foreground">
               Overall performance
             </p>
           </CardContent>
@@ -338,39 +336,47 @@ export function Reports() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Exam</TableHead>
-                    <TableHead>Students</TableHead>
-                    <TableHead>Completed</TableHead>
-                    <TableHead>Average Score</TableHead>
-                    <TableHead>Pass Rate</TableHead>
-                    <TableHead>Performance</TableHead>
-                    <TableHead>Avg Time</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {examReports.map((report, index) => (
-                    <TableRow key={`exam-report-${report.examId}-${index}`}>
-                      <TableCell className="font-medium">{report.examTitle}</TableCell>
-                      <TableCell>{report.totalStudents}</TableCell>
-                      <TableCell>{report.completedAttempts}</TableCell>
-                      <TableCell>{report.averageScore.toFixed(1)}%</TableCell>
-                      <TableCell>{report.passRate.toFixed(1)}%</TableCell>
-                      <TableCell>{getPassRateBadge(report.passRate)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {report.averageTimeSpent}m
-                        </div>
-                      </TableCell>
+            {examReports.length > 0 ? (
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Exam</TableHead>
+                      <TableHead>Students</TableHead>
+                      <TableHead>Completed</TableHead>
+                      <TableHead>Average Score</TableHead>
+                      <TableHead>Pass Rate</TableHead>
+                      <TableHead>Performance</TableHead>
+                      <TableHead>Avg Time</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {examReports.map((report, index) => (
+                      <TableRow key={`exam-report-${report.examId}-${index}`}>
+                        <TableCell className="font-medium">{report.examTitle}</TableCell>
+                        <TableCell>{report.totalStudents}</TableCell>
+                        <TableCell>{report.completedAttempts}</TableCell>
+                        <TableCell>{report.averageScore.toFixed(1)}%</TableCell>
+                        <TableCell>{report.passRate.toFixed(1)}%</TableCell>
+                        <TableCell>{getPassRateBadge(report.passRate)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {report.averageTimeSpent}m
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <EmptyState
+                icon={BarChart3}
+                title="No exam data yet"
+                description="Reports will appear once exams have been conducted."
+              />
+            )}
           </CardContent>
         </Card>
       )}
