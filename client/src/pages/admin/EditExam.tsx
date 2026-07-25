@@ -1,50 +1,11 @@
 import { useState, useEffect } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { useForm } from "react-hook-form"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { RichTextEditor } from "@/components/ui/rich-text-editor"
-import { Switch } from "@/components/ui/switch"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { ArrowLeft, Save, Clock, Settings, Users } from "lucide-react"
+import { LoadingState } from "@/components/ui/loading-state"
+import { ArrowLeft } from "lucide-react"
+import { ExamForm, type ExamFormData, type ExamPayload } from "@/components/admin/ExamForm"
 import { getExamById, updateExam } from "@/api/exams"
-import { getStudentGroups, type StudentGroup } from "@/api/students"
-import { getActiveSubjects, type Subject } from "@/api/subjects"
 import { useToast } from "@/hooks/useToast"
-
-interface ExamFormData {
-  title: string
-  description: string
-  subject: string
-  duration: number
-  startDate: string
-  endDate: string
-  totalMarks: number
-  passingMarks: number
-  instructions: string
-  allowReview: boolean
-  showResultsImmediately: boolean
-  randomizeQuestions: boolean
-  randomizeOptions: boolean
-  negativeMarking: boolean
-  negativeMarkingValue: number
-  unlimitedAttempts: boolean
-  maxAttempts: number
-  questionsPerExam?: number
-  useRandomQuestions: boolean
-  videoRecording: boolean
-  mobileEnabled: boolean
-  assignedGroups: string[]
-}
 
 export function EditExam() {
   const navigate = useNavigate()
@@ -52,74 +13,23 @@ export function EditExam() {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [fetchingExam, setFetchingExam] = useState(true)
-  const [studentGroups, setStudentGroups] = useState<StudentGroup[]>([])
-  const [subjects, setSubjects] = useState<Subject[]>([])
-  const [selectedGroups, setSelectedGroups] = useState<string[]>([])
-  const [description, setDescription] = useState('')
-  const [instructions, setInstructions] = useState('')
-
-  const {
-    register,
-    handleSubmit,
-    watch,
-    setValue,
-    reset,
-    formState: { errors }
-  } = useForm<ExamFormData>()
-
-  const negativeMarking = watch("negativeMarking")
-  const unlimitedAttempts = watch("unlimitedAttempts")
-  const useRandomQuestions = watch("useRandomQuestions")
+  const [initialValues, setInitialValues] = useState<Partial<ExamFormData> | null>(null)
 
   useEffect(() => {
     if (id) {
       fetchExam()
-      fetchStudentGroups()
-      fetchSubjects()
     }
   }, [id])
 
-  const fetchStudentGroups = async () => {
-    try {
-      console.log('Fetching student groups for exam editing...')
-      const response = await getStudentGroups()
-      setStudentGroups(response.groups)
-    } catch (error: any) {
-      console.error('Error fetching student groups:', error)
-      toast({
-        title: "Warning",
-        description: "Failed to load student groups",
-        variant: "destructive"
-      })
-    }
-  }
-
-  const fetchSubjects = async () => {
-    try {
-      console.log('Fetching subjects for exam editing...')
-      const response = await getActiveSubjects() as any
-      setSubjects(response.subjects)
-    } catch (error: any) {
-      console.error('Error fetching subjects:', error)
-      toast({
-        title: "Warning",
-        description: "Failed to load subjects",
-        variant: "destructive"
-      })
-    }
-  }
-
   const fetchExam = async () => {
     try {
-      console.log('Fetching exam for edit:', id)
       const response = await getExamById(id!)
       const exam = response.exam
 
-      // Format dates for datetime-local input
       const startDate = new Date(exam.startDate).toISOString().slice(0, 16)
       const endDate = new Date(exam.endDate).toISOString().slice(0, 16)
 
-      reset({
+      setInitialValues({
         title: exam.title,
         description: exam.description || '',
         subject: typeof exam.subject === 'string' ? exam.subject : exam.subject._id,
@@ -143,15 +53,7 @@ export function EditExam() {
         mobileEnabled: exam.mobileEnabled || false,
         assignedGroups: exam.assignedGroups || []
       })
-
-      // Set WYSIWYG field values
-      setDescription(exam.description || '')
-      setInstructions(exam.instructions || '')
-
-      // Set selected groups
-      setSelectedGroups(exam.assignedGroups || [])
     } catch (error: any) {
-      console.error('Error fetching exam:', error)
       toast({
         title: "Error",
         description: error.message || "Failed to load exam",
@@ -163,27 +65,10 @@ export function EditExam() {
     }
   }
 
-  const onSubmit = async (data: ExamFormData) => {
+  const handleUpdate = async (payload: ExamPayload) => {
     setLoading(true)
     try {
-      console.log('Updating exam with data:', data)
-      
-      // Convert string values to numbers for proper validation
-      const examData = {
-        ...data,
-        description: description,
-        instructions: instructions,
-        duration: Number(data.duration),
-        totalMarks: Number(data.totalMarks),
-        passingMarks: Number(data.passingMarks),
-        negativeMarkingValue: Number(data.negativeMarkingValue),
-        maxAttempts: data.unlimitedAttempts ? 0 : Number(data.maxAttempts),
-        questionsPerExam: data.useRandomQuestions && data.questionsPerExam ? Number(data.questionsPerExam) : null,
-        assignedGroups: selectedGroups
-      }
-      
-      console.log('Converted exam data:', examData)
-      await updateExam(id!, examData)
+      await updateExam(id!, payload)
 
       toast({
         title: "Success",
@@ -192,7 +77,6 @@ export function EditExam() {
 
       navigate("/admin/exams")
     } catch (error: any) {
-      console.error('Error updating exam:', error)
       toast({
         title: "Error",
         description: error.message || "Failed to update exam",
@@ -204,11 +88,7 @@ export function EditExam() {
   }
 
   if (fetchingExam) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    )
+    return <LoadingState label="Loading exam..." />
   }
 
   return (
@@ -229,460 +109,9 @@ export function EditExam() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Basic Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                Basic Information
-              </CardTitle>
-              <CardDescription>
-                Update the fundamental details of your exam
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Exam Title *</Label>
-                <Input
-                  id="title"
-                  {...register("title", { required: "Title is required" })}
-                  placeholder="e.g., Mathematics Final Exam"
-                />
-                {errors.title && (
-                  <p className="text-sm text-red-600">{errors.title.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <RichTextEditor
-                  value={description}
-                  onChange={setDescription}
-                  placeholder="Brief description of the exam content and objectives"
-                  height="120px"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="subject">Subject *</Label>
-                <Select value={watch("subject")} onValueChange={(value) => setValue("subject", value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select subject" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {subjects.map((subject) => (
-                      <SelectItem key={subject._id} value={subject._id}>
-                        {subject.name} ({subject.code})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {subjects.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    No active subjects found. Please create subjects first.
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="instructions">Instructions for Students</Label>
-                <RichTextEditor
-                  value={instructions}
-                  onChange={setInstructions}
-                  placeholder="Enter detailed instructions for students taking this exam"
-                  height="150px"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Timing & Scoring */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5" />
-                Timing & Scoring
-              </CardTitle>
-              <CardDescription>
-                Configure exam duration and marking scheme
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="duration">Duration (minutes) *</Label>
-                <Input
-                  id="duration"
-                  type="number"
-                  {...register("duration", {
-                    required: "Duration is required",
-                    min: { value: 1, message: "Duration must be at least 1 minute" }
-                  })}
-                  placeholder="120"
-                />
-                {errors.duration && (
-                  <p className="text-sm text-red-600">{errors.duration.message}</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="startDate">Start Date & Time *</Label>
-                  <Input
-                    id="startDate"
-                    type="datetime-local"
-                    {...register("startDate", { required: "Start date is required" })}
-                  />
-                  {errors.startDate && (
-                    <p className="text-sm text-red-600">{errors.startDate.message}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="endDate">End Date & Time *</Label>
-                  <Input
-                    id="endDate"
-                    type="datetime-local"
-                    {...register("endDate", { required: "End date is required" })}
-                  />
-                  {errors.endDate && (
-                    <p className="text-sm text-red-600">{errors.endDate.message}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="totalMarks">Total Marks *</Label>
-                  <Input
-                    id="totalMarks"
-                    type="number"
-                    {...register("totalMarks", {
-                      required: "Total marks is required",
-                      min: { value: 1, message: "Must be at least 1" }
-                    })}
-                    placeholder="100"
-                  />
-                  {errors.totalMarks && (
-                    <p className="text-sm text-red-600">{errors.totalMarks.message}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="passingMarks">Passing Marks *</Label>
-                  <Input
-                    id="passingMarks"
-                    type="number"
-                    {...register("passingMarks", {
-                      required: "Passing marks is required",
-                      min: { value: 1, message: "Must be at least 1" }
-                    })}
-                    placeholder="40"
-                  />
-                  {errors.passingMarks && (
-                    <p className="text-sm text-red-600">{errors.passingMarks.message}</p>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Student Groups */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Student Groups Assignment
-            </CardTitle>
-            <CardDescription>
-              Select student groups that will have access to this exam
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Assigned Groups</Label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {studentGroups.map((group) => (
-                    <div
-                      key={group._id}
-                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                        selectedGroups.includes(group._id)
-                          ? 'border-primary bg-primary/5'
-                          : 'border-border hover:border-primary/50'
-                      }`}
-                      onClick={() => {
-                        if (selectedGroups.includes(group._id)) {
-                          setSelectedGroups(selectedGroups.filter(id => id !== group._id))
-                        } else {
-                          setSelectedGroups([...selectedGroups, group._id])
-                        }
-                      }}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium text-sm">{group.name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {group.studentCount} students
-                          </div>
-                        </div>
-                        <div
-                          className={`w-4 h-4 border rounded ${
-                            selectedGroups.includes(group._id)
-                              ? 'bg-primary border-primary'
-                              : 'border-muted-foreground'
-                          }`}
-                        >
-                          {selectedGroups.includes(group._id) && (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <div className="w-2 h-2 bg-white rounded-full"></div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {studentGroups.length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>No student groups available</p>
-                    <p className="text-sm">Create groups in Student Management first</p>
-                  </div>
-                )}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Selected {selectedGroups.length} of {studentGroups.length} groups
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Exam Settings */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings className="h-5 w-5" />
-              Exam Settings
-            </CardTitle>
-            <CardDescription>
-              Configure how the exam behaves for students
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Allow Review</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Students can review answers before submission
-                    </p>
-                  </div>
-                  <Switch
-                    checked={watch("allowReview")}
-                    onCheckedChange={(checked) => setValue("allowReview", checked)}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Show Results Immediately</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Display results right after submission
-                    </p>
-                  </div>
-                  <Switch
-                    checked={watch("showResultsImmediately")}
-                    onCheckedChange={(checked) => setValue("showResultsImmediately", checked)}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Randomize Questions</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Shuffle question order for each student
-                    </p>
-                  </div>
-                  <Switch
-                    checked={watch("randomizeQuestions")}
-                    onCheckedChange={(checked) => setValue("randomizeQuestions", checked)}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Randomize Options</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Shuffle answer options in MCQs
-                    </p>
-                  </div>
-                  <Switch
-                    checked={watch("randomizeOptions")}
-                    onCheckedChange={(checked) => setValue("randomizeOptions", checked)}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Negative Marking</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Deduct marks for incorrect answers
-                    </p>
-                  </div>
-                  <Switch
-                    checked={watch("negativeMarking")}
-                    onCheckedChange={(checked) => setValue("negativeMarking", checked)}
-                  />
-                </div>
-
-                {negativeMarking && (
-                  <div className="space-y-2">
-                    <Label htmlFor="negativeMarkingValue">Negative Marking Value</Label>
-                    <Input
-                      id="negativeMarkingValue"
-                      type="number"
-                      step="0.25"
-                      {...register("negativeMarkingValue", {
-                        min: { value: 0, message: "Must be 0 or greater" },
-                        max: { value: 1, message: "Must be 1 or less" }
-                      })}
-                      placeholder="0.25"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Marks to deduct per incorrect answer
-                    </p>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Unlimited Attempts</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Students can attempt the exam unlimited times
-                    </p>
-                  </div>
-                  <Switch
-                    checked={watch("unlimitedAttempts")}
-                    onCheckedChange={(checked) => setValue("unlimitedAttempts", checked)}
-                  />
-                </div>
-
-                {!unlimitedAttempts && (
-                  <div className="space-y-2">
-                    <Label htmlFor="maxAttempts">No. of Allowed Attempts</Label>
-                    <Input
-                      id="maxAttempts"
-                      type="number"
-                      {...register("maxAttempts", {
-                        required: !unlimitedAttempts && "Number of attempts is required",
-                        min: { value: 1, message: "Must be at least 1 attempt" },
-                        max: { value: 10, message: "Cannot exceed 10 attempts" }
-                      })}
-                      placeholder="1"
-                    />
-                    {errors.maxAttempts && (
-                      <p className="text-sm text-red-600">{errors.maxAttempts.message}</p>
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                      Maximum number of times a student can attempt this exam
-                    </p>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Random Question Selection</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Randomly select a subset of questions for each exam attempt
-                    </p>
-                  </div>
-                  <Switch
-                    checked={watch("useRandomQuestions")}
-                    onCheckedChange={(checked) => {
-                      setValue("useRandomQuestions", checked)
-                      if (!checked) {
-                        setValue("questionsPerExam", undefined)
-                      }
-                    }}
-                  />
-                </div>
-
-                {useRandomQuestions && (
-                  <div className="space-y-2">
-                    <Label htmlFor="questionsPerExam">Questions Per Exam Attempt</Label>
-                    <Input
-                      id="questionsPerExam"
-                      type="number"
-                      {...register("questionsPerExam", {
-                        required: useRandomQuestions ? "Number of questions is required" : false,
-                        min: { value: 1, message: "Must be at least 1 question" }
-                      })}
-                      placeholder="e.g., 20"
-                    />
-                    {errors.questionsPerExam && (
-                      <p className="text-sm text-red-600">{errors.questionsPerExam.message}</p>
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                      If you assign 50 questions and set this to 20, each student will get 20 randomly selected questions
-                    </p>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Use Video Security</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Record student video and audio during exam
-                    </p>
-                  </div>
-                  <Switch
-                    checked={watch("videoRecording")}
-                    onCheckedChange={(checked) => setValue("videoRecording", checked)}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Allow Mobile Devices</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Students can take this exam on mobile devices
-                    </p>
-                  </div>
-                  <Switch
-                    checked={watch("mobileEnabled")}
-                    onCheckedChange={(checked) => setValue("mobileEnabled", checked)}
-                  />
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate("/admin/exams")}
-          >
-            Cancel
-          </Button>
-          <Button type="submit" disabled={loading} className="gap-2">
-            {loading ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-            ) : (
-              <Save className="h-4 w-4" />
-            )}
-            Update Exam
-          </Button>
-        </div>
-      </form>
+      {initialValues && (
+        <ExamForm mode="edit" initialValues={initialValues} onSubmit={handleUpdate} submitting={loading} />
+      )}
     </div>
   )
 }
