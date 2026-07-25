@@ -33,7 +33,7 @@ Move the function verbatim (no parsing-logic changes — behavior-preserving onl
 
 ### 2. Debug logging and dead code cleanup
 
-Strip all `console.log`/`console.error` from `AIChat.tsx`, `AIChatQuestionAssignment.tsx`, `IntentConfirmationDialog.tsx`, and `intentDetection.ts` — not touching `client/src/api/aiChat.ts` or `client/src/api/aiPlatform.ts`, matching the established api-layer-is-out-of-scope convention from every prior phase. Remove `AIChat.tsx`'s confirmed-dead `Input`/`XCircle`/`uploadChatFile`/`createQuestionsWithAI` imports and the unused `savingQuestions`/`setSavingQuestions` state pair. Leave `api/aiChat.ts`'s six orphaned exports untouched per the confirmed decision above.
+Strip all `console.log`/`console.error` from `AIChat.tsx`, `AIChatQuestionAssignment.tsx`, `IntentConfirmationDialog.tsx`, and `intentDetection.ts` — not touching `client/src/api/aiChat.ts` or `client/src/api/aiPlatform.ts`, matching the established api-layer-is-out-of-scope convention from every prior phase. Remove `AIChat.tsx`'s confirmed-dead `Input`/`XCircle`/`uploadChatFile`/`createQuestionsWithAI` imports and the unused `savingQuestions`/`setSavingQuestions` state pair. Also remove `IntentConfirmationDialog.tsx`'s confirmed-dead `useState` import (line 8) — flagged by the same tsc baseline; no `useState(` call exists anywhere in that file, since its two exported components take all state via props. Leave `api/aiChat.ts`'s six orphaned exports untouched per the confirmed decision above.
 
 ### 3. Visual consistency — flatten the question-assignment wizard and replace hardcoded colors with tokens
 
