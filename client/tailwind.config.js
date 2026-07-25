@@ -64,6 +64,20 @@ module.exports = {
   				'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
   				border: 'hsl(var(--sidebar-border))',
   				ring: 'hsl(var(--sidebar-ring))'
+  			},
+  			status: {
+  				info: {
+  					DEFAULT: 'hsl(var(--status-info))',
+  					foreground: 'hsl(var(--status-info-foreground))'
+  				},
+  				warning: {
+  					DEFAULT: 'hsl(var(--status-warning))',
+  					foreground: 'hsl(var(--status-warning-foreground))'
+  				},
+  				danger: {
+  					DEFAULT: 'hsl(var(--status-danger))',
+  					foreground: 'hsl(var(--status-danger-foreground))'
+  				}
   			}
   		},
   		keyframes: {
