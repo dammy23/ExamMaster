@@ -30,13 +30,10 @@ export function detectIntention(message: string): DetectedIntent {
   // Normalize the message - convert to lowercase and trim
   const normalizedMessage = message.toLowerCase().trim()
 
-  console.log('Intent Detection - Analyzing message:', normalizedMessage)
-
   // Check each pattern
   for (const pattern of intentPatterns) {
     for (const keyword of pattern.keywords) {
       if (normalizedMessage.includes(keyword)) {
-        console.log('Intent Detection - Found keyword:', keyword, 'Intent:', pattern.intent)
         return pattern.intent
       }
     }
@@ -68,7 +65,6 @@ export function detectIntention(message: string): DetectedIntent {
   // Check subject variations
   for (const pattern of subjectVariations) {
     if (pattern.test(message)) {
-      console.log('Intent Detection - Found subject pattern:', pattern, 'Intent: create-subject')
       return 'create-subject'
     }
   }
@@ -76,12 +72,10 @@ export function detectIntention(message: string): DetectedIntent {
   // Check exam variations
   for (const pattern of examVariations) {
     if (pattern.test(message)) {
-      console.log('Intent Detection - Found exam pattern:', pattern, 'Intent: create-exam')
       return 'create-exam'
     }
   }
 
-  console.log('Intent Detection - No intent detected')
   return null
 }
 
