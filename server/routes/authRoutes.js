@@ -3,6 +3,8 @@ const UserService = require('../services/userService.js');
 const { generateAccessToken, generateRefreshToken } = require('../utils/auth.js');
 const { requireUser } = require('./middleware/auth.js');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const emailService = require('../services/emailService.js');
 
 const router = express.Router();
 
@@ -172,6 +174,88 @@ router.post('/register', async (req, res) => {
       success: false,
       error: 'Internal server error'
     });
+  }
+});
+
+// Forgot password route
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    console.log(`=== FORGOT PASSWORD REQUEST === Email: ${email}`);
+
+    const genericResponse = {
+      success: true,
+      message: 'If that email exists, a password reset link has been sent.'
+    };
+
+    if (!email) {
+      return res.status(400).json({ success: false, error: 'Email is required' });
+    }
+
+    const user = await UserService.getUserByEmail(email);
+    if (!user) {
+      console.log(`Forgot password: no user found for ${email} (returning generic response)`);
+      return res.status(200).json(genericResponse);
+    }
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    await UserService.updateUser(user._id, {
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: expires
+    });
+
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const resetLink = `${clientUrl}/reset-password/${rawToken}`;
+    console.log(`Forgot password: reset link for ${email}: ${resetLink}`);
+
+    try {
+      await emailService.sendPasswordReset(user.email, user.name, resetLink);
+    } catch (emailError) {
+      console.error(`Forgot password: email send failed (link is still valid, logged above):`, emailError.message);
+    }
+
+    return res.status(200).json(genericResponse);
+  } catch (error) {
+    console.error('Forgot password error:', error.message);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// Reset password route
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    console.log(`=== RESET PASSWORD ATTEMPT ===`);
+
+    if (!token || !password) {
+      return res.status(400).json({ success: false, error: 'Token and password are required' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, error: 'Password must be at least 6 characters long' });
+    }
+
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+    const user = await UserService.getUserByResetToken(hashedToken);
+
+    if (!user) {
+      return res.status(400).json({ success: false, error: 'Reset link is invalid or has expired' });
+    }
+
+    await UserService.updateUser(user._id, {
+      password,
+      resetPasswordToken: null,
+      resetPasswordExpires: null
+    });
+
+    console.log(`Reset password: success for user ${user.email}`);
+    return res.status(200).json({ success: true, message: 'Password has been reset successfully' });
+  } catch (error) {
+    console.error('Reset password error:', error.message);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 

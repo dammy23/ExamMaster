@@ -47,6 +47,21 @@ class UserService {
     }
   }
 
+  static async getUserByResetToken(hashedToken) {
+    try {
+      console.log(`UserService: Looking up user by reset token`);
+      const user = await User.findOne({
+        resetPasswordToken: hashedToken,
+        resetPasswordExpires: { $gt: Date.now() }
+      });
+      console.log(`UserService: Reset token lookup ${user ? 'found a user' : 'found no user (invalid or expired)'}`);
+      return user;
+    } catch (error) {
+      console.error(`UserService: Error looking up user by reset token:`, error.message);
+      throw error;
+    }
+  }
+
   // Get user by studentId
   static async getUserByStudentId(studentId) {
     try {
