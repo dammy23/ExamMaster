@@ -16,7 +16,10 @@ import {
   Eye,
   Download
 } from "lucide-react"
-import { getExamAttemptsForReview, getAttemptForReview } from "@/api/examAttempts"
+import { StatusBadge } from "@/components/ui/status-badge"
+import { LoadingState } from "@/components/ui/loading-state"
+import { EmptyState } from "@/components/ui/empty-state"
+import { getExamAttemptsForReview, getAttemptForReview, markAttemptReviewed } from "@/api/examAttempts"
 import { getExamById } from "@/api/exams"
 import { useToast } from "@/hooks/useToast"
 
@@ -45,6 +48,8 @@ interface ExamAttemptReview {
     recordingEndTime?: string
     recordingStatus: string
     fileSize?: number
+    reviewed?: boolean
+    reviewedAt?: string
   }
   activityLog: Array<{
     activity: string
@@ -65,6 +70,7 @@ export function StudentVideoReview() {
   const [selectedAttempt, setSelectedAttempt] = useState<ExamAttemptReview | null>(null)
   const [loading, setLoading] = useState(true)
   const [videoLoading, setVideoLoading] = useState(false)
+  const [markingReviewed, setMarkingReviewed] = useState(false)
 
   useEffect(() => {
     if (examId) {
@@ -87,7 +93,6 @@ export function StudentVideoReview() {
   const fetchExamAndAttempts = async () => {
     try {
       setLoading(true)
-      console.log('Fetching exam and attempts for video review:', examId)
 
       const [examResponse, attemptsResponse] = await Promise.all([
         getExamById(examId!),
@@ -96,11 +101,7 @@ export function StudentVideoReview() {
 
       setExam((examResponse as any).exam)
       setAttempts(attemptsResponse.attempts)
-
-      console.log(`Loaded exam: ${(examResponse as any).exam.title}`)
-      console.log(`Found ${attemptsResponse.attempts.length} attempts`)
     } catch (error: any) {
-      console.error('Error fetching exam and attempts:', error)
       toast({
         title: "Error",
         description: error.message || "Failed to load exam data",
@@ -113,11 +114,9 @@ export function StudentVideoReview() {
 
   const fetchSpecificAttempt = async (id: string) => {
     try {
-      console.log('Fetching specific attempt for review:', id)
       const response = await getAttemptForReview(id)
       setSelectedAttempt(response.attempt)
     } catch (error: any) {
-      console.error('Error fetching specific attempt:', error)
       toast({
         title: "Error",
         description: error.message || "Failed to load attempt data",
@@ -173,6 +172,43 @@ export function StudentVideoReview() {
     }
   }
 
+  const isPendingReview = (attempt: ExamAttemptReview) =>
+    !!attempt.videoRecording?.enabled &&
+    attempt.videoRecording.recordingStatus === 'completed' &&
+    !attempt.videoRecording.reviewed
+
+  const handleMarkReviewed = async () => {
+    if (!selectedAttempt) return
+    setMarkingReviewed(true)
+    try {
+      const response = await markAttemptReviewed(selectedAttempt._id)
+      const updatedVideoRecording = response.attempt.videoRecording
+
+      setSelectedAttempt({
+        ...selectedAttempt,
+        videoRecording: updatedVideoRecording
+      })
+      setAttempts(attempts.map(a =>
+        a._id === selectedAttempt._id
+          ? { ...a, videoRecording: updatedVideoRecording }
+          : a
+      ))
+
+      toast({
+        title: "Success",
+        description: "Marked as reviewed"
+      })
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to mark as reviewed",
+        variant: "destructive"
+      })
+    } finally {
+      setMarkingReviewed(false)
+    }
+  }
+
   const handleViewAttempt = (attempt: ExamAttemptReview) => {
     setSelectedAttempt(attempt)
     navigate(`/admin/exams/${examId}/video-review/${attempt._id}`)
@@ -201,21 +237,16 @@ export function StudentVideoReview() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    )
+    return <LoadingState label="Loading video review..." />
   }
 
   if (!exam) {
     return (
-      <div className="text-center py-8">
-        <h2 className="text-2xl font-bold mb-2">Exam not found</h2>
-        <Button onClick={() => navigate('/admin/exams')}>
-          Return to Exams
-        </Button>
-      </div>
+      <EmptyState
+        title="Exam not found"
+        description="The exam you're looking for doesn't exist or you don't have access to it."
+        action={{ label: "Return to Exams", onClick: () => navigate('/admin/exams') }}
+      />
     )
   }
 
@@ -299,9 +330,24 @@ export function StudentVideoReview() {
                       <Video className="h-5 w-5" />
                       Video Recording
                     </div>
-                    {selectedAttempt.videoRecording?.enabled && (
-                      getVideoStatusBadge(selectedAttempt.videoRecording.recordingStatus)
-                    )}
+                    <div className="flex items-center gap-2">
+                      {selectedAttempt.videoRecording?.enabled && (
+                        getVideoStatusBadge(selectedAttempt.videoRecording.recordingStatus)
+                      )}
+                      {selectedAttempt.videoRecording?.enabled && selectedAttempt.videoRecording.recordingStatus === 'completed' && (
+                        selectedAttempt.videoRecording.reviewed ? (
+                          <Badge className="gap-1">
+                            <CheckCircle className="h-3 w-3" />
+                            Reviewed
+                            {selectedAttempt.videoRecording.reviewedAt && ` ${formatDateTime(selectedAttempt.videoRecording.reviewedAt)}`}
+                          </Badge>
+                        ) : (
+                          <Button size="sm" onClick={handleMarkReviewed} disabled={markingReviewed}>
+                            {markingReviewed ? "Marking..." : "Mark as Reviewed"}
+                          </Button>
+                        )
+                      )}
+                    </div>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -443,11 +489,7 @@ export function StudentVideoReview() {
           </CardHeader>
           <CardContent>
             {attempts.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <User className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>No exam attempts found</p>
-                <p className="text-sm">Students haven't started this exam yet</p>
-              </div>
+              <EmptyState title="No exam attempts found" description="Students haven't started this exam yet." />
             ) : (
               <div className="space-y-4">
                 {attempts.map((attempt) => (
@@ -469,6 +511,7 @@ export function StudentVideoReview() {
                         {attempt.videoRecording?.enabled && (
                           getVideoStatusBadge(attempt.videoRecording.recordingStatus)
                         )}
+                        {isPendingReview(attempt) && <StatusBadge status="pending-review" />}
                       </div>
 
                       <Separator orientation="vertical" className="h-8" />
