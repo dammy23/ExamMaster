@@ -2,21 +2,26 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { 
-  Users, 
-  FileText, 
-  Clock, 
-  TrendingUp, 
+import { StatusBadge } from "@/components/ui/status-badge"
+import { LoadingState } from "@/components/ui/loading-state"
+import { EmptyState } from "@/components/ui/empty-state"
+import {
+  Users,
+  FileText,
+  Clock,
+  TrendingUp,
   Plus,
-  Eye,
   BarChart3,
-  AlertCircle
+  AlertCircle,
+  ClipboardCheck,
+  ClipboardList,
+  Bookmark
 } from "lucide-react"
 import { Link } from "react-router-dom"
-import { getExams } from "@/api/exams"
+import { getExams, type Exam } from "@/api/exams"
 import { getStudents } from "@/api/students"
-import { getAdminRecentActivity } from "@/api/examAttempts"
+import { getAdminRecentActivity, getPendingGradingCount } from "@/api/examAttempts"
+import { getActiveSubjects, type Subject } from "@/api/subjects"
 import { useToast } from "@/hooks/useToast"
 
 interface DashboardStats {
@@ -24,6 +29,7 @@ interface DashboardStats {
   activeExams: number
   totalStudents: number
   recentSubmissions: number
+  pendingGrading: number
 }
 
 export function AdminDashboard() {
@@ -31,43 +37,52 @@ export function AdminDashboard() {
     totalExams: 0,
     activeExams: 0,
     totalStudents: 0,
-    recentSubmissions: 0
+    recentSubmissions: 0,
+    pendingGrading: 0
   })
   const [recentActivities, setRecentActivities] = useState<any[]>([])
+  const [recentExams, setRecentExams] = useState<Exam[]>([])
+  const [activeSubjects, setActiveSubjects] = useState<Partial<Subject>[]>([])
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        console.log('Fetching dashboard data...')
-        const [examsResponse, studentsResponse, recentActivityResponse] = await Promise.all([
+        const [examsResponse, studentsResponse, recentActivityResponse, pendingGradingResponse, activeSubjectsResponse] = await Promise.all([
           getExams(),
           getStudents(),
-          getAdminRecentActivity()
+          getAdminRecentActivity(),
+          getPendingGradingCount(),
+          getActiveSubjects()
         ])
 
-        const exams = (examsResponse as any).exams
+        const exams = (examsResponse as any).exams as Exam[]
         const students = (studentsResponse as any).students
         const recentActivityData = (recentActivityResponse as any).recentActivity
+        const pendingGrading = (pendingGradingResponse as any).count
+        const subjects = (activeSubjectsResponse as any).subjects as Partial<Subject>[]
 
-        console.log('Admin Dashboard - Recent activity received:', recentActivityData)
-
-        // Count recent submissions from activity data
-        const recentSubmissions = recentActivityData?.filter((activity: any) => 
+        const recentSubmissions = recentActivityData?.filter((activity: any) =>
           activity.action === 'Completed' || activity.action === 'Submitted'
         ).length || 0
 
         setStats({
           totalExams: exams.length,
-          activeExams: exams.filter((exam: any) => exam.status === 'active').length,
+          activeExams: exams.filter((exam) => exam.status === 'active').length,
           totalStudents: students.length,
-          recentSubmissions: recentSubmissions
+          recentSubmissions: recentSubmissions,
+          pendingGrading: pendingGrading
         })
 
         setRecentActivities(recentActivityData || [])
+        setRecentExams(
+          [...exams]
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+            .slice(0, 5)
+        )
+        setActiveSubjects(subjects || [])
       } catch (error) {
-        console.error('Error fetching dashboard data:', error)
         toast({
           title: "Error",
           description: "Failed to load dashboard data",
@@ -82,11 +97,7 @@ export function AdminDashboard() {
   }, [toast])
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    )
+    return <LoadingState label="Loading dashboard..." />
   }
 
   return (
@@ -108,57 +119,55 @@ export function AdminDashboard() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-blue-200 dark:border-blue-800">
+      {/* Stat Tiles */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Exams</CardTitle>
-            <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Exams</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{stats.totalExams}</div>
-            <p className="text-xs text-blue-600 dark:text-blue-400">
-              +2 from last month
-            </p>
+            <div className="text-2xl font-semibold">{stats.totalExams}</div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 border-green-200 dark:border-green-800">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Exams</CardTitle>
-            <Clock className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Active Exams</CardTitle>
+            <Clock className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-700 dark:text-green-300">{stats.activeExams}</div>
-            <p className="text-xs text-green-600 dark:text-green-400">
-              Currently running
-            </p>
+            <div className="text-2xl font-semibold text-primary">{stats.activeExams}</div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900 border-purple-200 dark:border-purple-800">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-            <Users className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Students</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">{stats.totalStudents}</div>
-            <p className="text-xs text-purple-600 dark:text-purple-400">
-              +5 new this week
-            </p>
+            <div className="text-2xl font-semibold">{stats.totalStudents}</div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900 border-orange-200 dark:border-orange-800">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Recent Submissions</CardTitle>
-            <TrendingUp className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Recent Submissions</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-700 dark:text-orange-300">{stats.recentSubmissions}</div>
-            <p className="text-xs text-orange-600 dark:text-orange-400">
-              In the last 24 hours
-            </p>
+            <div className="text-2xl font-semibold">{stats.recentSubmissions}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Pending Grading</CardTitle>
+            <ClipboardCheck className="h-4 w-4 text-status-warning-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-semibold text-status-warning-foreground">{stats.pendingGrading}</div>
           </CardContent>
         </Card>
       </div>
@@ -176,9 +185,9 @@ export function AdminDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {recentActivities.length > 0 ? (
-                recentActivities.map((activity) => (
+            {recentActivities.length > 0 ? (
+              <div className="space-y-4">
+                {recentActivities.map((activity) => (
                   <div key={activity._id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                     <div className="space-y-1">
                       <p className="text-sm font-medium">{activity.student}</p>
@@ -194,13 +203,11 @@ export function AdminDashboard() {
                       <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
                     </div>
                   </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No recent activities available
-                </p>
-              )}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState title="No recent activity" description="Student exam activity will appear here as it happens." />
+            )}
           </CardContent>
         </Card>
 
@@ -241,40 +248,67 @@ export function AdminDashboard() {
         </Card>
       </div>
 
-      {/* System Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle>System Status</CardTitle>
-          <CardDescription>
-            Current system performance and health
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Server Performance</span>
-                <span>98%</span>
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Recent Exams */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ClipboardList className="h-5 w-5" />
+              Recent Exams
+            </CardTitle>
+            <CardDescription>
+              The 5 most recently created exams
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {recentExams.length > 0 ? (
+              <div className="space-y-3">
+                {recentExams.map((exam) => (
+                  <Link
+                    key={exam._id}
+                    to={`/admin/exams/${exam._id}/details`}
+                    className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
+                  >
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">{exam.title}</p>
+                      <p className="text-xs text-muted-foreground">{exam.subject?.name}</p>
+                    </div>
+                    <StatusBadge status={exam.status} />
+                  </Link>
+                ))}
               </div>
-              <Progress value={98} className="h-2" />
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Database Health</span>
-                <span>95%</span>
+            ) : (
+              <EmptyState title="No exams yet" description="Create your first exam to see it listed here." />
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Active Subjects */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bookmark className="h-5 w-5" />
+              Active Subjects ({activeSubjects.length})
+            </CardTitle>
+            <CardDescription>
+              Subjects currently available for exams
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {activeSubjects.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {activeSubjects.map((subject) => (
+                  <Badge key={subject._id} variant="secondary">
+                    {subject.name}
+                  </Badge>
+                ))}
               </div>
-              <Progress value={95} className="h-2" />
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Active Connections</span>
-                <span>87%</span>
-              </div>
-              <Progress value={87} className="h-2" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+            ) : (
+              <EmptyState title="No active subjects" description="Activate a subject to see it listed here." />
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
