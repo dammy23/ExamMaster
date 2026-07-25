@@ -15,12 +15,13 @@ import {
   AlertCircle,
   ClipboardCheck,
   ClipboardList,
-  Bookmark
+  Bookmark,
+  Video
 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { getExams, type Exam } from "@/api/exams"
 import { getStudents } from "@/api/students"
-import { getAdminRecentActivity, getPendingGradingCount } from "@/api/examAttempts"
+import { getAdminRecentActivity, getPendingGradingCount, getPendingVideoReviewsCount } from "@/api/examAttempts"
 import { getActiveSubjects, type Subject } from "@/api/subjects"
 import { useToast } from "@/hooks/useToast"
 
@@ -30,6 +31,7 @@ interface DashboardStats {
   totalStudents: number
   recentSubmissions: number
   pendingGrading: number
+  pendingVideoReviews: number
 }
 
 export function AdminDashboard() {
@@ -38,7 +40,8 @@ export function AdminDashboard() {
     activeExams: 0,
     totalStudents: 0,
     recentSubmissions: 0,
-    pendingGrading: 0
+    pendingGrading: 0,
+    pendingVideoReviews: 0
   })
   const [recentActivities, setRecentActivities] = useState<any[]>([])
   const [recentExams, setRecentExams] = useState<Exam[]>([])
@@ -49,11 +52,12 @@ export function AdminDashboard() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const [examsResponse, studentsResponse, recentActivityResponse, pendingGradingResponse, activeSubjectsResponse] = await Promise.all([
+        const [examsResponse, studentsResponse, recentActivityResponse, pendingGradingResponse, pendingVideoReviewsResponse, activeSubjectsResponse] = await Promise.all([
           getExams(),
           getStudents(),
           getAdminRecentActivity(),
           getPendingGradingCount(),
+          getPendingVideoReviewsCount(),
           getActiveSubjects()
         ])
 
@@ -61,6 +65,7 @@ export function AdminDashboard() {
         const students = (studentsResponse as any).students
         const recentActivityData = (recentActivityResponse as any).recentActivity
         const pendingGrading = (pendingGradingResponse as any).count
+        const pendingVideoReviews = (pendingVideoReviewsResponse as any).count
         const subjects = (activeSubjectsResponse as any).subjects as Partial<Subject>[]
 
         const recentSubmissions = recentActivityData?.filter((activity: any) =>
@@ -72,7 +77,8 @@ export function AdminDashboard() {
           activeExams: exams.filter((exam) => exam.status === 'active').length,
           totalStudents: students.length,
           recentSubmissions: recentSubmissions,
-          pendingGrading: pendingGrading
+          pendingGrading: pendingGrading,
+          pendingVideoReviews: pendingVideoReviews
         })
 
         setRecentActivities(recentActivityData || [])
@@ -120,7 +126,7 @@ export function AdminDashboard() {
       </div>
 
       {/* Stat Tiles */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Exams</CardTitle>
@@ -168,6 +174,16 @@ export function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-semibold text-status-warning-foreground">{stats.pendingGrading}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Pending Video Reviews</CardTitle>
+            <Video className="h-4 w-4 text-status-warning-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-semibold text-status-warning-foreground">{stats.pendingVideoReviews}</div>
           </CardContent>
         </Card>
       </div>
