@@ -20,6 +20,7 @@ import {
 import { Progress } from "@/components/ui/progress"
 import { LoadingState } from "@/components/ui/loading-state"
 import { EmptyState } from "@/components/ui/empty-state"
+import { StatusBadge } from "@/components/ui/status-badge"
 import {
   BarChart3,
   Download,
@@ -467,9 +468,7 @@ export function Reports() {
               Individual student performance for the selected exam
             </CardDescription>
             {loadingExamData && (
-              <div className="flex items-center justify-center py-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-              </div>
+              <LoadingState label="Loading exam data..." className="py-4" />
             )}
           </CardHeader>
           <CardContent>
@@ -497,28 +496,28 @@ export function Reports() {
 
             {/* Exam Statistics */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
-              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+              <Card>
                 <CardContent className="p-4 text-center">
-                  <div className="text-2xl font-bold text-blue-700">{examStudentReport.statistics.totalStudents}</div>
-                  <p className="text-sm text-blue-600">Total Students</p>
+                  <div className="text-2xl font-bold">{examStudentReport.statistics.totalStudents}</div>
+                  <p className="text-sm text-muted-foreground">Total Students</p>
                 </CardContent>
               </Card>
-              <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+              <Card>
                 <CardContent className="p-4 text-center">
-                  <div className="text-2xl font-bold text-green-700">{examStudentReport.statistics.passedStudents}</div>
-                  <p className="text-sm text-green-600">Passed</p>
+                  <div className="text-2xl font-bold text-status-success-foreground">{examStudentReport.statistics.passedStudents}</div>
+                  <p className="text-sm text-muted-foreground">Passed</p>
                 </CardContent>
               </Card>
-              <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
+              <Card>
                 <CardContent className="p-4 text-center">
-                  <div className="text-2xl font-bold text-red-700">{examStudentReport.statistics.failedStudents}</div>
-                  <p className="text-sm text-red-600">Failed</p>
+                  <div className="text-2xl font-bold text-status-danger-foreground">{examStudentReport.statistics.failedStudents}</div>
+                  <p className="text-sm text-muted-foreground">Failed</p>
                 </CardContent>
               </Card>
-              <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+              <Card>
                 <CardContent className="p-4 text-center">
-                  <div className="text-2xl font-bold text-orange-700">{examStudentReport.statistics.passRate.toFixed(1)}%</div>
-                  <p className="text-sm text-orange-600">Pass Rate</p>
+                  <div className="text-2xl font-bold">{examStudentReport.statistics.passRate.toFixed(1)}%</div>
+                  <p className="text-sm text-muted-foreground">Pass Rate</p>
                 </CardContent>
               </Card>
             </div>
@@ -580,15 +579,25 @@ export function Reports() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={student.isPassed ? 'default' : 'destructive'}>
-                          {student.isPassed ? 'Passed' : 'Failed'}
-                        </Badge>
+                        <StatusBadge status={student.isPassed ? 'passed' : 'failed'} />
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {selectedReport === "exam-students" && selectedExam && selectedExam !== "all" && !loadingExamData && !examStudentReport && (
+        <Card>
+          <CardContent className="pt-6">
+            <EmptyState
+              icon={Users}
+              title="No attempts yet"
+              description="Student scores will appear once this exam has been attempted."
+            />
           </CardContent>
         </Card>
       )}
