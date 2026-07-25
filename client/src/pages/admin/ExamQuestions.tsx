@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { LoadingState } from "@/components/ui/loading-state"
+import { EmptyState } from "@/components/ui/empty-state"
 import {
   Select,
   SelectContent,
@@ -20,11 +21,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { 
-  ArrowLeft, 
-  Search, 
-  Plus, 
-  Check, 
+import {
+  ArrowLeft,
+  Search,
+  Plus,
+  Check,
   X,
   FileText,
   Clock,
@@ -39,7 +40,7 @@ export function ExamQuestions() {
   const { examId } = useParams<{ examId: string }>()
   const navigate = useNavigate()
   const { toast } = useToast()
-  
+
   const [exam, setExam] = useState<Exam | null>(null)
   const [questions, setQuestions] = useState<Question[]>([])
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([])
@@ -56,19 +57,15 @@ export function ExamQuestions() {
 
   const fetchData = async () => {
     try {
-      console.log('Fetching exam and questions data for exam ID:', examId)
-      
       const [examResponse, questionsResponse] = await Promise.all([
         getExamById(examId!),
-        getQuestions({ limit: 10000 }) // Fetch all available questions (no limit)
+        getQuestions({ limit: 10000 })
       ])
-      
+
       setExam(examResponse.exam)
       setQuestions(questionsResponse.questions)
       setSelectedQuestions(examResponse.exam.questions || [])
-      
     } catch (error: any) {
-      console.error('Error fetching data:', error)
       toast({
         title: "Error",
         description: error.message || "Failed to load exam data",
@@ -82,8 +79,7 @@ export function ExamQuestions() {
   const handleSaveQuestions = async () => {
     try {
       setSaving(true)
-      console.log('Updating exam questions:', selectedQuestions)
-      
+
       await updateExam(examId!, {
         questions: selectedQuestions,
         totalQuestions: selectedQuestions.length
@@ -93,8 +89,7 @@ export function ExamQuestions() {
         title: "Success",
         description: `Exam updated with ${selectedQuestions.length} questions`
       })
-      
-      // Update local exam state
+
       if (exam) {
         setExam({
           ...exam,
@@ -103,9 +98,8 @@ export function ExamQuestions() {
         })
       }
     } catch (error: any) {
-      console.error('Error saving questions:', error)
       toast({
-        title: "Error", 
+        title: "Error",
         description: error.message || "Failed to update exam questions",
         variant: "destructive"
       })
@@ -162,7 +156,7 @@ export function ExamQuestions() {
   const filteredQuestions = questions.filter(question => {
     const matchesSearch = question.question.replace(/<[^>]*>/g, '').toLowerCase().includes(searchTerm.toLowerCase())
     const matchesDifficulty = filterDifficulty === "all" || question.difficulty === filterDifficulty
-    
+
     return matchesSearch && matchesDifficulty
   })
 
@@ -172,21 +166,16 @@ export function ExamQuestions() {
   }, 0)
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    )
+    return <LoadingState label="Loading questions..." />
   }
 
   if (!exam) {
     return (
-      <div className="text-center py-8">
-        <p className="text-muted-foreground">Exam not found</p>
-        <Button onClick={() => navigate("/admin/exams")} className="mt-4">
-          Back to Exams
-        </Button>
-      </div>
+      <EmptyState
+        title="Exam not found"
+        description="The exam you're looking for doesn't exist or you don't have access to it."
+        action={{ label: "Back to Exams", onClick: () => navigate("/admin/exams") }}
+      />
     )
   }
 
@@ -341,20 +330,20 @@ export function ExamQuestions() {
           </div>
 
           {/* Questions Table */}
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">Select</TableHead>
-                  <TableHead>Question</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Difficulty</TableHead>
-                  <TableHead>Marks</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredQuestions.length > 0 ? (
-                  filteredQuestions.map((question) => (
+          {filteredQuestions.length > 0 ? (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">Select</TableHead>
+                    <TableHead>Question</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Difficulty</TableHead>
+                    <TableHead>Marks</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredQuestions.map((question) => (
                     <TableRow
                       key={question._id}
                       className={`cursor-pointer transition-colors ${
@@ -388,21 +377,16 @@ export function ExamQuestions() {
                         <Badge variant="outline">{question.marks}</Badge>
                       </TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8">
-                      <div className="text-muted-foreground">
-                        {searchTerm || filterDifficulty !== "all"
-                          ? "No questions found matching your filters."
-                          : "No questions available."}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <EmptyState
+              title={searchTerm || filterDifficulty !== "all" ? "No questions found" : "No questions available"}
+              description={searchTerm || filterDifficulty !== "all" ? "No questions match your filters." : "Create questions in the Question Bank first."}
+            />
+          )}
         </CardContent>
       </Card>
     </div>
