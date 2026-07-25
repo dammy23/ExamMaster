@@ -21,6 +21,8 @@ export interface ExamAttempt {
     recordingEndTime?: string;
     recordingStatus: 'not_started' | 'recording' | 'completed' | 'failed';
     fileSize?: number;
+    reviewed?: boolean;
+    reviewedAt?: string;
   };
   aiGradingResults?: {
     totalScore: number;
@@ -222,6 +224,34 @@ export const getPendingGradingCount = async () => {
     return response.data;
   } catch (error: any) {
     console.error('Get pending grading count error:', error);
+    throw new Error(error?.response?.data?.error || error.message);
+  }
+};
+
+// Description: Mark an exam attempt's video recording as reviewed
+// Endpoint: POST /api/exam-attempts/mark-reviewed/:attemptId
+// Request: {}
+// Response: { success: boolean, attempt: ExamAttempt }
+export const markAttemptReviewed = async (attemptId: string) => {
+  try {
+    const response = await api.post(`/api/exam-attempts/mark-reviewed/${attemptId}`);
+    return response.data;
+  } catch (error: any) {
+    console.error('Mark attempt reviewed error:', error);
+    throw new Error(error?.response?.data?.error || error.message);
+  }
+};
+
+// Description: Get the count of exam attempts pending video review
+// Endpoint: GET /api/exam-attempts/admin/pending-video-reviews-count
+// Request: {}
+// Response: { success: boolean, count: number }
+export const getPendingVideoReviewsCount = async () => {
+  try {
+    const response = await api.get('/api/exam-attempts/admin/pending-video-reviews-count');
+    return response.data;
+  } catch (error: any) {
+    console.error('Get pending video reviews count error:', error);
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
