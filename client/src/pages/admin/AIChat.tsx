@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -21,11 +20,11 @@ import {
   Settings,
   CheckCircle,
   AlertCircle,
-  XCircle,
   Save,
   Download
 } from "lucide-react"
-import { sendChatMessage, getChatHistory, getAIAgents, uploadChatFile, createQuestionsWithAI } from "@/api/aiChat"
+import { sendChatMessage, getChatHistory, getAIAgents } from "@/api/aiChat"
+import { LoadingState } from "@/components/ui/loading-state"
 import { getActiveAIPlatforms } from "@/api/aiPlatform"
 import { AIChatQuestionAssignment } from "@/components/AIChatQuestionAssignment"
 import { detectIntention, type DetectedIntent } from "@/utils/intentDetection"
@@ -87,7 +86,6 @@ export function AIChat() {
   const [loadingHistory, setLoadingHistory] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [pagination, setPagination] = useState<ChatPagination | null>(null)
-  const [savingQuestions, setSavingQuestions] = useState<{ [key: string]: boolean }>({})
   const [assigningQuestions, setAssigningQuestions] = useState<{ [key: string]: boolean }>({})
 
   // Intent detection and creation dialog state
@@ -111,7 +109,6 @@ export function AIChat() {
 
     setLoadingMore(true)
     try {
-      console.log('AI Chat - Loading more messages, page:', pagination.currentPage + 1)
       const historyResponse = await getChatHistory({
         page: pagination.currentPage + 1,
         limit: 20
@@ -119,8 +116,6 @@ export function AIChat() {
 
       const historyData = historyResponse.messages
       const newPagination = historyResponse.pagination
-
-      console.log('AI Chat - More history received:', historyData?.length || 0, 'messages')
 
       // Preserve scroll position when adding older messages
       const scrollContainer = messagesContainerRef.current
@@ -156,7 +151,6 @@ export function AIChat() {
       }, 0)
 
     } catch (error) {
-      console.error('Error loading more messages:', error)
       toast({
         title: "Error",
         description: "Failed to load more messages",
@@ -171,7 +165,6 @@ export function AIChat() {
   const handleSaveQuestions = (messageId: string, questions: any[]) => {
     if (!questions || questions.length === 0) return
 
-    console.log('AI Chat - Starting question assignment flow for message:', messageId)
     setAssigningQuestions(prev => ({ ...prev, [messageId]: true }))
 
     // Update the message to show assignment component
@@ -184,7 +177,6 @@ export function AIChat() {
 
   // Handle assignment completion
   const handleAssignmentComplete = (messageId: string) => {
-    console.log('AI Chat - Assignment completed for message:', messageId)
     setAssigningQuestions(prev => ({ ...prev, [messageId]: false }))
 
     // Remove questions and assignment flow from message
@@ -197,7 +189,6 @@ export function AIChat() {
 
   // Handle assignment cancellation
   const handleAssignmentCancel = (messageId: string) => {
-    console.log('AI Chat - Assignment cancelled for message:', messageId)
     setAssigningQuestions(prev => ({ ...prev, [messageId]: false }))
 
     // Hide assignment flow but keep questions
@@ -210,33 +201,28 @@ export function AIChat() {
 
   // Intent detection and handling functions
   const handleIntentConfirm = () => {
-    console.log('AI Chat - User confirmed intent:', detectedIntent)
     setShowIntentConfirmation(false)
     setShowCreateDialog(true)
   }
 
   const handleIntentCancel = () => {
-    console.log('AI Chat - User cancelled intent, proceeding with AI message')
     setShowIntentConfirmation(false)
     // Proceed with sending the original message to AI
     proceedWithAIMessage(pendingMessage)
   }
 
   const handleCreationDialogClose = () => {
-    console.log('AI Chat - Creation dialog closed')
     setShowCreateDialog(false)
     setDetectedIntent(null)
     setPendingMessage("")
   }
 
   const handleCreationSuccess = () => {
-    console.log('AI Chat - Creation completed successfully')
     // Clear the message since user completed the intended action
     setNewMessage("")
   }
 
   const proceedWithAIMessage = async (message: string) => {
-    console.log('AI Chat - Proceeding with AI message:', message)
     // Call the actual AI message sending logic
     await sendMessageToAI(message)
   }
@@ -248,7 +234,6 @@ export function AIChat() {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        console.log('AI Chat - Fetching initial data...')
         const [platformsResponse, agentsResponse, historyResponse] = await Promise.all([
           getActiveAIPlatforms(),
           getAIAgents(),
@@ -259,11 +244,6 @@ export function AIChat() {
         const agentsData = (agentsResponse as any).agents
         const historyData = historyResponse.messages
         const historyPagination = historyResponse.pagination
-
-        console.log('AI Chat - Platforms received:', platformsData)
-        console.log('AI Chat - Agents received:', agentsData)
-        console.log('AI Chat - History received:', historyData?.length || 0, 'messages')
-        console.log('AI Chat - Pagination:', historyPagination)
 
         setPlatforms(platformsData || [])
         setAgents(agentsData || [])
@@ -298,7 +278,6 @@ export function AIChat() {
         setMessages(transformedMessages)
 
       } catch (error) {
-        console.error('Error fetching AI Chat data:', error)
         toast({
           title: "Error",
           description: "Failed to load AI Chat data",
@@ -325,7 +304,6 @@ export function AIChat() {
         return
       }
       setAttachedFile(file)
-      console.log('AI Chat - File selected:', file.name, file.size)
     }
   }
 
@@ -363,11 +341,9 @@ export function AIChat() {
 
     // Detect intention in the message
     const intent = detectIntention(userMessage)
-    console.log('AI Chat - Intent detection result:', intent)
 
     if (intent) {
       // Store the message and show confirmation dialog
-      console.log('AI Chat - Intent detected, showing confirmation dialog')
       setPendingMessage(userMessage)
       setDetectedIntent(intent)
       setShowIntentConfirmation(true)
@@ -379,11 +355,6 @@ export function AIChat() {
   }
 
   const sendMessageToAI = async (userMessage: string) => {
-    console.log('AI Chat - Sending message to AI:', userMessage)
-    console.log('AI Chat - Selected platform:', selectedPlatform)
-    console.log('AI Chat - Selected agent:', selectedAgent)
-    console.log('AI Chat - Attached file:', attachedFile?.name)
-
     // Add user message to chat (at the end since latest messages appear at bottom)
     const userChatMessage: ChatMessage = {
       _id: `user_${Date.now()}`,
@@ -409,7 +380,6 @@ export function AIChat() {
       })
 
       const responseData = response as any
-      console.log('AI Chat - Response received:', responseData)
 
       const generatedQuestions = parseGeneratedQuestions(responseData.response)
 
@@ -439,7 +409,6 @@ export function AIChat() {
       })
 
     } catch (error) {
-      console.error("AI Chat error:", error)
       toast({
         variant: "destructive",
         title: "Error",
@@ -521,9 +490,9 @@ export function AIChat() {
                         <div className="flex items-center gap-2 w-full">
                           <div className="flex items-center gap-1">
                             {platform.isConfigured ? (
-                              <CheckCircle className="h-3 w-3 text-green-500" />
+                              <CheckCircle className="h-3 w-3 text-status-success-foreground" />
                             ) : (
-                              <AlertCircle className="h-3 w-3 text-amber-500" />
+                              <AlertCircle className="h-3 w-3 text-status-warning-foreground" />
                             )}
                           </div>
                           <div className="flex flex-col flex-1">
@@ -563,14 +532,14 @@ export function AIChat() {
                         </p>
                       </>
                     ) : (
-                      <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                      <div className="p-2 bg-status-warning border border-status-warning rounded-lg">
                         <div className="flex items-center gap-2 mb-1">
-                          <AlertCircle className="h-3 w-3 text-amber-600" />
-                          <span className="text-xs font-medium text-amber-800">
+                          <AlertCircle className="h-3 w-3 text-status-warning-foreground" />
+                          <span className="text-xs font-medium text-status-warning-foreground">
                             Configuration Required
                           </span>
                         </div>
-                        <p className="text-xs text-amber-700">
+                        <p className="text-xs text-status-warning-foreground">
                           {selectedPlatformInfo.configurationMessage}
                         </p>
                       </div>
@@ -642,10 +611,7 @@ export function AIChat() {
             {/* Messages Area */}
             <ScrollArea ref={messagesContainerRef} className="h-full p-4 [scrollbar-gutter:stable] overscroll-y-contain">
               {loadingHistory ? (
-                <div className="flex items-center justify-center h-32">
-                  <Loader2 className="h-6 w-6 animate-spin" />
-                  <span className="ml-2">Loading chat history...</span>
-                </div>
+                <LoadingState label="Loading chat history..." className="h-32" />
               ) : (
                 <div className="space-y-4">
                   {/* Load More Button - Show at top when there are more messages */}
@@ -738,7 +704,7 @@ export function AIChat() {
                               <div className="mt-3 pt-3 border-t border-border/50">
                                 <div className="flex items-center justify-between mb-2">
                                   <div className="flex items-center gap-2">
-                                    <CheckCircle className="h-4 w-4 text-green-500" />
+                                    <CheckCircle className="h-4 w-4 text-status-success-foreground" />
                                     <span className="text-xs font-medium">
                                       {message.generatedQuestions.length} questions detected
                                     </span>
@@ -871,7 +837,7 @@ export function AIChat() {
               </div>
 
               {Object.values(assigningQuestions).some(Boolean) ? (
-                <p className="text-xs text-blue-600 mt-2">
+                <p className="text-xs text-status-info-foreground mt-2">
                   Question assignment in progress. Chat is temporarily disabled.
                 </p>
               ) : platforms.length === 0 ? (
@@ -889,7 +855,7 @@ export function AIChat() {
                   Please select an AI platform and agent to start chatting
                 </p>
               ) : !selectedPlatformInfo?.isConfigured ? (
-                <p className="text-xs text-amber-600 mt-2">
+                <p className="text-xs text-status-warning-foreground mt-2">
                   Selected platform needs configuration. Please set it up in Settings → AI Platforms.
                 </p>
               ) : null}
