@@ -4,6 +4,7 @@ import { Toaster } from "./components/ui/toaster"
 import { AuthProvider } from "./contexts/AuthContext"
 import { Login } from "./pages/Login"
 import { ForgotPassword } from "./pages/ForgotPassword"
+import { ResetPassword } from "./pages/ResetPassword"
 import { ProtectedRoute } from "./components/ProtectedRoute"
 import { RoleDashboard } from "./components/RoleDashboard"
 import { Layout } from "./components/Layout"
@@ -35,6 +36,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="/seeding" element={<DatabaseSeeding />} />
           {/* Fullscreen routes without layout/sidebar */}
           <Route path="/exam-fullscreen/:id" element={
