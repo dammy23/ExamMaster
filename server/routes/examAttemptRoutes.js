@@ -447,6 +447,49 @@ router.get('/admin/attempt/:attemptId', requireUser, async (req, res) => {
   }
 });
 
+router.post('/mark-reviewed/:attemptId', requireUser, async (req, res) => {
+  try {
+    const { attemptId } = req.params;
+    console.log(`Marking video review complete for attempt: ${attemptId} by user: ${req.user.email}`);
+
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only admin users can mark video reviews as complete'
+      });
+    }
+
+    const attempt = await ExamAttemptService.markVideoReviewed(attemptId, req.user._id);
+
+    console.log(`Video review marked complete for attempt: ${attemptId}`);
+    return res.status(200).json({
+      success: true,
+      attempt: attempt
+    });
+  } catch (error) {
+    console.error(`Error marking video review complete for attempt ${req.params.attemptId}:`, error.message);
+
+    if (error.message === 'Exam attempt not found' || error.message === 'Invalid attempt ID format') {
+      return res.status(404).json({
+        success: false,
+        error: error.message
+      });
+    }
+
+    if (error.message.includes('not authorized')) {
+      return res.status(403).json({
+        success: false,
+        error: error.message
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Get recent results for student dashboard
 router.get('/student/recent-results', requireUser, async (req, res) => {
   try {
@@ -526,6 +569,33 @@ router.get('/admin/pending-grading-count', requireUser, async (req, res) => {
     });
   } catch (error) {
     console.error(`Error getting pending grading count for admin ${req.user.email}:`, error.message);
+
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+router.get('/admin/pending-video-reviews-count', requireUser, async (req, res) => {
+  try {
+    console.log(`Getting pending video reviews count for admin: ${req.user.email}`);
+
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only admin users can view pending video reviews count'
+      });
+    }
+
+    const count = await ExamAttemptService.getPendingVideoReviewsCount();
+
+    return res.status(200).json({
+      success: true,
+      count: count
+    });
+  } catch (error) {
+    console.error(`Error getting pending video reviews count for admin ${req.user.email}:`, error.message);
 
     return res.status(500).json({
       success: false,

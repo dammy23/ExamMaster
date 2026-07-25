@@ -88,6 +88,13 @@ const examAttemptSchema = new mongoose.Schema({
     fileSize: {
       type: Number, // in bytes
       min: 0
+    },
+    reviewed: {
+      type: Boolean,
+      default: false
+    },
+    reviewedAt: {
+      type: Date
     }
   },
   aiGradingResults: {

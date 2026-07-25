@@ -831,6 +831,51 @@ class ExamAttemptService {
       throw error;
     }
   }
+
+  static async markVideoReviewed(attemptId, adminId) {
+    try {
+      console.log('ExamAttemptService: Marking video review complete for attempt:', attemptId);
+
+      if (!mongoose.Types.ObjectId.isValid(attemptId)) {
+        throw new Error('Invalid attempt ID format');
+      }
+
+      const attempt = await ExamAttempt.findById(attemptId).populate('examId', 'createdBy');
+      if (!attempt) {
+        throw new Error('Exam attempt not found');
+      }
+
+      if (attempt.examId.createdBy.toString() !== adminId.toString()) {
+        throw new Error('You are not authorized to review this exam attempt');
+      }
+
+      attempt.videoRecording.reviewed = true;
+      attempt.videoRecording.reviewedAt = new Date();
+      await attempt.save();
+
+      console.log('ExamAttemptService: Video review marked complete');
+      return attempt;
+    } catch (error) {
+      console.error('ExamAttemptService: Error marking video review complete:', error.message);
+      throw error;
+    }
+  }
+
+  static async getPendingVideoReviewsCount() {
+    try {
+      console.log('ExamAttemptService: Counting attempts pending video review...');
+      const count = await ExamAttempt.countDocuments({
+        'videoRecording.enabled': true,
+        'videoRecording.recordingStatus': 'completed',
+        'videoRecording.reviewed': { $ne: true }
+      });
+      console.log(`ExamAttemptService: ${count} attempts pending video review`);
+      return count;
+    } catch (error) {
+      console.error('ExamAttemptService: Error counting pending video reviews:', error.message);
+      throw error;
+    }
+  }
 }
 
 module.exports = ExamAttemptService;
