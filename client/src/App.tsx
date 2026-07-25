@@ -3,6 +3,7 @@ import { ThemeProvider } from "./components/ui/theme-provider"
 import { Toaster } from "./components/ui/toaster"
 import { AuthProvider } from "./contexts/AuthContext"
 import { Login } from "./pages/Login"
+import { ForgotPassword } from "./pages/ForgotPassword"
 import { ProtectedRoute } from "./components/ProtectedRoute"
 import { RoleDashboard } from "./components/RoleDashboard"
 import { Layout } from "./components/Layout"
@@ -33,6 +34,7 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/seeding" element={<DatabaseSeeding />} />
           {/* Fullscreen routes without layout/sidebar */}
           <Route path="/exam-fullscreen/:id" element={
