@@ -231,6 +231,141 @@ class EmailService {
     `;
   }
 
+  generatePasswordResetTemplate(userName, resetLink) {
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Password Reset</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+          }
+          .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+          }
+          .header {
+            text-align: center;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+          }
+          .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #0f766e;
+            margin-bottom: 10px;
+          }
+          .title {
+            font-size: 20px;
+            color: #1f2937;
+            margin: 0;
+          }
+          .button {
+            display: inline-block;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 14px;
+            color: white;
+            background-color: #0f766e;
+            text-decoration: none;
+            margin: 20px 0;
+          }
+          .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+            color: #6b7280;
+            font-size: 14px;
+          }
+          .disclaimer {
+            background-color: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 14px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="logo">ExamMaster</div>
+            <h1 class="title">Password Reset Request</h1>
+          </div>
+
+          <div style="text-align: center;">
+            <p>Dear <strong>${userName}</strong>,</p>
+            <p>We received a request to reset your password. Click the button below to choose a new one.</p>
+            <a href="${resetLink}" class="button">Reset Password</a>
+            <p style="font-size: 13px; color: #6b7280;">This link expires in 1 hour.</p>
+          </div>
+
+          <div class="disclaimer">
+            <strong>Note:</strong> If you didn't request this, you can safely ignore this email — your password will not be changed.
+          </div>
+
+          <div class="footer">
+            <p>Best regards,<br><strong>ExamMaster Team</strong></p>
+            <p><em>This email was sent automatically by the ExamMaster system.</em></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  async sendPasswordReset(userEmail, userName, resetLink) {
+    try {
+      console.log(`Sending password reset email to: ${userEmail}`);
+
+      if (!this.transporter) {
+        await this.initializeTransporter();
+      }
+
+      if (!this.transporter) {
+        throw new Error('Email service is not configured');
+      }
+
+      const senderSettings = await settingService.getSetting('email_sender');
+      const senderEmail = senderSettings?.value?.email || 'noreply@exammaster.com';
+      const senderName = senderSettings?.value?.name || 'ExamMaster System';
+
+      const mailOptions = {
+        from: `"${senderName}" <${senderEmail}>`,
+        to: userEmail,
+        subject: 'Reset Your ExamMaster Password',
+        html: this.generatePasswordResetTemplate(userName, resetLink)
+      };
+
+      console.log(`Sending email from: ${mailOptions.from} to: ${mailOptions.to}`);
+      const result = await this.transporter.sendMail(mailOptions);
+      console.log(`Password reset email sent successfully to ${userEmail}. Message ID: ${result.messageId}`);
+
+      return {
+        success: true,
+        messageId: result.messageId
+      };
+    } catch (error) {
+      console.error(`Error sending password reset email to ${userEmail}:`, error.message);
+      throw error;
+    }
+  }
+
   async testConnection() {
     try {
       if (!this.transporter) {
