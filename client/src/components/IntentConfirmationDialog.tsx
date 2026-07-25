@@ -5,7 +5,6 @@ import { BookOpen, FileText, X } from "lucide-react"
 import { DetectedIntent, getIntentDescription } from "@/utils/intentDetection"
 import { SubjectForm } from "@/components/SubjectForm"
 import { CreateExamModal } from "@/components/CreateExamModal"
-import { useState } from "react"
 import { useToast } from "@/hooks/useToast"
 
 interface IntentConfirmationDialogProps {
@@ -30,9 +29,9 @@ export function IntentConfirmationDialog({
   const getIcon = () => {
     switch (intent) {
       case 'create-subject':
-        return <BookOpen className="h-6 w-6 text-blue-500" />
+        return <BookOpen className="h-6 w-6 text-status-info-foreground" />
       case 'create-exam':
-        return <FileText className="h-6 w-6 text-green-500" />
+        return <FileText className="h-6 w-6 text-status-success-foreground" />
       default:
         return null
     }
@@ -99,7 +98,6 @@ export function CreationDialogManager({
   const { toast } = useToast()
 
   const handleSubjectSuccess = () => {
-    console.log('Subject created successfully from AI Chat intent')
     toast({
       title: "Subject Created",
       description: "Subject has been created successfully!"
@@ -109,7 +107,6 @@ export function CreationDialogManager({
   }
 
   const handleExamCreated = (exam: any) => {
-    console.log('Exam created successfully from AI Chat intent:', exam)
     toast({
       title: "Exam Created",
       description: `"${exam.title}" has been created successfully!`
