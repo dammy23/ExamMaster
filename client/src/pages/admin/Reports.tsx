@@ -615,9 +615,7 @@ export function Reports() {
                 Comprehensive performance analysis for the selected exam
               </CardDescription>
               {loadingExamData && (
-                <div className="flex items-center justify-center py-4">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                </div>
+                <LoadingState label="Loading exam data..." className="py-4" />
               )}
             </CardHeader>
             <CardContent>
@@ -653,28 +651,28 @@ export function Reports() {
 
               {/* Performance Metrics */}
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
-                <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+                <Card>
                   <CardContent className="p-4 text-center">
-                    <div className="text-2xl font-bold text-purple-700">{performanceAnalysis.overallStats.averageScore.toFixed(1)}%</div>
-                    <p className="text-sm text-purple-600">Average Score</p>
+                    <div className="text-2xl font-bold">{performanceAnalysis.overallStats.averageScore.toFixed(1)}%</div>
+                    <p className="text-sm text-muted-foreground">Average Score</p>
                   </CardContent>
                 </Card>
-                <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+                <Card>
                   <CardContent className="p-4 text-center">
-                    <div className="text-2xl font-bold text-green-700">{performanceAnalysis.overallStats.highestScore}%</div>
-                    <p className="text-sm text-green-600">Highest Score</p>
+                    <div className="text-2xl font-bold">{performanceAnalysis.overallStats.highestScore}%</div>
+                    <p className="text-sm text-muted-foreground">Highest Score</p>
                   </CardContent>
                 </Card>
-                <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+                <Card>
                   <CardContent className="p-4 text-center">
-                    <div className="text-2xl font-bold text-blue-700">{performanceAnalysis.overallStats.passRate.toFixed(1)}%</div>
-                    <p className="text-sm text-blue-600">Pass Rate</p>
+                    <div className="text-2xl font-bold">{performanceAnalysis.overallStats.passRate.toFixed(1)}%</div>
+                    <p className="text-sm text-muted-foreground">Pass Rate</p>
                   </CardContent>
                 </Card>
-                <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+                <Card>
                   <CardContent className="p-4 text-center">
-                    <div className="text-2xl font-bold text-orange-700">{performanceAnalysis.overallStats.averageTimeSpent}m</div>
-                    <p className="text-sm text-orange-600">Avg Time</p>
+                    <div className="text-2xl font-bold">{performanceAnalysis.overallStats.averageTimeSpent}m</div>
+                    <p className="text-sm text-muted-foreground">Avg Time</p>
                   </CardContent>
                 </Card>
               </div>
@@ -769,6 +767,18 @@ export function Reports() {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {selectedReport === "exam-analysis" && selectedExam && selectedExam !== "all" && !loadingExamData && !performanceAnalysis && (
+        <Card>
+          <CardContent className="pt-6">
+            <EmptyState
+              icon={BarChart3}
+              title="No attempts yet"
+              description="Performance analysis will appear once this exam has been attempted."
+            />
+          </CardContent>
+        </Card>
       )}
     </div>
   )
