@@ -5,6 +5,7 @@ import { CheckCircle, FileText, Plus } from "lucide-react"
 import { ExamSelectionModal } from "./ExamSelectionModal"
 import { CreateExamModal } from "./CreateExamModal"
 import { useToast } from "@/hooks/useToast"
+import { LoadingState } from "@/components/ui/loading-state"
 
 interface Question {
   tempId: string
@@ -35,29 +36,24 @@ export function AIChatQuestionAssignment({
   const { toast } = useToast()
 
   const handleYesAssignment = () => {
-    console.log('AI Chat - User wants to assign questions to exam')
     setStep('select-option')
   }
 
   const handleNoAssignment = () => {
-    console.log('AI Chat - User declined to assign questions to exam')
     onAssignmentComplete()
   }
 
   const handleExistingExam = () => {
-    console.log('AI Chat - User selected existing exam option')
     setStep('select-exam')
     setShowExamModal(true)
   }
 
   const handleNewExam = () => {
-    console.log('AI Chat - User selected create new exam option')
     setStep('create-exam')
     setShowCreateModal(true)
   }
 
   const handleExamSelected = async (examId: string, examTitle: string) => {
-    console.log('AI Chat - Exam selected:', examId, examTitle)
     setShowExamModal(false)
     setAssigning(true)
 
@@ -68,13 +64,11 @@ export function AIChatQuestionAssignment({
       // First, we need to create the questions in the database
       const { createQuestionsWithAI } = await import('@/api/aiChat')
 
-      console.log('AI Chat - Creating questions in database...')
       const createResult = await createQuestionsWithAI({ questions })
 
       if (createResult.questions && createResult.questions.length > 0) {
         const questionIds = createResult.questions.map((q: any) => q._id)
 
-        console.log('AI Chat - Assigning questions to exam:', questionIds)
         await assignQuestionsToExam(examId, questionIds)
 
         toast({
@@ -88,7 +82,6 @@ export function AIChatQuestionAssignment({
         throw new Error('Failed to create questions in database')
       }
     } catch (error) {
-      console.error('Error assigning questions to exam:', error)
       toast({
         variant: "destructive",
         title: "Error Assigning Questions",
@@ -101,7 +94,6 @@ export function AIChatQuestionAssignment({
   }
 
   const handleExamCreated = async (exam: any) => {
-    console.log('AI Chat - Exam created:', exam)
     setShowCreateModal(false)
     setAssigning(true)
 
@@ -109,7 +101,6 @@ export function AIChatQuestionAssignment({
       // First, we need to create the questions in the database
       const { createQuestionsWithAI } = await import('@/api/aiChat')
 
-      console.log('AI Chat - Creating questions in database...')
       const createResult = await createQuestionsWithAI({ questions })
 
       if (createResult.questions && createResult.questions.length > 0) {
@@ -118,7 +109,6 @@ export function AIChatQuestionAssignment({
         // Import the API function here to avoid circular dependencies
         const { assignQuestionsToExam } = await import('@/api/exams')
 
-        console.log('AI Chat - Assigning questions to new exam:', questionIds)
         await assignQuestionsToExam(exam._id, questionIds)
 
         toast({
@@ -132,7 +122,6 @@ export function AIChatQuestionAssignment({
         throw new Error('Failed to create questions in database')
       }
     } catch (error) {
-      console.error('Error creating exam and assigning questions:', error)
       toast({
         variant: "destructive",
         title: "Error Creating Exam",
@@ -154,9 +143,9 @@ export function AIChatQuestionAssignment({
 
   if (step === 'completed') {
     return (
-      <Card className="mt-4 border-green-200 bg-green-50">
+      <Card className="mt-4">
         <CardContent className="pt-6">
-          <div className="flex items-center justify-center space-x-2 text-green-700">
+          <div className="flex items-center justify-center space-x-2 text-status-success-foreground">
             <CheckCircle className="h-5 w-5" />
             <span className="font-medium">Questions assigned successfully!</span>
           </div>
@@ -167,29 +156,22 @@ export function AIChatQuestionAssignment({
 
   if (step === 'ask') {
     return (
-      <Card className="mt-4 border-blue-200 bg-blue-50">
+      <Card className="mt-4">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-blue-800">
+          <CardTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
             Question Assignment
           </CardTitle>
-          <CardDescription className="text-blue-700">
+          <CardDescription>
             Would you like to assign these {questions.length} generated questions to an exam?
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex gap-3">
-            <Button
-              onClick={handleYesAssignment}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
+            <Button onClick={handleYesAssignment}>
               Yes, assign to exam
             </Button>
-            <Button
-              variant="outline"
-              onClick={handleNoAssignment}
-              className="border-blue-300 text-blue-700 hover:bg-blue-100"
-            >
+            <Button variant="outline" onClick={handleNoAssignment}>
               No, just save questions
             </Button>
           </div>
@@ -200,42 +182,28 @@ export function AIChatQuestionAssignment({
 
   if (step === 'select-option') {
     return (
-      <Card className="mt-4 border-blue-200 bg-blue-50">
+      <Card className="mt-4">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-blue-800">
+          <CardTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
             Choose Assignment Option
           </CardTitle>
-          <CardDescription className="text-blue-700">
+          <CardDescription>
             Would you like to assign questions to an existing exam or create a new one?
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex gap-3">
-            <Button
-              onClick={handleExistingExam}
-              disabled={assigning}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
+            <Button onClick={handleExistingExam} disabled={assigning}>
               <FileText className="h-4 w-4 mr-2" />
               Select existing exam
             </Button>
-            <Button
-              onClick={handleNewExam}
-              disabled={assigning}
-              variant="outline"
-              className="border-blue-300 text-blue-700 hover:bg-blue-100"
-            >
+            <Button onClick={handleNewExam} disabled={assigning} variant="outline">
               <Plus className="h-4 w-4 mr-2" />
               Create new exam
             </Button>
             {onCancel && (
-              <Button
-                variant="ghost"
-                onClick={onCancel}
-                disabled={assigning}
-                className="text-gray-600 hover:bg-gray-100"
-              >
+              <Button variant="ghost" onClick={onCancel} disabled={assigning}>
                 Cancel
               </Button>
             )}
@@ -247,14 +215,12 @@ export function AIChatQuestionAssignment({
 
   return (
     <>
-      <Card className="mt-4 border-blue-200 bg-blue-50">
+      <Card className="mt-4">
         <CardContent className="pt-6">
-          <div className="flex items-center justify-center space-x-2 text-blue-700">
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-700"></div>
-            <span className="font-medium">
-              {assigning ? 'Assigning questions...' : 'Please complete the assignment process'}
-            </span>
-          </div>
+          <LoadingState
+            label={assigning ? 'Assigning questions...' : 'Please complete the assignment process'}
+            className="py-2"
+          />
         </CardContent>
       </Card>
 
