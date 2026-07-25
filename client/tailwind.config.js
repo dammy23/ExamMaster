@@ -77,6 +77,10 @@ module.exports = {
   				danger: {
   					DEFAULT: 'hsl(var(--status-danger))',
   					foreground: 'hsl(var(--status-danger-foreground))'
+  				},
+  				success: {
+  					DEFAULT: 'hsl(var(--status-success))',
+  					foreground: 'hsl(var(--status-success-foreground))'
   				}
   			}
   		},

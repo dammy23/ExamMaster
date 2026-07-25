@@ -44,6 +44,8 @@
     --status-warning-foreground: 32 81% 29%;
     --status-danger: 0 93% 94%;
     --status-danger-foreground: 0 70% 35%;
+    --status-success: 142 76% 93%;
+    --status-success-foreground: 142 72% 22%;
   }
   .dark {
     --background: 229 84% 5%;
@@ -84,6 +86,8 @@
     --status-warning-foreground: 41 96% 70%;
     --status-danger: 0 63% 20%;
     --status-danger-foreground: 0 91% 82%;
+    --status-success: 142 60% 18%;
+    --status-success-foreground: 142 70% 75%;
   }
 }
 

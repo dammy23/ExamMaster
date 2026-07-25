@@ -16,6 +16,8 @@ export type Status =
   | "overdue"
   | "rejected"
   | "error"
+  | "passed"
+  | "failed"
 
 const STATUS_LABELS: Record<Status, string> = {
   active: "Active",
@@ -30,6 +32,8 @@ const STATUS_LABELS: Record<Status, string> = {
   overdue: "Overdue",
   rejected: "Rejected",
   error: "Error",
+  passed: "Passed",
+  failed: "Failed",
 }
 
 const statusBadgeVariants = cva(
@@ -49,6 +53,8 @@ const statusBadgeVariants = cva(
         overdue: "bg-status-danger text-status-danger-foreground",
         rejected: "bg-status-danger text-status-danger-foreground",
         error: "bg-status-danger text-status-danger-foreground",
+        passed: "bg-status-success text-status-success-foreground",
+        failed: "bg-status-danger text-status-danger-foreground",
       } satisfies Record<Status, string>,
     },
     defaultVariants: {
