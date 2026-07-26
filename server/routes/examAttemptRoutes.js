@@ -561,7 +561,7 @@ router.get('/admin/pending-grading-count', requireUser, async (req, res) => {
       });
     }
 
-    const count = await ExamAttemptService.getPendingGradingCount();
+    const count = await ExamAttemptService.getPendingGradingCount(req.user._id);
 
     return res.status(200).json({
       success: true,
@@ -596,6 +596,134 @@ router.get('/admin/pending-video-reviews-count', requireUser, async (req, res) =
     });
   } catch (error) {
     console.error(`Error getting pending video reviews count for admin ${req.user.email}:`, error.message);
+
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Get all attempts pending grading, across every exam this admin owns
+router.get('/admin/pending-grading', requireUser, async (req, res) => {
+  try {
+    console.log(`Getting attempts pending grading for admin: ${req.user.email}`);
+
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only admin users can view attempts pending grading'
+      });
+    }
+
+    const attempts = await ExamAttemptService.getPendingGradingAttempts(req.user._id);
+
+    return res.status(200).json({
+      success: true,
+      attempts: attempts
+    });
+  } catch (error) {
+    console.error(`Error getting attempts pending grading for admin ${req.user.email}:`, error.message);
+
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Get a single attempt with full question detail for the grading form
+router.get('/admin/grading/:attemptId', requireUser, async (req, res) => {
+  try {
+    const { attemptId } = req.params;
+    console.log(`Getting attempt for grading: attempt=${attemptId} by user: ${req.user.email}`);
+
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only admin users can grade exam attempts'
+      });
+    }
+
+    const attempt = await ExamAttemptService.getAttemptForGrading(attemptId, req.user._id);
+
+    return res.status(200).json({
+      success: true,
+      attempt: attempt
+    });
+  } catch (error) {
+    console.error(`Error getting attempt for grading ${req.params.attemptId}:`, error.message);
+
+    if (error.message === 'Exam attempt not found' || error.message === 'Invalid attempt ID format') {
+      return res.status(404).json({
+        success: false,
+        error: error.message
+      });
+    }
+
+    if (error.message.includes('not authorized')) {
+      return res.status(403).json({
+        success: false,
+        error: error.message
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Submit manual grades for all theory questions in a pending-review attempt
+router.post('/manual-grade/:attemptId', requireUser, async (req, res) => {
+  try {
+    const { attemptId } = req.params;
+    const { grades } = req.body;
+    console.log(`Submitting manual grades for attempt: ${attemptId} by user: ${req.user.email}`);
+
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only admin users can submit manual grades'
+      });
+    }
+
+    if (!Array.isArray(grades) || grades.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Grades are required'
+      });
+    }
+
+    const result = await ExamAttemptService.submitManualGrades(attemptId, req.user._id, grades);
+
+    console.log(`Manual grades submitted for attempt: ${attemptId}`);
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error(`Error submitting manual grades for attempt ${req.params.attemptId}:`, error.message);
+
+    if (error.message === 'Exam attempt not found' || error.message === 'Invalid attempt ID format') {
+      return res.status(404).json({
+        success: false,
+        error: error.message
+      });
+    }
+
+    if (error.message.includes('not authorized')) {
+      return res.status(403).json({
+        success: false,
+        error: error.message
+      });
+    }
+
+    if (error.message.includes('must be between') || error.message.includes('not a theory question') ||
+        error.message.includes('pending review') || error.message.includes('is required')) {
+      return res.status(400).json({
+        success: false,
+        error: error.message
+      });
+    }
 
     return res.status(500).json({
       success: false,
