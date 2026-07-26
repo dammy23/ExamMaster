@@ -30,6 +30,7 @@ import { AIChatQuestionAssignment } from "@/components/AIChatQuestionAssignment"
 import { detectIntention, type DetectedIntent } from "@/utils/intentDetection"
 import { parseGeneratedQuestions } from "@/utils/parseGeneratedQuestions"
 import { IntentConfirmationDialog, CreationDialogManager } from "@/components/IntentConfirmationDialog"
+import ReactMarkdown from "react-markdown"
 
 interface ChatMessage {
   _id: string
@@ -73,6 +74,24 @@ interface AIAgent {
   description: string
   capabilities: string[]
   isActive: boolean
+}
+
+// Minimal element styling for AI-generated markdown — Tailwind's preflight reset strips
+// default list/heading spacing, so react-markdown's output needs explicit classNames here.
+const MARKDOWN_COMPONENTS = {
+  p: ({ children }: any) => <p className="text-sm whitespace-pre-wrap mb-2 last:mb-0">{children}</p>,
+  ul: ({ children }: any) => <ul className="text-sm list-disc pl-5 mb-2 space-y-1">{children}</ul>,
+  ol: ({ children }: any) => <ol className="text-sm list-decimal pl-5 mb-2 space-y-1">{children}</ol>,
+  li: ({ children }: any) => <li>{children}</li>,
+  strong: ({ children }: any) => <strong className="font-semibold">{children}</strong>,
+  em: ({ children }: any) => <em className="italic">{children}</em>,
+  code: ({ children }: any) => <code className="text-xs bg-background/50 rounded px-1 py-0.5 font-mono">{children}</code>,
+  pre: ({ children }: any) => <pre className="text-xs bg-background/50 rounded p-2 overflow-x-auto mb-2">{children}</pre>,
+  a: ({ children, href }: any) => (
+    <a href={href} target="_blank" rel="noopener noreferrer" className="underline">
+      {children}
+    </a>
+  )
 }
 
 export function AIChat() {
@@ -704,7 +723,11 @@ export function AIChat() {
                               message.isUser ? "bg-primary text-primary-foreground" : "bg-muted"
                             }`}
                           >
-                            <p className="text-sm whitespace-pre-wrap">{message.message}</p>
+                            {message.isBot ? (
+                              <ReactMarkdown components={MARKDOWN_COMPONENTS}>{message.message}</ReactMarkdown>
+                            ) : (
+                              <p className="text-sm whitespace-pre-wrap">{message.message}</p>
+                            )}
                             <p className="text-xs mt-1 opacity-70">
                               {new Date(message.timestamp).toLocaleTimeString()}
                             </p>
