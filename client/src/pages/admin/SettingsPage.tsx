@@ -109,32 +109,16 @@ export function SettingsPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [selectedSetting, setSelectedSetting] = useState<Setting | null>(null)
-  const [selectedPlatform, setSelectedPlatform] = useState<AIPlatform | null>(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [activeTab, setActiveTab] = useState("general")
   const [testingPlatform, setTestingPlatform] = useState<string | null>(null)
   const [showApiKeys, setShowApiKeys] = useState<{ [key: string]: boolean }>({})
-  
+
   // Form state
   const [formData, setFormData] = useState({
     name: "",
     value: "",
     description: ""
-  })
-  const [platformFormData, setPlatformFormData] = useState({
-    displayName: "",
-    description: "",
-    configuration: {
-      apiKey: "",
-      baseUrl: "",
-      model: "",
-      temperature: 0.7,
-      maxTokens: 4096,
-      topP: 1,
-      presencePenalty: 0,
-      frequencyPenalty: 0
-    },
-    isActive: true
   })
   const [submitting, setSubmitting] = useState(false)
   
@@ -147,11 +131,9 @@ export function SettingsPage() {
 
   const fetchSettings = async () => {
     try {
-      console.log('Fetching settings...')
       const response = await getSettings() as any
       setSettings(response.data.settings)
     } catch (error: any) {
-      console.error('Error fetching settings:', error)
       toast({
         title: "Error",
         description: error.message || "Failed to load settings",
@@ -164,12 +146,9 @@ export function SettingsPage() {
 
   const fetchPlatforms = async () => {
     try {
-      console.log('Fetching AI platforms...')
       const response = await getAIPlatforms() as any
       setPlatforms(response.data.platforms)
-      console.log('AI platforms loaded:', response.data.platforms.length)
     } catch (error: any) {
-      console.error('Error fetching AI platforms:', error)
       toast({
         title: "Error",
         description: error.message || "Failed to load AI platforms",
@@ -273,19 +252,17 @@ export function SettingsPage() {
     if (!selectedSetting) return
 
     try {
-      console.log('Deleting setting:', selectedSetting._id)
       await deleteSetting(selectedSetting._id)
-      
+
       setShowDeleteDialog(false)
       setSelectedSetting(null)
       fetchSettings()
-      
+
       toast({
         title: "Success",
         description: "Setting deleted successfully"
       })
     } catch (error: any) {
-      console.error('Error deleting setting:', error)
       toast({
         title: "Error",
         description: error.message || "Failed to delete setting",
