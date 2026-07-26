@@ -62,6 +62,10 @@ const aiChatSchema = new mongoose.Schema({
   isDeleted: {
     type: Boolean,
     default: false
+  },
+  isFallback: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true
@@ -92,6 +96,15 @@ aiChatSchema.methods.softDelete = function() {
 aiChatSchema.statics.findActive = function(filter = {}) {
   console.log('Finding active AI chat messages with filter:', filter);
   return this.find({ ...filter, isDeleted: false });
+};
+
+// Static method to get the most recent N messages for a user (newest first), for conversation memory
+aiChatSchema.statics.getRecentMessages = function(userId, limit = 5) {
+  console.log(`Getting ${limit} most recent messages for user ${userId}`);
+  return this.find({ userId, isDeleted: false })
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .lean();
 };
 
 // Static method to get chat history for a user with improved pagination

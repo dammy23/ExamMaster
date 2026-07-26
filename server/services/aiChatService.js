@@ -544,7 +544,8 @@ This format is crucial for the system to detect and save questions properly.`;
           timestamp: msg.createdAt,
           modelId: msg.modelId,
           agentId: msg.agentId,
-          fileAttachment: msg.fileAttachment
+          fileAttachment: msg.fileAttachment,
+          isFallback: msg.isFallback
         })),
         pagination: result.pagination
       };
