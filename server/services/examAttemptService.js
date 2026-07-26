@@ -443,6 +443,47 @@ class ExamAttemptService {
     }
   }
 
+  // Get full detail (including theory question feedback) for a single completed attempt, student-owned
+  static async getAttemptDetailForStudent(attemptId, studentId) {
+    try {
+      console.log('ExamAttemptService: Getting attempt detail for student:', attemptId);
+
+      if (!mongoose.Types.ObjectId.isValid(attemptId)) {
+        throw new Error('Invalid attempt ID format');
+      }
+
+      const attempt = await ExamAttempt.findById(attemptId).populate({
+        path: 'examId',
+        select: 'title subject totalMarks showResultsImmediately',
+        populate: {
+          path: 'questions'
+        }
+      });
+
+      if (!attempt) {
+        throw new Error('Exam attempt not found');
+      }
+
+      if (attempt.studentId.toString() !== studentId.toString()) {
+        throw new Error('You are not authorized to view this exam attempt');
+      }
+
+      if (attempt.status !== 'completed') {
+        throw new Error('This exam attempt has not been fully graded yet');
+      }
+
+      if (!attempt.examId || !attempt.examId.showResultsImmediately) {
+        throw new Error('Results for this exam are not available');
+      }
+
+      console.log('ExamAttemptService: Attempt detail retrieved for student');
+      return attempt;
+    } catch (error) {
+      console.error('ExamAttemptService: Error getting attempt detail for student:', error.message);
+      throw error;
+    }
+  }
+
   // Log activity (like tab switches)
   static async logActivity(attemptId, activity, studentId) {
     try {
