@@ -5,33 +5,24 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
-// Initialize clients only when needed to avoid startup errors
-let openai = null;
-let anthropic = null;
-
 function getOpenAIClient(apiKey) {
-  console.log("Dami "+apiKey);
-  if (!openai) {
-    if (!apiKey) {
-      throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.');
-    }
-    openai = new OpenAI({
-      apiKey: apiKey,
-    });
+  if (!apiKey) {
+    throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.');
   }
-  return openai;
+  return new OpenAI({
+    apiKey: apiKey,
+    timeout: 60000,
+  });
 }
 
 function getAnthropicClient(apiKey) {
-  if (!anthropic) {
-    if (!apiKey) {
-      throw new Error('Anthropic API key not configured. Please set ANTHROPIC_API_KEY environment variable.');
-    }
-    anthropic = new Anthropic({
-      apiKey: apiKey,
-    });
+  if (!apiKey) {
+    throw new Error('Anthropic API key not configured. Please set ANTHROPIC_API_KEY environment variable.');
   }
-  return anthropic;
+  return new Anthropic({
+    apiKey: apiKey,
+    timeout: 60000,
+  });
 }
 
 const MAX_RETRIES = 3;
@@ -114,8 +105,6 @@ async function sendRequestToAnthropic(model, message, apiKey, options = {}) {
 }
 
 async function sendLLMRequest(provider, model, message, apiKey,options = {}) {
-  console.log(`LLM Service - Processing ${apiKey}request for provider: ${provider}, model: ${model}`);
-  
   switch (provider.toLowerCase()) {
     case 'openai':
       return sendRequestToOpenAI(model, message, apiKey,options);
