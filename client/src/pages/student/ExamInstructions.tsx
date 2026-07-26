@@ -3,6 +3,9 @@ import { useParams, useNavigate, Link } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/ui/status-badge"
+import { LoadingState } from "@/components/ui/loading-state"
+import { EmptyState } from "@/components/ui/empty-state"
 import { Separator } from "@/components/ui/separator"
 import {
   AlertDialog,
@@ -21,7 +24,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   FileText,
-  Users,
   Calendar,
   Target,
   Play,
@@ -60,14 +62,10 @@ export function ExamInstructions() {
 
   const fetchExamDetails = async () => {
     try {
-      console.log('Fetching exam details for instructions:', id)
       const response = await getExamById(id!)
       const examData = (response as any).exam
-      
-      console.log('Exam details loaded:', examData)
       setExam(examData)
     } catch (error) {
-      console.error('Error fetching exam details:', error)
       toast({
         title: "Error",
         description: "Failed to load exam details",
@@ -80,8 +78,6 @@ export function ExamInstructions() {
   }
 
   const performSystemCheck = () => {
-    console.log('Performing system check...')
-    
     // Check if browser supports fullscreen
     const supportsFullscreen = !!(
       document.documentElement.requestFullscreen ||
@@ -155,7 +151,6 @@ export function ExamInstructions() {
       }
 
       // Redirect to mobile exam page
-      console.log('Starting mobile exam:', id)
       navigate(`/student/exam/${id}/mobile`)
       toast({
         title: "Mobile Exam Started",
@@ -163,9 +158,7 @@ export function ExamInstructions() {
       })
       return
     }
-    
-    console.log('Starting exam in new fullscreen window:', id)
-    
+
     // Open exam in new window with fullscreen
     const examUrl = `/exam-fullscreen/${id}`
     const examWindow = window.open(
@@ -185,9 +178,7 @@ export function ExamInstructions() {
       // Pass authentication tokens to the new window
       const accessToken = localStorage.getItem('accessToken')
       const refreshToken = localStorage.getItem('refreshToken')
-      
-      console.log('Passing auth tokens to exam window. AccessToken exists:', !!accessToken)
-      
+
       // Wait for the new window to load, then send auth tokens
       const sendAuthTokens = () => {
         try {
@@ -196,10 +187,7 @@ export function ExamInstructions() {
             accessToken: accessToken,
             refreshToken: refreshToken
           }, window.location.origin)
-          console.log('Auth tokens sent to exam window')
-        } catch (error) {
-          console.error('Error sending auth tokens to exam window:', error)
-        }
+        } catch {}
       }
       
       // Send tokens immediately and also after a short delay to ensure the window is ready
@@ -216,7 +204,6 @@ export function ExamInstructions() {
       const checkClosed = setInterval(() => {
         if (examWindow.closed) {
           clearInterval(checkClosed)
-          console.log('Exam window closed, refreshing dashboard')
           toast({
             title: "Exam Window Closed",
             description: "Returning to dashboard...",
@@ -234,21 +221,16 @@ export function ExamInstructions() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    )
+    return <LoadingState label="Loading exam details..." />
   }
 
   if (!exam) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-2">Exam not found</h2>
-          <Button onClick={() => navigate('/student')}>Return to Dashboard</Button>
-        </div>
-      </div>
+      <EmptyState
+        icon={AlertTriangle}
+        title="Exam not found"
+        action={{ label: "Return to Dashboard", onClick: () => navigate('/student') }}
+      />
     )
   }
 
@@ -280,9 +262,7 @@ export function ExamInstructions() {
                     <div dangerouslySetInnerHTML={{ __html: exam.description }} />
                   </CardDescription>
                 </div>
-                <Badge variant="secondary" className="ml-4">
-                  {exam.status}
-                </Badge>
+                <StatusBadge status={exam.status} className="ml-4" />
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
