@@ -25,6 +25,8 @@ import { EditExam } from "./pages/admin/EditExam"
 import { ExamDetails } from "./pages/admin/ExamDetails"
 import { ExamQuestions } from "./pages/admin/ExamQuestions"
 import { StudentVideoReview } from "./pages/admin/StudentVideoReview"
+import { GradingQueue } from "./pages/admin/GradingQueue"
+import { GradeAttempt } from "./pages/admin/GradeAttempt"
 import { DatabaseSeeding } from "./pages/admin/DatabaseSeeding"
 import { SettingsPage } from "./pages/admin/SettingsPage"
 import { AIChat } from "./pages/admin/AIChat"
@@ -85,6 +87,8 @@ function App() {
             <Route path="admin/questions" element={<QuestionManagement />} />
             <Route path="admin/subjects" element={<Subjects />} />
             <Route path="admin/students" element={<StudentManagement />} />
+            <Route path="admin/grading" element={<GradingQueue />} />
+            <Route path="admin/grading/:attemptId" element={<GradeAttempt />} />
             <Route path="admin/reports" element={<Reports />} />
             <Route path="admin/ai-chat" element={<AIChat />} />
             <Route path="admin/settings" element={<SettingsPage />} />
