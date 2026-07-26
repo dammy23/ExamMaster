@@ -3,6 +3,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Loader2, Users, UserCheck, Database, CheckCircle, AlertCircle, Trash2, RefreshCw } from "lucide-react"
 import { seedAdmin, seedStudents } from "@/api/seed"
 import { getDatabaseStatus, cleanupDatabase, resetDatabase } from "@/api/database"
@@ -18,6 +26,7 @@ export function DatabaseSeeding() {
   const [adminUser, setAdminUser] = useState<any>(null)
   const [studentUsers, setStudentUsers] = useState<any[]>([])
   const [dbStatus, setDbStatus] = useState<any>(null)
+  const [confirmAction, setConfirmAction] = useState<'cleanup' | 'reset' | null>(null)
   const { toast } = useToast()
 
   const handleSeedAdmin = async () => {
@@ -138,6 +147,15 @@ export function DatabaseSeeding() {
     }
   }
 
+  const handleConfirmAction = () => {
+    if (confirmAction === 'cleanup') {
+      handleCleanupDatabase()
+    } else if (confirmAction === 'reset') {
+      handleResetDatabase()
+    }
+    setConfirmAction(null)
+  }
+
   const handleGetDatabaseStatus = async () => {
     try {
       const response = await getDatabaseStatus()
@@ -211,10 +229,10 @@ export function DatabaseSeeding() {
               Check Status
             </Button>
             
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
-              onClick={handleCleanupDatabase} 
+              onClick={() => setConfirmAction('cleanup')}
               disabled={cleanupLoading}
             >
               {cleanupLoading ? (
@@ -225,10 +243,10 @@ export function DatabaseSeeding() {
               Cleanup DB
             </Button>
             
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
-              onClick={handleResetDatabase} 
+              onClick={() => setConfirmAction('reset')}
               disabled={resetLoading}
             >
               {resetLoading ? (
@@ -374,6 +392,29 @@ export function DatabaseSeeding() {
           </AlertDescription>
         </Alert>
       )}
+
+      <Dialog open={confirmAction !== null} onOpenChange={(open) => !open && setConfirmAction(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {confirmAction === 'cleanup' ? 'Cleanup Database?' : 'Reset Database?'}
+            </DialogTitle>
+            <DialogDescription>
+              {confirmAction === 'cleanup'
+                ? 'This will drop all collections in the database. This action cannot be undone.'
+                : 'This will reset the database to its initial state, removing all data. This action cannot be undone.'}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmAction(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmAction}>
+              {confirmAction === 'cleanup' ? 'Cleanup DB' : 'Reset DB'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
