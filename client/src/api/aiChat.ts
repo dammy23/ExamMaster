@@ -22,7 +22,7 @@ export const sendChatMessage = async (data: { message: string; modelId: string; 
 
     // Handle HTML error responses (like 413 Request Entity Too Large)
     if (error?.response?.status === 413) {
-      throw new Error('File too large. Please select a file smaller than 2MB.');
+      throw new Error('File too large. Please select a file smaller than 20MB.');
     }
 
     // Try to parse error message from different response formats
@@ -30,7 +30,7 @@ export const sendChatMessage = async (data: { message: string; modelId: string; 
 
     if (error?.response?.data) {
       if (typeof error.response.data === 'string' && error.response.data.includes('413 Request Entity Too Large')) {
-        errorMessage = 'File too large. Please select a file smaller than 2MB.';
+        errorMessage = 'File too large. Please select a file smaller than 20MB.';
       } else if (error.response.data.error) {
         errorMessage = error.response.data.error;
       } else if (error.response.data.message) {
@@ -142,7 +142,7 @@ export const generateQuestions = async (data: { document?: File; text?: string; 
 
     // Handle HTML error responses (like 413 Request Entity Too Large)
     if (error?.response?.status === 413) {
-      throw new Error('File too large. Please select a file smaller than 2MB.');
+      throw new Error('File too large. Please select a file smaller than 20MB.');
     }
 
     // Try to parse error message from different response formats
@@ -150,7 +150,7 @@ export const generateQuestions = async (data: { document?: File; text?: string; 
 
     if (error?.response?.data) {
       if (typeof error.response.data === 'string' && error.response.data.includes('413 Request Entity Too Large')) {
-        errorMessage = 'File too large. Please select a file smaller than 2MB.';
+        errorMessage = 'File too large. Please select a file smaller than 20MB.';
       } else if (error.response.data.error) {
         errorMessage = error.response.data.error;
       } else if (error.response.data.message) {
