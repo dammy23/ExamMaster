@@ -399,11 +399,11 @@ export function SettingsPage() {
   const getTestStatusIcon = (status: string) => {
     switch (status) {
       case 'success':
-        return <CheckCircle className="h-4 w-4 text-green-500" />
+        return <CheckCircle className="h-4 w-4 text-status-success-foreground" />
       case 'failed':
-        return <XCircle className="h-4 w-4 text-red-500" />
+        return <XCircle className="h-4 w-4 text-status-danger-foreground" />
       default:
-        return <AlertCircle className="h-4 w-4 text-gray-400" />
+        return <AlertCircle className="h-4 w-4 text-muted-foreground" />
     }
   }
 
@@ -638,7 +638,7 @@ export function SettingsPage() {
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
-                              className="text-red-600"
+                              className="text-destructive"
                               onClick={() => {
                                 setSelectedSetting(setting)
                                 setShowDeleteDialog(true)
@@ -924,12 +924,12 @@ export function SettingsPage() {
                       </div>
 
                       {platform.testError && (
-                        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                        <div className="mt-4 p-3 border-l-4 border-destructive bg-destructive/10">
                           <div className="flex items-start">
-                            <XCircle className="h-4 w-4 text-red-500 mt-0.5 mr-2 shrink-0" />
+                            <XCircle className="h-4 w-4 text-destructive mt-0.5 mr-2 shrink-0" />
                             <div>
-                              <div className="font-medium text-red-800 text-sm">Test Error</div>
-                              <div className="text-red-700 text-sm mt-1">{platform.testError}</div>
+                              <div className="font-medium text-sm">Test Error</div>
+                              <div className="text-sm text-muted-foreground mt-1">{platform.testError}</div>
                             </div>
                           </div>
                         </div>
