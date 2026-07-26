@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
@@ -70,9 +69,7 @@ export function ExamAttempt() {
     // Check if we're in fullscreen mode (opened from new window)
     const isInFullscreenWindow = window.location.pathname.startsWith('/exam-fullscreen')
     setIsFullscreenMode(isInFullscreenWindow)
-    
-    console.log('ExamAttempt: Fullscreen mode detected:', isInFullscreenWindow)
-    
+
     // Add beforeunload event to warn about closing the exam window
     if (isInFullscreenWindow) {
       const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -80,43 +77,35 @@ export function ExamAttempt() {
         e.returnValue = ''
         return 'Are you sure you want to leave? Your exam progress may be lost.'
       }
-      
+
       // Listen for auth tokens from parent window
       const handleMessage = (event: MessageEvent) => {
         // Verify the origin for security
         if (event.origin !== window.location.origin) {
-          console.warn('ExamAttempt: Received message from unknown origin:', event.origin)
           return
         }
-        
-        console.log('ExamAttempt: Received message:', event.data)
-        
+
         if (event.data.type === 'AUTH_TOKENS') {
-          console.log('ExamAttempt: Setting auth tokens in localStorage')
-          
           if (event.data.accessToken) {
             localStorage.setItem('accessToken', event.data.accessToken)
-            console.log('ExamAttempt: Access token set')
           }
-          
+
           if (event.data.refreshToken) {
             localStorage.setItem('refreshToken', event.data.refreshToken)
-            console.log('ExamAttempt: Refresh token set')
           }
-          
+
           // Trigger a re-initialization of the exam now that we have auth tokens
           if (event.data.accessToken && id) {
-            console.log('ExamAttempt: Re-initializing exam with auth tokens')
             setTimeout(() => {
               initializeExam()
             }, 100)
           }
         }
       }
-      
+
       window.addEventListener('beforeunload', handleBeforeUnload)
       window.addEventListener('message', handleMessage)
-      
+
       return () => {
         window.removeEventListener('beforeunload', handleBeforeUnload)
         window.removeEventListener('message', handleMessage)
@@ -133,11 +122,9 @@ export function ExamAttempt() {
         document.documentElement.requestFullscreen()
           .then(() => {
             setIsFullScreen(true)
-            console.log('Exam: Fullscreen mode activated')
             logExamActivity(attemptId, 'fullscreen_enabled')
           })
-          .catch(err => {
-            console.error('Failed to enable fullscreen:', err)
+          .catch(() => {
             const warning = 'Failed to enable fullscreen mode'
             setSecurityWarnings(prev => [...prev, warning])
             logExamActivity(attemptId, 'fullscreen_failed')
@@ -154,7 +141,6 @@ export function ExamAttempt() {
         const warning = `Tab switch detected at ${new Date().toLocaleTimeString()}`
         setSecurityWarnings(prev => [...prev, warning])
         logExamActivity(attemptId, 'tab_switch')
-        console.log('Exam Security: Tab switch detected')
         toast({
           title: "Security Warning",
           description: "Tab switching detected and logged. Multiple violations may result in exam termination.",
@@ -170,7 +156,6 @@ export function ExamAttempt() {
         const warning = `Window focus lost at ${new Date().toLocaleTimeString()}`
         setSecurityWarnings(prev => [...prev, warning])
         logExamActivity(attemptId, 'focus_lost')
-        console.log('Exam Security: Window focus lost')
       }
     }
 
@@ -181,7 +166,6 @@ export function ExamAttempt() {
         const warning = `Fullscreen mode exited at ${new Date().toLocaleTimeString()}`
         setSecurityWarnings(prev => [...prev, warning])
         logExamActivity(attemptId, 'fullscreen_exit')
-        console.log('Exam Security: Fullscreen mode exited')
         toast({
           title: "Security Alert",
           description: "Fullscreen mode was exited. Please return to fullscreen.",
@@ -204,7 +188,6 @@ export function ExamAttempt() {
       e.preventDefault()
       if (attemptId) {
         logExamActivity(attemptId, 'right_click_attempt')
-        console.log('Exam Security: Right-click attempt blocked')
       }
       return false
     }
@@ -226,7 +209,6 @@ export function ExamAttempt() {
         e.preventDefault()
         if (attemptId) {
           logExamActivity(attemptId, `blocked_shortcut_${e.key.toLowerCase()}`)
-          console.log(`Exam Security: Blocked keyboard shortcut Ctrl+${e.key}`)
         }
         return false
       }
@@ -236,7 +218,6 @@ export function ExamAttempt() {
         e.preventDefault()
         if (attemptId) {
           logExamActivity(attemptId, 'f12_attempt')
-          console.log('Exam Security: F12 attempt blocked')
         }
         return false
       }
@@ -246,7 +227,6 @@ export function ExamAttempt() {
         e.preventDefault()
         if (attemptId) {
           logExamActivity(attemptId, 'alt_tab_attempt')
-          console.log('Exam Security: Alt+Tab attempt blocked')
         }
         return false
       }
@@ -256,7 +236,6 @@ export function ExamAttempt() {
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.key === 'PrintScreen' && attemptId) {
         logExamActivity(attemptId, 'print_screen_attempt')
-        console.log('Exam Security: Print screen attempt detected')
         toast({
           title: "Security Warning",
           description: "Screenshot attempt detected and logged.",
@@ -326,7 +305,6 @@ export function ExamAttempt() {
 
   const initializeExam = async () => {
     try {
-      console.log('Initializing exam:', id)
       const [examResponse, attemptResponse] = await Promise.all([
         getExamById(id!),
         startExamAttempt(id!)
@@ -343,7 +321,6 @@ export function ExamAttempt() {
       setAttemptNumber(attemptData.attemptNumber || 1)
       setMaxAttempts(attemptData.maxAttempts || 1)
     } catch (error: any) {
-      console.error('Error initializing exam:', error)
       toast({
         title: "Error",
         description: error.message || "Failed to start exam",
@@ -361,9 +338,8 @@ export function ExamAttempt() {
     try {
       await saveExamAnswer(attemptId, questionId, answer)
     } catch (error: any) {
-      console.error('Error saving answer:', error)
       toast({
-        title: "Warning", 
+        title: "Warning",
         description: "Failed to save answer. Please try again.",
         variant: "destructive"
       })
@@ -384,15 +360,13 @@ export function ExamAttempt() {
 
   const handleAutoSubmit = async () => {
     try {
-      console.log('Auto-submitting exam due to time expiry')
       await submitExamAttempt(attemptId)
       toast({
         title: "Time's Up!",
         description: "Your exam has been automatically submitted.",
       })
-      
+
       if (isFullscreenMode) {
-        console.log('Closing exam window after auto-submit')
         // Small delay to ensure toast is visible before closing
         setTimeout(() => {
           window.close()
@@ -401,7 +375,6 @@ export function ExamAttempt() {
         navigate('/student/results')
       }
     } catch (error: any) {
-      console.error('Error auto-submitting exam:', error)
       toast({
         title: "Submission Error",
         description: error.message || "Failed to auto-submit exam. Please submit manually.",
@@ -412,7 +385,6 @@ export function ExamAttempt() {
 
   const handleManualSubmit = async () => {
     try {
-      console.log('Manually submitting exam')
       const response = await submitExamAttempt(attemptId)
       const result = response as any
 
@@ -422,9 +394,8 @@ export function ExamAttempt() {
           ? `Your score: ${result.score}/${exam.totalMarks} (${result.percentage}%)`
           : "Your exam has been submitted successfully.",
       })
-      
+
       if (isFullscreenMode) {
-        console.log('Closing exam window after manual submit')
         // Small delay to ensure toast is visible before closing
         setTimeout(() => {
           window.close()
@@ -433,7 +404,6 @@ export function ExamAttempt() {
         navigate('/student/results')
       }
     } catch (error: any) {
-      console.error('Error submitting exam:', error)
       toast({
         title: "Error",
         description: error.message || "Failed to submit exam",
@@ -738,12 +708,7 @@ export function ExamAttempt() {
       
       {/* Floating Video Recorder (if enabled) */}
       {videoRecordingEnabled && (
-        <VideoRecorder 
-          attemptId={attemptId}
-          onRecordingComplete={(videoUrl) => {
-            console.log('Video recording completed:', videoUrl)
-          }}
-        />
+        <VideoRecorder attemptId={attemptId} />
       )}
     </div>
   )
