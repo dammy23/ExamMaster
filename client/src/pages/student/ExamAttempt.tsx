@@ -392,9 +392,11 @@ export function ExamAttempt() {
 
       toast({
         title: "Exam Submitted",
-        description: exam.showResultsImmediately
-          ? `Your score: ${result.score}/${exam.totalMarks} (${result.percentage}%)`
-          : "Your exam has been submitted successfully.",
+        description: result.status === 'pending-review'
+          ? "Your exam has been submitted and is awaiting grading."
+          : exam.showResultsImmediately
+            ? `Your score: ${result.score}/${exam.totalMarks} (${result.percentage}%)`
+            : "Your exam has been submitted successfully.",
       })
 
       if (isFullscreenMode) {

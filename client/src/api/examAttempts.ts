@@ -16,7 +16,7 @@ export interface ExamAttempt {
   timeSpent: number;
   score?: number;
   percentage?: number;
-  status: 'in-progress' | 'completed' | 'submitted';
+  status: 'in-progress' | 'completed' | 'submitted' | 'pending-review';
   flaggedQuestions: string[];
   tabSwitches: number;
   attemptNumber: number;
@@ -90,7 +90,7 @@ export const saveExamAnswer = async (attemptId: string, questionId: string, answ
 // Description: Submit exam attempt
 // Endpoint: POST /api/exam-attempts/submit
 // Request: { attemptId: string }
-// Response: { success: boolean, score: number, percentage: number, aiGradingCompleted: boolean, theoryQuestionsCount: number }
+// Response: { success: boolean, score: number, percentage: number, status: string, aiGradingCompleted: boolean, theoryQuestionsCount: number }
 export const submitExamAttempt = async (attemptId: string) => {
   try {
     const response = await api.post('/api/exam-attempts/submit', { attemptId });
