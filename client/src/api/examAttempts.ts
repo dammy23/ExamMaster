@@ -44,6 +44,19 @@ export interface ExamAttempt {
     }>;
     gradedAt: string;
   };
+  manualGradingResults?: {
+    totalScore: number;
+    totalMaxScore: number;
+    results: Array<{
+      questionId: string;
+      score: number;
+      maxScore: number;
+      feedback: string;
+      gradedBy?: string;
+      gradedAt: string;
+    }>;
+    gradedAt: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -273,6 +286,51 @@ export const gradeTheoryQuestions = async (attemptId: string) => {
     return response.data;
   } catch (error: any) {
     console.error('Grade theory questions error:', error);
+    throw new Error(error?.response?.data?.error || error.message);
+  }
+};
+
+// Description: Get all exam attempts pending grading, across every exam this admin owns
+// Endpoint: GET /api/exam-attempts/admin/pending-grading
+// Request: {}
+// Response: { success: boolean, attempts: ExamAttempt[] }
+export const getPendingGradingAttempts = async () => {
+  try {
+    const response = await api.get('/api/exam-attempts/admin/pending-grading');
+    return response.data;
+  } catch (error: any) {
+    console.error('Get pending grading attempts error:', error);
+    throw new Error(error?.response?.data?.error || error.message);
+  }
+};
+
+// Description: Get a single exam attempt with full question detail for grading
+// Endpoint: GET /api/exam-attempts/admin/grading/:attemptId
+// Request: {}
+// Response: { success: boolean, attempt: ExamAttempt }
+export const getAttemptForGrading = async (attemptId: string) => {
+  try {
+    const response = await api.get(`/api/exam-attempts/admin/grading/${attemptId}`);
+    return response.data;
+  } catch (error: any) {
+    console.error('Get attempt for grading error:', error);
+    throw new Error(error?.response?.data?.error || error.message);
+  }
+};
+
+// Description: Submit manual grades for all theory questions in a pending-review attempt
+// Endpoint: POST /api/exam-attempts/manual-grade/:attemptId
+// Request: { grades: Array<{ questionId: string, score: number, feedback: string }> }
+// Response: { success: boolean, totalScore: number, updatedPercentage: number, status: string }
+export const submitManualGrades = async (
+  attemptId: string,
+  grades: Array<{ questionId: string; score: number; feedback: string }>
+) => {
+  try {
+    const response = await api.post(`/api/exam-attempts/manual-grade/${attemptId}`, { grades });
+    return response.data;
+  } catch (error: any) {
+    console.error('Submit manual grades error:', error);
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
