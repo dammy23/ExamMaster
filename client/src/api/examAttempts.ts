@@ -2,7 +2,13 @@ import api from './api';
 
 export interface ExamAttempt {
   _id: string;
-  examId: string;
+  examId: string | {
+    _id: string;
+    title: string;
+    subject?: string;
+    totalMarks: number;
+    showResultsImmediately?: boolean;
+  };
   studentId: string;
   answers: { [questionId: string]: string | string[] };
   startTime: string;
