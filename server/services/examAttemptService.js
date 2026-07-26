@@ -345,9 +345,13 @@ class ExamAttemptService {
       const percentage = exam ? (totalScore / exam.totalMarks) * 100 : 0;
 
       // This attempt needs a human before it's final: either the exam is manual-grading and has answered
-      // theory questions, or it's AI-grading and the AI grading call above failed
+      // theory questions, or it's AI-grading and grading failed — either the whole call threw (aiGradingFailed)
+      // or it resolved but recorded a per-question error (gradeMultipleTheoryQuestions catches those internally
+      // and still returns success: true, e.g. when no AI platform is configured)
+      const aiGradingHadErrors = !!(aiGradingResults && aiGradingResults.results &&
+        aiGradingResults.results.some(result => result.error));
       const needsReview = hasAnsweredTheoryQuestions && (
-        (exam && exam.gradingMethod === 'manual') || aiGradingFailed
+        (exam && exam.gradingMethod === 'manual') || aiGradingFailed || aiGradingHadErrors
       );
 
       // Update attempt with scores and AI grading results
