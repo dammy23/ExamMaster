@@ -23,21 +23,17 @@ export function DatabaseSeeding() {
   const handleSeedAdmin = async () => {
     setAdminLoading(true)
     try {
-      console.log('Seeding admin user...')
       const response = await seedAdmin()
       const result = response as any
-      
-      console.log('Admin seeding response:', result)
+
       setAdminSeeded(true)
       setAdminUser(result.user)
-      
+
       toast({
         title: "Success",
         description: result.message || "Admin user created successfully",
       })
     } catch (error: any) {
-      console.error('Error seeding admin:', error)
-      
       if (error.message.includes('already exists')) {
         setAdminSeeded(true)
         toast({
@@ -59,21 +55,17 @@ export function DatabaseSeeding() {
   const handleSeedStudents = async () => {
     setStudentsLoading(true)
     try {
-      console.log('Seeding student users...')
       const response = await seedStudents()
       const result = response as any
-      
-      console.log('Students seeding response:', result)
+
       setStudentsSeeded(true)
       setStudentUsers(result.users || [])
-      
+
       toast({
         title: "Success",
         description: result.message || "Student users created successfully",
       })
     } catch (error: any) {
-      console.error('Error seeding students:', error)
-      
       if (error.message.includes('already exist')) {
         setStudentsSeeded(true)
         toast({
@@ -95,24 +87,20 @@ export function DatabaseSeeding() {
   const handleCleanupDatabase = async () => {
     setCleanupLoading(true)
     try {
-      console.log('Cleaning up database...')
       const response = await cleanupDatabase()
-      
-      console.log('Database cleanup response:', response)
-      
+
       // Reset UI state
       setAdminSeeded(false)
       setStudentsSeeded(false)
       setAdminUser(null)
       setStudentUsers([])
       setDbStatus(null)
-      
+
       toast({
         title: "Success",
         description: response.message || "Database cleaned up successfully",
       })
     } catch (error: any) {
-      console.error('Error cleaning up database:', error)
       toast({
         title: "Error",
         description: error.message || "Failed to clean up database",
@@ -126,24 +114,20 @@ export function DatabaseSeeding() {
   const handleResetDatabase = async () => {
     setResetLoading(true)
     try {
-      console.log('Resetting database...')
       const response = await resetDatabase()
-      
-      console.log('Database reset response:', response)
-      
+
       // Reset UI state
       setAdminSeeded(false)
       setStudentsSeeded(false)
       setAdminUser(null)
       setStudentUsers([])
       setDbStatus(null)
-      
+
       toast({
         title: "Success",
         description: response.message || "Database reset successfully",
       })
     } catch (error: any) {
-      console.error('Error resetting database:', error)
       toast({
         title: "Error",
         description: error.message || "Failed to reset database",
@@ -156,18 +140,15 @@ export function DatabaseSeeding() {
 
   const handleGetDatabaseStatus = async () => {
     try {
-      console.log('Getting database status...')
       const response = await getDatabaseStatus()
-      
-      console.log('Database status response:', response)
+
       setDbStatus(response.data)
-      
+
       toast({
         title: "Info",
         description: "Database status retrieved successfully",
       })
     } catch (error: any) {
-      console.error('Error getting database status:', error)
       toast({
         title: "Error",
         description: error.message || "Failed to get database status",
