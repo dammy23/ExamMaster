@@ -702,7 +702,12 @@ export function AIChat() {
           {/* Messages + Input */}
           <CardContent className="flex-1 min-h-0 flex flex-col p-0">
             {/* Messages Area */}
-            <ScrollArea ref={messagesContainerRef} className="h-full p-4 [scrollbar-gutter:stable] overscroll-y-contain">
+            <ScrollArea
+              ref={messagesContainerRef}
+              className="h-full p-4 [scrollbar-gutter:stable] overscroll-y-contain"
+              aria-live="polite"
+              aria-atomic="false"
+            >
               {loadingHistory ? (
                 <LoadingState label="Loading chat history..." className="h-32" />
               ) : (
@@ -915,6 +920,7 @@ export function AIChat() {
                     size="sm"
                     onClick={removeAttachedFile}
                     className="h-6 w-6 p-0"
+                    aria-label="Remove attached file"
                   >
                     <X className="h-3 w-3" />
                   </Button>
@@ -935,6 +941,7 @@ export function AIChat() {
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isLoading}
                   className="shrink-0"
+                  aria-label="Attach file"
                 >
                   <Paperclip className="h-4 w-4" />
                 </Button>
