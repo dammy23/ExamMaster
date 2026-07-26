@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react"
+import { Link } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import {
   Table,
@@ -17,7 +19,8 @@ import {
   Target,
   TrendingUp,
   Award,
-  BookOpen
+  BookOpen,
+  ArrowLeft
 } from "lucide-react"
 import { getStudentExamAttempts, type ExamAttempt } from "@/api/examAttempts"
 import { useToast } from "@/hooks/useToast"
@@ -83,6 +86,15 @@ export function StudentResults() {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <Link to="/student">
+          <Button variant="ghost" size="sm" className="gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Dashboard
+          </Button>
+        </Link>
+      </div>
+
       <div>
         <h1 className="text-3xl font-bold tracking-tight">My Results</h1>
         <p className="text-muted-foreground">
@@ -216,38 +228,42 @@ export function StudentResults() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {completedAttempts.map((attempt) => (
-                    <TableRow key={attempt._id}>
-                      <TableCell className="font-medium">
-                        Mathematics Final Exam {/* This would come from exam data */}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {new Date(attempt.endTime!).toLocaleDateString()}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-medium">{attempt.score}</span>
-                        <span className="text-muted-foreground">/100</span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-medium">{attempt.percentage?.toFixed(1)}%</span>
-                      </TableCell>
-                      <TableCell>
-                        {getGradeBadge(attempt.percentage || 0)}
-                      </TableCell>
-                      <TableCell>
-                        {getPerformanceBadge(attempt.percentage || 0)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {Math.floor(attempt.timeSpent / 60)}m {attempt.timeSpent % 60}s
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {completedAttempts.map((attempt) => {
+                    const examTitle = typeof attempt.examId === 'object' ? attempt.examId.title : 'Untitled Exam'
+                    const examTotalMarks = typeof attempt.examId === 'object' ? attempt.examId.totalMarks : 100
+                    return (
+                      <TableRow key={attempt._id}>
+                        <TableCell className="font-medium">
+                          {examTitle}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {new Date(attempt.endTime!).toLocaleDateString()}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="font-medium">{attempt.score}</span>
+                          <span className="text-muted-foreground">/{examTotalMarks}</span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="font-medium">{attempt.percentage?.toFixed(1)}%</span>
+                        </TableCell>
+                        <TableCell>
+                          {getGradeBadge(attempt.percentage || 0)}
+                        </TableCell>
+                        <TableCell>
+                          {getPerformanceBadge(attempt.percentage || 0)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {Math.floor(attempt.timeSpent / 60)}m {attempt.timeSpent % 60}s
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
                 </TableBody>
               </Table>
             </div>
