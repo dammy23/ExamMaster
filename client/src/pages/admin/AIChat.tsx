@@ -44,6 +44,9 @@ interface ChatMessage {
   isFallback?: boolean
   generatedQuestions?: any[]
   showAssignmentFlow?: boolean
+  processingTime?: number
+  tokenCount?: { input: number; output: number }
+  originalMessage?: string
 }
 
 interface ChatPagination {
@@ -154,7 +157,8 @@ export function AIChat() {
           _id: msg._id + '_response',
           message: msg.response,
           isUser: false,
-          isBot: true
+          isBot: true,
+          originalMessage: msg.message
         })
       })
 
@@ -292,7 +296,8 @@ export function AIChat() {
             _id: msg._id + '_response',
             message: msg.response,
             isUser: false,
-            isBot: true
+            isBot: true,
+            originalMessage: msg.message
           })
         })
         setMessages(transformedMessages)
@@ -414,7 +419,10 @@ export function AIChat() {
         isUser: false,
         isBot: true,
         isFallback: responseData.isFallback,
-        generatedQuestions: generatedQuestions.length > 0 ? generatedQuestions : undefined
+        generatedQuestions: generatedQuestions.length > 0 ? generatedQuestions : undefined,
+        processingTime: responseData.processingTime,
+        tokenCount: responseData.tokenCount,
+        originalMessage: userMessage
       }
 
       setMessages(prev => [...prev, botChatMessage])
@@ -730,6 +738,12 @@ export function AIChat() {
                             )}
                             <p className="text-xs mt-1 opacity-70">
                               {new Date(message.timestamp).toLocaleTimeString()}
+                              {message.isBot && message.processingTime != null && (
+                                <> · {(message.processingTime / 1000).toFixed(1)}s</>
+                              )}
+                              {message.isBot && message.tokenCount != null && (
+                                <> · {message.tokenCount.input + message.tokenCount.output} tokens</>
+                              )}
                             </p>
 
                             {message.isBot && message.isFallback && (
