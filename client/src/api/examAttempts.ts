@@ -334,3 +334,17 @@ export const submitManualGrades = async (
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
+
+// Description: Get full detail (including theory question feedback) for a single completed attempt
+// Endpoint: GET /api/exam-attempts/student/attempt/:attemptId
+// Request: {}
+// Response: { success: boolean, attempt: ExamAttempt }
+export const getAttemptDetail = async (attemptId: string) => {
+  try {
+    const response = await api.get(`/api/exam-attempts/student/attempt/${attemptId}`);
+    return response.data;
+  } catch (error: any) {
+    console.error('Get attempt detail error:', error);
+    throw new Error(error?.response?.data?.error || error.message);
+  }
+};
