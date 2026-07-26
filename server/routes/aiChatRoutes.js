@@ -8,7 +8,7 @@ const DocumentParsingService = require('../services/documentParsingService');
 const ExamService = require('../services/examService');
 const QuestionService = require('../services/questionService');
 const SubjectService = require('../services/subjectService');
-const { requireUser } = require('./middleware/auth');
+const { requireUser, requireAdmin } = require('./middleware/auth');
 
 console.log('Loading AI Chat Routes...');
 
@@ -59,7 +59,7 @@ const upload = multer({
 });
 
 // POST /api/ai-chat/message - Send message to AI
-router.post('/message', requireUser, upload.single('fileAttachment'), async (req, res) => {
+router.post('/message', requireAdmin, upload.single('fileAttachment'), async (req, res) => {
   console.log('AI Chat Routes - POST /message');
   console.log('Request body:', req.body);
   console.log('Uploaded file:', req.file ? req.file.filename : 'None');
@@ -138,7 +138,7 @@ router.post('/message', requireUser, upload.single('fileAttachment'), async (req
 // Endpoint: GET /api/ai-chat/history
 // Request: { page?: number, limit?: number }
 // Response: { messages: Array<ChatMessage>, pagination: { currentPage: number, totalPages: number, totalCount: number, hasMore: boolean, limit: number } }
-router.get('/history', requireUser, async (req, res) => {
+router.get('/history', requireAdmin, async (req, res) => {
   console.log('AI Chat Routes - GET /history');
 
   try {
@@ -184,7 +184,7 @@ router.get('/history', requireUser, async (req, res) => {
 });
 
 // GET /api/ai-chat/models - Get available AI models
-router.get('/models', requireUser, async (req, res) => {
+router.get('/models', requireAdmin, async (req, res) => {
   console.log('AI Chat Routes - GET /models');
   
   try {
@@ -207,7 +207,7 @@ router.get('/models', requireUser, async (req, res) => {
 });
 
 // GET /api/ai-chat/agents - Get available AI agents
-router.get('/agents', requireUser, async (req, res) => {
+router.get('/agents', requireAdmin, async (req, res) => {
   console.log('AI Chat Routes - GET /agents');
   
   try {
@@ -230,7 +230,7 @@ router.get('/agents', requireUser, async (req, res) => {
 });
 
 // POST /api/ai-chat/upload - Upload file for AI context
-router.post('/upload', requireUser, upload.single('file'), async (req, res) => {
+router.post('/upload', requireAdmin, upload.single('file'), async (req, res) => {
   console.log('AI Chat Routes - POST /upload');
   console.log('Uploaded file:', req.file ? req.file.filename : 'None');
   
@@ -279,7 +279,7 @@ router.post('/upload', requireUser, upload.single('file'), async (req, res) => {
 // Endpoint: POST /api/ai-chat/generate-questions
 // Request: { document?: File, text?: string, questionCount?: number, difficulty?: string, questionTypes?: Array<string>, subject?: string }
 // Response: { questions: Array<Question>, validationResults: { validQuestions: number, totalGenerated: number, errors: Array<string> } }
-router.post('/generate-questions', requireUser, upload.single('document'), async (req, res) => {
+router.post('/generate-questions', requireAdmin, upload.single('document'), async (req, res) => {
   console.log('AI Chat Routes - POST /generate-questions');
   console.log('Request body:', req.body);
   console.log('Uploaded file:', req.file ? req.file.filename : 'None');
@@ -371,7 +371,7 @@ router.post('/generate-questions', requireUser, upload.single('document'), async
 // Endpoint: POST /api/ai-chat/create-exam
 // Request: { title: string, subject: string, duration: number, startDate: Date, endDate: Date, totalMarks: number, passingMarks: number, instructions?: string, questions?: Array<ObjectId> }
 // Response: { exam: Exam, message: string }
-router.post('/create-exam', requireUser, async (req, res) => {
+router.post('/create-exam', requireAdmin, async (req, res) => {
   console.log('AI Chat Routes - POST /create-exam');
   console.log('Request body:', req.body);
 
@@ -420,7 +420,7 @@ router.post('/create-exam', requireUser, async (req, res) => {
 // Endpoint: POST /api/ai-chat/create-subject
 // Request: { name: string, code: string, description?: string, isActive?: boolean }
 // Response: { subject: Subject, message: string }
-router.post('/create-subject', requireUser, async (req, res) => {
+router.post('/create-subject', requireAdmin, async (req, res) => {
   console.log('AI Chat Routes - POST /create-subject');
   console.log('Request body:', req.body);
 
@@ -471,7 +471,7 @@ router.post('/create-subject', requireUser, async (req, res) => {
 // Endpoint: POST /api/ai-chat/create-questions
 // Request: { questions: Array<Question>, examId?: ObjectId }
 // Response: { questions: Array<Question>, exam?: Exam, message: string }
-router.post('/create-questions', requireUser, async (req, res) => {
+router.post('/create-questions', requireAdmin, async (req, res) => {
   console.log('AI Chat Routes - POST /create-questions');
   console.log('Request body:', req.body);
 
@@ -543,7 +543,7 @@ router.post('/create-questions', requireUser, async (req, res) => {
 // Endpoint: POST /api/ai-chat/generate-sample-questions
 // Request: { topic: string, questionCount?: number, difficulty?: string, questionTypes?: Array<string> }
 // Response: { questions: Array<Question>, message: string, topic: string }
-router.post('/generate-sample-questions', requireUser, async (req, res) => {
+router.post('/generate-sample-questions', requireAdmin, async (req, res) => {
   console.log('AI Chat Routes - POST /generate-sample-questions');
   console.log('Request body:', req.body);
 
@@ -632,7 +632,7 @@ function generateTopicContent(topic) {
 // Endpoint: GET /api/ai-chat/conversation-context
 // Request: { agentId?: string }
 // Response: { exams: Array<Exam>, subjects: Array<Subject>, questions: Array<Question>, suggestions: Array<string> }
-router.get('/conversation-context', requireUser, async (req, res) => {
+router.get('/conversation-context', requireAdmin, async (req, res) => {
   console.log('AI Chat Routes - GET /conversation-context');
 
   try {
