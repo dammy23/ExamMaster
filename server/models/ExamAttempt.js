@@ -49,6 +49,11 @@ const examAttemptSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Question'
   }],
+  optionOrders: {
+    type: Map,
+    of: [String],
+    default: new Map()
+  },
   tabSwitches: {
     type: Number,
     default: 0
