@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { LoadingState } from "@/components/ui/loading-state"
@@ -68,6 +69,7 @@ export function StudentResults() {
   }
 
   const completedAttempts = attempts.filter(attempt => attempt.status === 'completed')
+  const visibleAttempts = attempts.filter(attempt => attempt.status === 'completed' || attempt.status === 'pending-review')
   const averageScore = completedAttempts.length > 0
     ? completedAttempts.reduce((sum, attempt) => sum + (attempt.percentage || 0), 0) / completedAttempts.length
     : 0
@@ -209,7 +211,7 @@ export function StudentResults() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {completedAttempts.length > 0 ? (
+          {visibleAttempts.length > 0 ? (
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
@@ -221,12 +223,14 @@ export function StudentResults() {
                     <TableHead>Grade</TableHead>
                     <TableHead>Performance</TableHead>
                     <TableHead>Time Taken</TableHead>
+                    <TableHead>Details</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {completedAttempts.map((attempt) => {
+                  {visibleAttempts.map((attempt) => {
                     const examTitle = typeof attempt.examId === 'object' ? attempt.examId.title : 'Untitled Exam'
                     const examTotalMarks = typeof attempt.examId === 'object' ? attempt.examId.totalMarks : 100
+                    const isPending = attempt.status === 'pending-review'
                     return (
                       <TableRow key={attempt._id}>
                         <TableCell className="font-medium">
@@ -239,23 +243,50 @@ export function StudentResults() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <span className="font-medium">{attempt.score}</span>
-                          <span className="text-muted-foreground">/{examTotalMarks}</span>
+                          {isPending ? (
+                            <span className="text-muted-foreground">—</span>
+                          ) : (
+                            <>
+                              <span className="font-medium">{attempt.score}</span>
+                              <span className="text-muted-foreground">/{examTotalMarks}</span>
+                            </>
+                          )}
                         </TableCell>
                         <TableCell>
-                          <span className="font-medium">{attempt.percentage?.toFixed(1)}%</span>
+                          {isPending ? (
+                            <span className="text-muted-foreground">—</span>
+                          ) : (
+                            <span className="font-medium">{attempt.percentage?.toFixed(1)}%</span>
+                          )}
                         </TableCell>
                         <TableCell>
-                          {getGradeBadge(attempt.percentage || 0)}
+                          {isPending ? (
+                            <StatusBadge status="pending-review" />
+                          ) : (
+                            getGradeBadge(attempt.percentage || 0)
+                          )}
                         </TableCell>
                         <TableCell>
-                          {getPerformanceBadge(attempt.percentage || 0)}
+                          {isPending ? (
+                            <StatusBadge status="pending-review" />
+                          ) : (
+                            getPerformanceBadge(attempt.percentage || 0)
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
                             {Math.floor(attempt.timeSpent / 60)}m {attempt.timeSpent % 60}s
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          {!isPending && (
+                            <Link to={`/student/results/${attempt._id}`}>
+                              <Button variant="outline" size="sm">
+                                View Details
+                              </Button>
+                            </Link>
+                          )}
                         </TableCell>
                       </TableRow>
                     )
