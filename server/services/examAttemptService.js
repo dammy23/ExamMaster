@@ -91,13 +91,16 @@ class ExamAttemptService {
           questionsToReturn = exam.questions;
         }
         
-        const questions = questionsToReturn.map(question => ({
-          _id: question._id,
-          type: question.type,
-          question: question.question,
-          options: question.options || [],
-          marks: question.marks
-        }));
+        const questions = questionsToReturn.map(question => {
+          const storedOrder = activeAttempt.optionOrders?.get(question._id.toString());
+          return {
+            _id: question._id,
+            type: question.type,
+            question: question.question,
+            options: storedOrder || question.options || [],
+            marks: question.marks
+          };
+        });
         
         return {
           attemptId: activeAttempt._id.toString(),
@@ -164,15 +167,31 @@ class ExamAttemptService {
       
       // Store the selected question IDs in their randomized order
       savedAttempt.selectedQuestions = selectedQuestions.map(q => q._id);
+
+      // If randomizeOptions is enabled, shuffle and persist MCQ option order per question
+      // (persisted, not recomputed per-fetch, so a page refresh mid-attempt doesn't reorder options)
+      if (exam.randomizeOptions) {
+        const optionOrders = new Map();
+        selectedQuestions.forEach(question => {
+          if (question.type === 'multiple-choice' && question.options && question.options.length > 0) {
+            optionOrders.set(question._id.toString(), [...question.options].sort(() => Math.random() - 0.5));
+          }
+        });
+        savedAttempt.optionOrders = optionOrders;
+      }
+
       await savedAttempt.save();
-      
-      const questions = selectedQuestions.map(question => ({
-        _id: question._id,
-        type: question.type,
-        question: question.question,
-        options: question.options || [],
-        marks: question.marks
-      }));
+
+      const questions = selectedQuestions.map(question => {
+        const storedOrder = savedAttempt.optionOrders?.get(question._id.toString());
+        return {
+          _id: question._id,
+          type: question.type,
+          question: question.question,
+          options: storedOrder || question.options || [],
+          marks: question.marks
+        };
+      });
 
       // Calculate remaining time (full duration since it's a new attempt)
       const remainingTime = exam.duration * 60; // Convert minutes to seconds
