@@ -51,6 +51,7 @@ export function EditExam() {
         questionsPerExam: exam.questionsPerExam || undefined,
         videoRecording: exam.videoRecording || false,
         mobileEnabled: exam.mobileEnabled || false,
+        gradingMethod: exam.gradingMethod || 'ai',
         assignedGroups: exam.assignedGroups || []
       })
     } catch (error: any) {

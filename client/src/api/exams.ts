@@ -28,6 +28,7 @@ export interface Exam {
   maxAttempts: number; // 0 means unlimited
   videoRecording: boolean;
   mobileEnabled: boolean;
+  gradingMethod: 'ai' | 'manual';
   assignedStudents: string[];
   assignedGroups: string[];
   questions: string[];

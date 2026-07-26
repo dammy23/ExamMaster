@@ -41,6 +41,7 @@ export interface ExamFormData {
   useRandomQuestions: boolean
   videoRecording: boolean
   mobileEnabled: boolean
+  gradingMethod: 'ai' | 'manual'
   assignedGroups: string[]
 }
 
@@ -61,6 +62,7 @@ const CREATE_DEFAULT_VALUES: Partial<ExamFormData> = {
   questionsPerExam: undefined,
   videoRecording: false,
   mobileEnabled: false,
+  gradingMethod: 'ai',
   assignedGroups: []
 }
 
@@ -578,6 +580,25 @@ export function ExamForm({ mode, initialValues, onSubmit, submitting }: ExamForm
                   checked={watch("mobileEnabled")}
                   onCheckedChange={(checked) => setValue("mobileEnabled", checked)}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="gradingMethod">Grading Method</Label>
+                <Select
+                  value={watch("gradingMethod")}
+                  onValueChange={(value) => setValue("gradingMethod", value as 'ai' | 'manual')}
+                >
+                  <SelectTrigger id="gradingMethod">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ai">AI Auto-Grade</SelectItem>
+                    <SelectItem value="manual">Human Manual Grade</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  How theory questions are scored after submission
+                </p>
               </div>
             </div>
           </div>
