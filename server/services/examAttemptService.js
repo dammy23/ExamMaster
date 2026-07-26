@@ -409,11 +409,17 @@ class ExamAttemptService {
       console.log('ExamAttemptService: Getting exam attempts for student:', studentId);
 
       const attempts = await ExamAttempt.find({ studentId })
-        .populate('examId', 'title subject totalMarks')
+        .populate('examId', 'title subject totalMarks showResultsImmediately')
         .sort({ createdAt: -1 });
 
-      console.log(`ExamAttemptService: Found ${attempts.length} attempts for student`);
-      return attempts;
+      // Hide scores for completed attempts where the exam has Show Results Immediately disabled
+      // (in-progress attempts have no score yet, so they're never filtered)
+      const visibleAttempts = attempts.filter(attempt =>
+        attempt.status !== 'completed' || (attempt.examId && attempt.examId.showResultsImmediately === true)
+      );
+
+      console.log(`ExamAttemptService: Found ${visibleAttempts.length} visible attempts for student`);
+      return visibleAttempts;
     } catch (error) {
       console.error('ExamAttemptService: Error getting student attempts:', error.message);
       throw error;
