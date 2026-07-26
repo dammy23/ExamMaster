@@ -54,6 +54,7 @@ export interface ExamQuestion {
   question: string;
   options?: string[];
   marks: number;
+  difficulty: 'easy' | 'medium' | 'hard';
 }
 
 // Description: Start exam attempt

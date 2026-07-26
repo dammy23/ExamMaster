@@ -98,7 +98,8 @@ class ExamAttemptService {
             type: question.type,
             question: question.question,
             options: storedOrder || question.options || [],
-            marks: question.marks
+            marks: question.marks,
+            difficulty: question.difficulty
           };
         });
         
@@ -189,7 +190,8 @@ class ExamAttemptService {
           type: question.type,
           question: question.question,
           options: storedOrder || question.options || [],
-          marks: question.marks
+          marks: question.marks,
+          difficulty: question.difficulty
         };
       });
 
