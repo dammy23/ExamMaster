@@ -301,7 +301,7 @@ export function ExamInstructions() {
               {timeStatus && (
                 <div className="p-4 rounded-lg bg-muted">
                   {timeStatus.type === 'starts' && (
-                    <div className="flex items-center gap-2 text-orange-600">
+                    <div className="flex items-center gap-2 text-status-warning-foreground">
                       <Clock className="h-4 w-4" />
                       <span className="text-sm font-medium">
                         Exam starts in {timeStatus.time}
@@ -309,7 +309,7 @@ export function ExamInstructions() {
                     </div>
                   )}
                   {timeStatus.type === 'available' && (
-                    <div className="flex items-center gap-2 text-green-600">
+                    <div className="flex items-center gap-2 text-status-success-foreground">
                       <CheckCircle2 className="h-4 w-4" />
                       <span className="text-sm font-medium">
                         Exam is available now
@@ -317,7 +317,7 @@ export function ExamInstructions() {
                     </div>
                   )}
                   {timeStatus.type === 'expired' && (
-                    <div className="flex items-center gap-2 text-red-600">
+                    <div className="flex items-center gap-2 text-status-danger-foreground">
                       <AlertTriangle className="h-4 w-4" />
                       <span className="text-sm font-medium">
                         Exam time has expired
@@ -390,34 +390,34 @@ export function ExamInstructions() {
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${systemCheck.browser ? 'bg-green-500' : 'bg-red-500'}`} />
+                  <div className={`w-2 h-2 rounded-full ${systemCheck.browser ? 'bg-status-success' : 'bg-status-danger'}`} />
                   <span className="text-sm">Browser Support</span>
                 </div>
                 {systemCheck.browser ? (
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <CheckCircle2 className="h-4 w-4 text-status-success-foreground" />
                 ) : (
-                  <AlertTriangle className="h-4 w-4 text-red-500" />
+                  <AlertTriangle className="h-4 w-4 text-status-danger-foreground" />
                 )}
               </div>
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${systemCheck.javascript ? 'bg-green-500' : 'bg-red-500'}`} />
+                  <div className={`w-2 h-2 rounded-full ${systemCheck.javascript ? 'bg-status-success' : 'bg-status-danger'}`} />
                   <span className="text-sm">JavaScript Enabled</span>
                 </div>
                 {systemCheck.javascript ? (
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <CheckCircle2 className="h-4 w-4 text-status-success-foreground" />
                 ) : (
-                  <AlertTriangle className="h-4 w-4 text-red-500" />
+                  <AlertTriangle className="h-4 w-4 text-status-danger-foreground" />
                 )}
               </div>
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${
-                    exam.mobileEnabled 
-                      ? 'bg-gray-400' 
-                      : systemCheck.fullScreen ? 'bg-green-500' : 'bg-red-500'
+                    exam.mobileEnabled
+                      ? 'bg-muted-foreground'
+                      : systemCheck.fullScreen ? 'bg-status-success' : 'bg-status-danger'
                   }`} />
                   <span className="text-sm">Fullscreen Support</span>
                   {exam.mobileEnabled && (
@@ -425,23 +425,23 @@ export function ExamInstructions() {
                   )}
                 </div>
                 {exam.mobileEnabled ? (
-                  <CheckCircle2 className="h-4 w-4 text-gray-400" />
+                  <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
                 ) : systemCheck.fullScreen ? (
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <CheckCircle2 className="h-4 w-4 text-status-success-foreground" />
                 ) : (
-                  <AlertTriangle className="h-4 w-4 text-red-500" />
+                  <AlertTriangle className="h-4 w-4 text-status-danger-foreground" />
                 )}
               </div>
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${systemCheck.connection ? 'bg-green-500' : 'bg-red-500'}`} />
+                  <div className={`w-2 h-2 rounded-full ${systemCheck.connection ? 'bg-status-success' : 'bg-status-danger'}`} />
                   <span className="text-sm">Internet Connection</span>
                 </div>
                 {systemCheck.connection ? (
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <CheckCircle2 className="h-4 w-4 text-status-success-foreground" />
                 ) : (
-                  <AlertTriangle className="h-4 w-4 text-red-500" />
+                  <AlertTriangle className="h-4 w-4 text-status-danger-foreground" />
                 )}
               </div>
 
@@ -459,35 +459,35 @@ export function ExamInstructions() {
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${exam.mobileEnabled ? 'bg-green-500' : 'bg-gray-400'}`} />
+                  <div className={`w-2 h-2 rounded-full ${exam.mobileEnabled ? 'bg-status-success' : 'bg-muted-foreground'}`} />
                   <span className="text-sm">Mobile Support</span>
                 </div>
                 {exam.mobileEnabled ? (
-                  <Badge variant="outline" className="text-green-600 border-green-600">Enabled</Badge>
+                  <Badge variant="outline" className="text-status-success-foreground border-status-success">Enabled</Badge>
                 ) : (
-                  <Badge variant="outline" className="text-gray-600">Disabled</Badge>
+                  <Badge variant="outline" className="text-muted-foreground">Disabled</Badge>
                 )}
               </div>
 
               {isMobile && !exam.mobileEnabled && (
-                <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                  <div className="flex items-center gap-2 text-orange-700">
+                <div className="mt-4 p-3 border-l-4 border-destructive bg-destructive/10 rounded-lg">
+                  <div className="flex items-center gap-2 text-destructive">
                     <Smartphone className="h-4 w-4" />
                     <span className="text-sm font-medium">Mobile Device Detected</span>
                   </div>
-                  <p className="text-xs text-orange-600 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     This exam is not available on mobile devices. Please use a desktop or laptop computer.
                   </p>
                 </div>
               )}
 
               {!canStartExam() && timeStatus?.type === 'available' && (
-                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <div className="flex items-center gap-2 text-red-700">
+                <div className="mt-4 p-3 border-l-4 border-destructive bg-destructive/10 rounded-lg">
+                  <div className="flex items-center gap-2 text-destructive">
                     <AlertTriangle className="h-4 w-4" />
                     <span className="text-sm font-medium">System Requirements Not Met</span>
                   </div>
-                  <p className="text-xs text-red-600 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Please ensure all required system checks pass before starting the exam.
                   </p>
                 </div>
