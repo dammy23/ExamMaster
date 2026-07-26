@@ -114,8 +114,9 @@ class ExamAttemptService {
       }
 
       // Check attempt limits (skip if unlimited attempts - maxAttempts === 0)
-      const completedAttempts = existingAttempts.filter(attempt => 
-        attempt.status === 'completed' || attempt.status === 'submitted'
+      // 'pending-review' counts too — that attempt already used up a slot while awaiting grading
+      const completedAttempts = existingAttempts.filter(attempt =>
+        attempt.status === 'completed' || attempt.status === 'submitted' || attempt.status === 'pending-review'
       );
       
       if (exam.maxAttempts > 0 && completedAttempts.length >= exam.maxAttempts) {
@@ -280,6 +281,7 @@ class ExamAttemptService {
       // Calculate score based on actual questions
       let totalScore = 0;
       let theoryQuestions = [];
+      let hasAnsweredTheoryQuestions = false;
       const exam = await Exam.findById(attempt.examId).populate('questions');
 
       if (exam && exam.questions) {
@@ -305,7 +307,8 @@ class ExamAttemptService {
                 totalScore -= exam.negativeMarkingValue * question.marks;
               }
             } else if (question.type === 'theory' || question.type === 'short-answer') {
-              // Collect theory questions for AI grading
+              // Collect theory questions — graded by AI below (if this exam uses AI grading) or left for an admin to grade by hand
+              hasAnsweredTheoryQuestions = true;
               theoryQuestions.push({
                 questionId: question._id.toString(),
                 question: question.question,
@@ -313,15 +316,15 @@ class ExamAttemptService {
                 sampleAnswer: question.correctAnswers[0] || '',
                 maxMarks: question.marks
               });
-              console.log(`Theory question ${question._id} will be graded by AI`);
             }
           }
         }
       }
 
-      // Grade theory questions using AI if any exist
+      // Grade theory questions using AI, unless this exam is configured for human grading
       let aiGradingResults = null;
-      if (theoryQuestions.length > 0) {
+      let aiGradingFailed = false;
+      if (exam && exam.gradingMethod === 'ai' && theoryQuestions.length > 0) {
         console.log(`ExamAttemptService: Starting AI grading for ${theoryQuestions.length} theory questions`);
         try {
           aiGradingResults = await AIGradingService.gradeMultipleTheoryQuestions(theoryQuestions);
@@ -331,7 +334,8 @@ class ExamAttemptService {
           }
         } catch (error) {
           console.error('ExamAttemptService: AI grading failed:', error.message);
-          // Continue without AI scores - they can be graded manually later
+          // The attempt goes to pending-review below so an admin can retry AI grading or grade by hand — the score is no longer silently lost
+          aiGradingFailed = true;
         }
       }
 
@@ -340,12 +344,18 @@ class ExamAttemptService {
 
       const percentage = exam ? (totalScore / exam.totalMarks) * 100 : 0;
 
+      // This attempt needs a human before it's final: either the exam is manual-grading and has answered
+      // theory questions, or it's AI-grading and the AI grading call above failed
+      const needsReview = hasAnsweredTheoryQuestions && (
+        (exam && exam.gradingMethod === 'manual') || aiGradingFailed
+      );
+
       // Update attempt with scores and AI grading results
       attempt.endTime = endTime;
       attempt.timeSpent = timeSpentMinutes;
       attempt.score = totalScore;
       attempt.percentage = Math.round(percentage * 100) / 100; // Round to 2 decimal places
-      attempt.status = 'completed';
+      attempt.status = needsReview ? 'pending-review' : 'completed';
 
       // Store AI grading results in attempt metadata if available
       if (aiGradingResults && aiGradingResults.success) {
@@ -361,8 +371,8 @@ class ExamAttemptService {
 
       console.log('ExamAttemptService: Exam attempt submitted successfully with total score:', totalScore);
 
-      // Send email results if "Show Results Immediately" is enabled
-      if (exam && exam.showResultsImmediately) {
+      // Send email results if "Show Results Immediately" is enabled — only once the score is actually final
+      if (exam && exam.showResultsImmediately && !needsReview) {
         console.log('ExamAttemptService: Sending email results as showResultsImmediately is enabled');
         try {
           // Get student details
@@ -395,9 +405,10 @@ class ExamAttemptService {
         success: true,
         score: totalScore,
         percentage: attempt.percentage,
+        status: attempt.status,
         aiGradingCompleted: aiGradingResults ? aiGradingResults.success : false,
         theoryQuestionsCount: theoryQuestions.length,
-        emailSent: exam && exam.showResultsImmediately
+        emailSent: exam && exam.showResultsImmediately && !needsReview
       };
     } catch (error) {
       console.error('ExamAttemptService: Error submitting exam attempt:', error.message);
