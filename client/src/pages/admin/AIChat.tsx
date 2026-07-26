@@ -21,7 +21,8 @@ import {
   CheckCircle,
   AlertCircle,
   Save,
-  Download
+  Download,
+  RefreshCw
 } from "lucide-react"
 import { sendChatMessage, getChatHistory, getAIAgents } from "@/api/aiChat"
 import { LoadingState } from "@/components/ui/loading-state"
@@ -703,7 +704,7 @@ export function AIChat() {
                       )}
                     </div>
                   ) : (
-                    messages.map((message) => (
+                    messages.map((message, messageIndex) => (
                       <div
                         key={message._id}
                         className={`flex gap-3 ${message.isUser ? "justify-end" : "justify-start"}`}
@@ -751,6 +752,22 @@ export function AIChat() {
                                 <AlertCircle className="h-3 w-3" />
                                 Fallback response — AI service may be unavailable
                               </p>
+                            )}
+
+                            {/* Regenerate - only on the latest bot message */}
+                            {message.isBot && messageIndex === messages.length - 1 && message.originalMessage && (
+                              <div className="mt-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => sendMessageToAI(message.originalMessage!)}
+                                  disabled={isLoading}
+                                  className="flex items-center gap-1 h-7 text-xs"
+                                >
+                                  <RefreshCw className="h-3 w-3" />
+                                  Regenerate
+                                </Button>
+                              </div>
                             )}
 
                             {/* Save Questions Button - Show for bot messages with generated questions (only if not in assignment flow) */}
