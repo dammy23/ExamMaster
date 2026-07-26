@@ -287,16 +287,20 @@ class ExamAttemptService {
             // Simple scoring logic - can be enhanced later for partial marks
             if (question.type === 'multiple-choice' || question.type === 'true-false') {
               const correctAnswers = question.correctAnswers || [];
+              let isCorrect;
               if (Array.isArray(studentAnswer)) {
                 // Multiple selection - check if arrays match
-                const isCorrect = correctAnswers.length === studentAnswer.length &&
+                isCorrect = correctAnswers.length === studentAnswer.length &&
                   correctAnswers.every(ans => studentAnswer.includes(ans));
-                if (isCorrect) totalScore += question.marks;
               } else {
                 // Single selection
-                if (correctAnswers.includes(studentAnswer)) {
-                  totalScore += question.marks;
-                }
+                isCorrect = correctAnswers.includes(studentAnswer);
+              }
+              if (isCorrect) {
+                totalScore += question.marks;
+              } else if (exam.negativeMarking) {
+                // negativeMarkingValue is a fraction of this question's own marks
+                totalScore -= exam.negativeMarkingValue * question.marks;
               }
             } else if (question.type === 'theory' || question.type === 'short-answer') {
               // Collect theory questions for AI grading
@@ -328,6 +332,9 @@ class ExamAttemptService {
           // Continue without AI scores - they can be graded manually later
         }
       }
+
+      // Negative marking can drive the score below 0 — floor it after all scoring (including AI-graded theory marks) is applied
+      totalScore = Math.max(0, totalScore);
 
       const percentage = exam ? (totalScore / exam.totalMarks) * 100 : 0;
 
