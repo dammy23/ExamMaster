@@ -22,9 +22,21 @@ import {
   AlertCircle,
   Save,
   Download,
-  RefreshCw
+  RefreshCw,
+  Trash2
 } from "lucide-react"
-import { sendChatMessage, getChatHistory, getAIAgents } from "@/api/aiChat"
+import { sendChatMessage, getChatHistory, getAIAgents, clearChatHistory } from "@/api/aiChat"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger
+} from "@/components/ui/alert-dialog"
 import { LoadingState } from "@/components/ui/loading-state"
 import { getActiveAIPlatforms } from "@/api/aiPlatform"
 import { AIChatQuestionAssignment } from "@/components/AIChatQuestionAssignment"
@@ -464,6 +476,24 @@ export function AIChat() {
     }
   }
 
+  const handleClearHistory = async () => {
+    try {
+      await clearChatHistory()
+      setMessages([])
+      setPagination(null)
+      toast({
+        title: "History Cleared",
+        description: "Your chat history has been deleted"
+      })
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: (error as any)?.message || "Failed to clear chat history"
+      })
+    }
+  }
+
   const selectedPlatformInfo = platforms.find(p => p._id === selectedPlatform)
   const selectedAgentInfo = agents.find(a => a._id === selectedAgent)
   return (
@@ -637,11 +667,36 @@ export function AIChat() {
         {/* Chat Interface */}
         <Card className="lg:col-span-3 flex min-h-0 flex-col">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" />
-              Chat
-            </CardTitle>
-            <CardDescription>Ask questions and get AI assistance</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  Chat
+                </CardTitle>
+                <CardDescription>Ask questions and get AI assistance</CardDescription>
+              </div>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="sm" disabled={messages.length === 0} className="shrink-0">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Clear chat history?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete your entire AI chat history. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleClearHistory} className="bg-red-600 hover:bg-red-700">
+                      Clear History
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </CardHeader>
 
           {/* Messages + Input */}
