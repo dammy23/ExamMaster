@@ -134,7 +134,7 @@ aiPlatformSchema.statics.findActiveWithStatus = async function() {
   console.log('Finding active AI platforms with configuration status');
   
   try {
-    const activePlatforms = await this.find({ isActive: true, isDeleted: false });
+    const activePlatforms = await this.find({ isActive: true, isDeleted: false }).select('+configuration.apiKey');
     const platformsWithStatus = [];
     
     for (const platform of activePlatforms) {
