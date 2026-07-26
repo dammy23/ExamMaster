@@ -40,6 +40,7 @@ interface ChatMessage {
   agentId: string
   isUser?: boolean
   isBot?: boolean
+  isFallback?: boolean
   generatedQuestions?: any[]
   showAssignmentFlow?: boolean
 }
@@ -393,6 +394,7 @@ export function AIChat() {
         agentId: selectedAgent,
         isUser: false,
         isBot: true,
+        isFallback: responseData.isFallback,
         generatedQuestions: generatedQuestions.length > 0 ? generatedQuestions : undefined
       }
 
@@ -403,10 +405,18 @@ export function AIChat() {
         removeAttachedFile()
       }
 
-      toast({
-        title: "Message Sent",
-        description: "AI response received successfully"
-      })
+      if (responseData.isFallback) {
+        toast({
+          title: "Fallback Response",
+          description: "The AI service may be unavailable — this response was generated from a fallback.",
+          variant: "destructive"
+        })
+      } else {
+        toast({
+          title: "Message Sent",
+          description: "AI response received successfully"
+        })
+      }
 
     } catch (error) {
       toast({
@@ -698,6 +708,13 @@ export function AIChat() {
                             <p className="text-xs mt-1 opacity-70">
                               {new Date(message.timestamp).toLocaleTimeString()}
                             </p>
+
+                            {message.isBot && message.isFallback && (
+                              <p className="text-xs mt-1 flex items-center gap-1 text-status-warning-foreground">
+                                <AlertCircle className="h-3 w-3" />
+                                Fallback response — AI service may be unavailable
+                              </p>
+                            )}
 
                             {/* Save Questions Button - Show for bot messages with generated questions (only if not in assignment flow) */}
                             {message.isBot && message.generatedQuestions && message.generatedQuestions.length > 0 && !message.showAssignmentFlow && (
