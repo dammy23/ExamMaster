@@ -39,7 +39,7 @@ const examAttemptSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['in-progress', 'completed', 'submitted'],
+    enum: ['in-progress', 'completed', 'submitted', 'pending-review'],
     default: 'in-progress'
   },
   flaggedQuestions: [{
@@ -135,6 +135,45 @@ const examAttemptSchema = new mongoose.Schema({
       error: {
         type: Boolean,
         default: false
+      },
+      gradedAt: {
+        type: Date,
+        default: Date.now
+      }
+    }],
+    gradedAt: {
+      type: Date
+    }
+  },
+  manualGradingResults: {
+    totalScore: {
+      type: Number,
+      min: 0
+    },
+    totalMaxScore: {
+      type: Number,
+      min: 0
+    },
+    results: [{
+      questionId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Question'
+      },
+      score: {
+        type: Number,
+        min: 0
+      },
+      maxScore: {
+        type: Number,
+        min: 0
+      },
+      feedback: {
+        type: String,
+        trim: true
+      },
+      gradedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
       },
       gradedAt: {
         type: Date,

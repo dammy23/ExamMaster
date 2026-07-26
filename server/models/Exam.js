@@ -126,6 +126,11 @@ const examSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  gradingMethod: {
+    type: String,
+    enum: ['ai', 'manual'],
+    default: 'ai'
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
