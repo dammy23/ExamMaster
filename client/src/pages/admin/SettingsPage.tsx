@@ -62,6 +62,7 @@ import {
 } from "@/api/aiPlatform"
 import { useToast } from "@/hooks/useToast"
 import { LoadingState } from "@/components/ui/loading-state"
+import { EmptyState } from "@/components/ui/empty-state"
 
 interface Setting {
   _id: string
@@ -572,6 +573,18 @@ export function SettingsPage() {
             </div>
           </div>
 
+          {filteredSettings.length === 0 ? (
+            <EmptyState
+              icon={searchTerm ? Search : Settings}
+              title={searchTerm ? "No matching settings" : "No settings yet"}
+              description={
+                searchTerm
+                  ? "No settings match your search criteria."
+                  : "Create your first setting to get started."
+              }
+              action={searchTerm ? undefined : { label: "Add Setting", onClick: handleCreateClick }}
+            />
+          ) : (
           <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -584,16 +597,7 @@ export function SettingsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredSettings.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                      {searchTerm 
-                        ? "No settings match your search criteria" 
-                        : "No settings created yet. Create your first setting to get started."}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredSettings.map((setting) => (
+                {filteredSettings.map((setting) => (
                     <TableRow key={setting._id}>
                       <TableCell>
                         <div className="flex items-center space-x-2">
@@ -647,11 +651,11 @@ export function SettingsPage() {
                         </DropdownMenu>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
+                ))}
               </TableBody>
             </Table>
           </div>
+          )}
         </CardContent>
       </Card>
         </TabsContent>
