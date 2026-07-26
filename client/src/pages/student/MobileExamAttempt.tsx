@@ -280,8 +280,10 @@ export function MobileExamAttempt() {
                 <button
                   key={q._id}
                   onClick={() => {
-                    setCurrentQuestionIndex(idx);
-                    setShowNavigation(false);
+                    if (exam?.allowReview || idx >= currentQuestionIndex) {
+                      setCurrentQuestionIndex(idx);
+                      setShowNavigation(false);
+                    }
                   }}
                   className={`
                     aspect-square rounded-lg font-semibold text-sm transition-all
@@ -419,7 +421,7 @@ export function MobileExamAttempt() {
             onClick={() =>
               setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))
             }
-            disabled={currentQuestionIndex === 0}
+            disabled={currentQuestionIndex === 0 || !exam?.allowReview}
             className="flex-1"
           >
             <ChevronLeft className="h-5 w-5 mr-1" />
