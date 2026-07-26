@@ -3,6 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { LoadingState } from "@/components/ui/loading-state";
+import { EmptyState } from "@/components/ui/empty-state";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -193,32 +195,18 @@ export function MobileExamAttempt() {
   const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-primary/10 to-background">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading exam...</p>
-        </div>
-      </div>
-    );
+    return <LoadingState label="Loading exam..." className="min-h-screen" />;
   }
 
   if (!currentQuestion) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6 text-center">
-            <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-            <h2 className="text-xl font-bold mb-2">No Questions Available</h2>
-            <p className="text-muted-foreground mb-4">
-              This exam has no questions.
-            </p>
-            <Button onClick={() => navigate("/student")}>
-              Back to Dashboard
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <EmptyState
+        icon={AlertTriangle}
+        title="No Questions Available"
+        description="This exam has no questions."
+        action={{ label: "Back to Dashboard", onClick: () => navigate("/student") }}
+        className="min-h-screen"
+      />
     );
   }
 
@@ -226,7 +214,7 @@ export function MobileExamAttempt() {
   const unansweredCount = questions.length - answeredCount;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Fixed Header */}
       <div className="sticky top-0 z-50 bg-background border-b shadow-sm">
         <div className="p-4">
@@ -284,7 +272,7 @@ export function MobileExamAttempt() {
                       idx === currentQuestionIndex
                         ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2"
                         : answers[q._id] !== undefined
-                          ? "bg-green-100 text-green-800 border-2 border-green-300"
+                          ? "bg-status-success/20 text-status-success-foreground border-2 border-status-success"
                           : "bg-background border-2 border-border hover:border-primary/50"
                     }
                   `}
@@ -295,7 +283,7 @@ export function MobileExamAttempt() {
             </div>
             <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
               <div className="flex items-center gap-1.5">
-                <div className="w-4 h-4 rounded bg-green-100 border-2 border-green-300" />
+                <div className="w-4 h-4 rounded bg-status-success/20 border-2 border-status-success" />
                 <span>Answered: {answeredCount}</span>
               </div>
               <div className="flex items-center gap-1.5">
@@ -452,7 +440,7 @@ export function MobileExamAttempt() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              <AlertTriangle className="h-5 w-5 text-status-warning-foreground" />
               Submit Exam?
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
@@ -464,19 +452,19 @@ export function MobileExamAttempt() {
                 </div>
                 <div className="flex justify-between">
                   <span>Answered:</span>
-                  <span className="font-semibold text-green-600">
+                  <span className="font-semibold text-status-success-foreground">
                     {answeredCount}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Unanswered:</span>
-                  <span className="font-semibold text-red-600">
+                  <span className="font-semibold text-status-danger-foreground">
                     {unansweredCount}
                   </span>
                 </div>
               </div>
               {unansweredCount > 0 && (
-                <p className="text-yellow-600 text-sm">
+                <p className="text-status-warning-foreground text-sm">
                   ⚠️ You have {unansweredCount} unanswered question
                   {unansweredCount > 1 ? "s" : ""}.
                 </p>
