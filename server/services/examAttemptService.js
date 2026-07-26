@@ -850,33 +850,89 @@ class ExamAttemptService {
     }
   }
 
-  static async getPendingGradingCount() {
+  static async getPendingGradingCount(adminId) {
     try {
-      console.log('ExamAttemptService: Counting attempts pending manual grading...');
+      console.log('ExamAttemptService: Counting attempts pending grading for admin:', adminId);
 
-      const attempts = await ExamAttempt.find({
-        status: 'completed',
-        'aiGradingResults.gradedAt': { $exists: false }
-      }).populate({
-        path: 'examId',
-        populate: {
-          path: 'questions'
-        }
-      });
+      const adminExams = await Exam.find({ createdBy: adminId }).select('_id');
+      const examIds = adminExams.map(exam => exam._id);
 
-      let count = 0;
-      for (const attempt of attempts) {
-        if (!attempt.examId || !attempt.examId.questions) continue;
-        const hasUngradedTheory = attempt.examId.questions.some(
-          (q) => q.type === 'theory' && attempt.answers.get(q._id.toString())
-        );
-        if (hasUngradedTheory) count++;
+      if (examIds.length === 0) {
+        return 0;
       }
 
-      console.log(`ExamAttemptService: ${count} attempts pending manual grading`);
+      const count = await ExamAttempt.countDocuments({
+        status: 'pending-review',
+        examId: { $in: examIds }
+      });
+
+      console.log(`ExamAttemptService: ${count} attempts pending grading`);
       return count;
     } catch (error) {
       console.error('ExamAttemptService: Error counting pending grading:', error.message);
+      throw error;
+    }
+  }
+
+  // Get all attempts pending grading, across every exam this admin owns
+  static async getPendingGradingAttempts(adminId) {
+    try {
+      console.log('ExamAttemptService: Getting attempts pending grading for admin:', adminId);
+
+      const adminExams = await Exam.find({ createdBy: adminId }).select('_id');
+      const examIds = adminExams.map(exam => exam._id);
+
+      if (examIds.length === 0) {
+        return [];
+      }
+
+      const attempts = await ExamAttempt.find({
+        status: 'pending-review',
+        examId: { $in: examIds }
+      })
+        .populate('studentId', 'name email')
+        .populate('examId', 'title gradingMethod')
+        .sort({ endTime: -1 });
+
+      console.log(`ExamAttemptService: Found ${attempts.length} attempts pending grading`);
+      return attempts;
+    } catch (error) {
+      console.error('ExamAttemptService: Error getting attempts pending grading:', error.message);
+      throw error;
+    }
+  }
+
+  // Get a single attempt with full exam/question detail for the grading form
+  static async getAttemptForGrading(attemptId, adminId) {
+    try {
+      console.log('ExamAttemptService: Getting attempt for grading:', attemptId);
+
+      if (!mongoose.Types.ObjectId.isValid(attemptId)) {
+        throw new Error('Invalid attempt ID format');
+      }
+
+      const attempt = await ExamAttempt.findById(attemptId)
+        .populate('studentId', 'name email')
+        .populate({
+          path: 'examId',
+          select: 'title subject totalMarks gradingMethod createdBy',
+          populate: {
+            path: 'questions'
+          }
+        });
+
+      if (!attempt) {
+        throw new Error('Exam attempt not found');
+      }
+
+      if (!attempt.examId || attempt.examId.createdBy.toString() !== adminId.toString()) {
+        throw new Error('You are not authorized to grade this exam attempt');
+      }
+
+      console.log('ExamAttemptService: Attempt retrieved for grading');
+      return attempt;
+    } catch (error) {
+      console.error('ExamAttemptService: Error getting attempt for grading:', error.message);
       throw error;
     }
   }
