@@ -181,6 +181,33 @@ router.get('/history', requireAdmin, async (req, res) => {
   }
 });
 
+// Description: Clear all chat history for the current user (bulk soft-delete)
+// Endpoint: DELETE /api/ai-chat/history
+// Request: {}
+// Response: { success: boolean }
+router.delete('/history', requireAdmin, async (req, res) => {
+  console.log('AI Chat Routes - DELETE /history');
+
+  try {
+    const userId = req.user._id;
+    const result = await AIChatService.clearHistory(userId);
+
+    console.log(`AI Chat Routes - Chat history cleared for user ${userId}`);
+
+    res.json({
+      success: true,
+      data: result
+    });
+
+  } catch (error) {
+    console.error('AI Chat Routes - Error clearing chat history:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to clear chat history'
+    });
+  }
+});
+
 // GET /api/ai-chat/agents - Get available AI agents
 router.get('/agents', requireAdmin, async (req, res) => {
   console.log('AI Chat Routes - GET /agents');

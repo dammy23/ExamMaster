@@ -486,7 +486,9 @@ This format is crucial for the system to detect and save questions properly.`;
           modelId: msg.modelId,
           agentId: msg.agentId,
           fileAttachment: msg.fileAttachment,
-          isFallback: msg.isFallback
+          isFallback: msg.isFallback,
+          processingTime: msg.metadata?.processingTime,
+          tokenCount: msg.metadata?.tokenCount
         })),
         pagination: result.pagination
       };
@@ -495,7 +497,21 @@ This format is crucial for the system to detect and save questions properly.`;
       throw error;
     }
   }
-  
+
+  // Bulk clear (soft-delete) all chat history for a user
+  static async clearHistory(userId) {
+    console.log(`AI Chat Service - Clearing chat history for user ${userId}`);
+
+    try {
+      await AIChat.clearHistory(userId);
+      console.log(`AI Chat Service - Chat history cleared for user ${userId}`);
+      return { success: true };
+    } catch (error) {
+      console.error('AI Chat Service - Error clearing chat history:', error);
+      throw error;
+    }
+  }
+
   // Get available AI platforms (for backwards compatibility)
   static async getModels() {
     console.log('AI Chat Service - Getting available AI platforms (models)');

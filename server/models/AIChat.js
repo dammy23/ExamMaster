@@ -107,6 +107,12 @@ aiChatSchema.statics.getRecentMessages = function(userId, limit = 5) {
     .lean();
 };
 
+// Static method to bulk soft-delete all messages for a user (Clear History action)
+aiChatSchema.statics.clearHistory = function(userId) {
+  console.log(`Clearing all AI chat history for user ${userId}`);
+  return this.updateMany({ userId, isDeleted: false }, { isDeleted: true });
+};
+
 // Static method to get chat history for a user with improved pagination
 aiChatSchema.statics.getChatHistory = async function(userId, options = {}) {
   const { page = 1, limit = 20 } = options;
