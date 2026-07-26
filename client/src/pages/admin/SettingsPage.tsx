@@ -61,6 +61,7 @@ import {
   initializeAIPlatforms 
 } from "@/api/aiPlatform"
 import { useToast } from "@/hooks/useToast"
+import { LoadingState } from "@/components/ui/loading-state"
 
 interface Setting {
   _id: string
@@ -414,11 +415,7 @@ export function SettingsPage() {
   })
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    )
+    return <LoadingState label="Loading settings..." />
   }
 
   return (
@@ -674,9 +671,7 @@ export function SettingsPage() {
           </div>
 
           {platformsLoading ? (
-            <div className="flex items-center justify-center h-32">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
+            <LoadingState label="Loading AI platforms..." className="h-32" />
           ) : (
             <>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
