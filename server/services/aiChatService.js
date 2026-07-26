@@ -2,6 +2,9 @@ const AIChat = require('../models/AIChat');
 const { AIAgent } = require('../models/AIConfig');
 const AIPlatform = require('../models/AIPlatform');
 const llmService = require('./llmService');
+const ExamService = require('./examService');
+const SubjectService = require('./subjectService');
+const QuestionService = require('./questionService');
 
 console.log('Loading AI Chat Service...');
 
@@ -49,8 +52,24 @@ class AIChatService {
       // Extract real file content if a supported document was attached
       const extractedFileText = fileAttachment ? await this.extractFileText(fileAttachment) : null;
 
+      // Fetch real platform context (exam/subject/question counts) for the exam-assistant agent
+      let platformContext = null;
+      if (agent.agentId === 'exam-assistant') {
+        const [exams, subjects, recentQuestions] = await Promise.all([
+          ExamService.getAll({}, userId),
+          SubjectService.getAllSubjects({ isActive: true }),
+          QuestionService.getAllQuestions({}, { page: 1, limit: 10 })
+        ]);
+        platformContext = {
+          examCount: exams.length,
+          subjectCount: subjects.length,
+          questionCount: recentQuestions.pagination.totalItems
+        };
+        console.log(`AI Chat Service - Platform context: ${platformContext.examCount} exams, ${platformContext.subjectCount} subjects, ${platformContext.questionCount} questions`);
+      }
+
       // Process AI request using configured platform
-      const aiResponse = await this.processAIRequest(message, platform, agent, fileAttachment, history, extractedFileText);
+      const aiResponse = await this.processAIRequest(message, platform, agent, fileAttachment, history, extractedFileText, platformContext);
 
       // Update platform usage statistics
       await platform.updateUsage(aiResponse.tokenCount.input + aiResponse.tokenCount.output);
@@ -97,7 +116,7 @@ class AIChatService {
   }
   
   // Process AI request using configured platform
-  static async processAIRequest(message, platform, agent, fileAttachment, history, extractedFileText) {
+  static async processAIRequest(message, platform, agent, fileAttachment, history, extractedFileText, platformContext) {
     console.log(`AI Chat Service - Processing AI request with ${platform.displayName} (${platform.configuration.model}) and ${agent.name}`);
 
     try {
@@ -111,7 +130,7 @@ class AIChatService {
       }
 
       // Build system prompt using agent configuration
-      const systemPrompt = this.buildSystemPrompt(agent, fileAttachment, extractedFileText);
+      const systemPrompt = this.buildSystemPrompt(agent, fileAttachment, extractedFileText, platformContext);
 
       console.log(`AI Chat Service - Sending request to ${platform.name} with model ${platform.configuration.model}`);
       console.log(`AI Chat Service - System prompt length: ${systemPrompt.length} characters, history turns: ${history.length}`);
@@ -198,20 +217,24 @@ class AIChatService {
   }
   
   // Build system prompt using agent configuration
-  static buildSystemPrompt(agent, fileAttachment, extractedFileText) {
+  static buildSystemPrompt(agent, fileAttachment, extractedFileText, platformContext) {
     let systemPrompt = agent.systemPrompt || `You are ${agent.name}, ${agent.description}`;
 
-    // Add ExamMaster context
-    systemPrompt += `\n\nYou are working within ExamMaster, a comprehensive Computer-Based Examination (CBE) platform. The system includes:
+    // Add ExamMaster context — real counts when available (exam-assistant), generic description otherwise
+    if (platformContext) {
+      systemPrompt += `\n\nYou are working within ExamMaster, a comprehensive Computer-Based Examination (CBE) platform. You currently have ${platformContext.examCount} exam(s), ${platformContext.subjectCount} subject(s), and ${platformContext.questionCount} question(s) in the question bank.`;
+    } else {
+      systemPrompt += `\n\nYou are working within ExamMaster, a comprehensive Computer-Based Examination (CBE) platform. The system includes:
 - Exam creation and management
 - Question banks with multiple question types (MCQ, True/False, Short Answer)
 - Student management and group organization
 - Automated grading and manual review for subjective questions
 - Real-time monitoring and proctoring features
 - Performance analytics and reporting
-- AI-powered assistance for various tasks
+- AI-powered assistance for various tasks`;
+    }
 
-Your capabilities include: ${agent.capabilities.join(', ')}.`;
+    systemPrompt += `\n\nYour capabilities include: ${agent.capabilities.join(', ')}.`;
 
     // Add file attachment context if present
     if (fileAttachment && extractedFileText) {
