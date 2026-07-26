@@ -32,27 +32,31 @@ async function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function sendRequestToOpenAI(model, message, apiKey,options = {}) {
+async function sendRequestToOpenAI(model, systemPrompt, history, message, apiKey, options = {}) {
   for (let i = 0; i < MAX_RETRIES; i++) {
     try {
       console.log(`LLM Service - Sending OpenAI request (attempt ${i + 1}) with model: ${model}`);
-      
+
       const openaiClient = getOpenAIClient(apiKey);
       const response = await openaiClient.chat.completions.create({
         model: model,
-        messages: [{ role: 'user', content: message }],
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...history,
+          { role: 'user', content: message }
+        ],
         max_tokens: options.maxTokens || 4096,
         temperature: options.temperature || 0.7,
         top_p: options.topP || 1.0,
         presence_penalty: options.presencePenalty || 0,
         frequency_penalty: options.frequencyPenalty || 0,
       });
-      
+
       const result = {
         content: response.choices[0].message.content,
         usage: response.usage || null
       };
-      
+
       console.log(`LLM Service - OpenAI response received, tokens used:`, response.usage);
       return result;
     } catch (error) {
@@ -69,25 +73,29 @@ async function sendRequestToOpenAI(model, message, apiKey,options = {}) {
   }
 }
 
-async function sendRequestToAnthropic(model, message, apiKey, options = {}) {
+async function sendRequestToAnthropic(model, systemPrompt, history, message, apiKey, options = {}) {
   for (let i = 0; i < MAX_RETRIES; i++) {
     try {
       console.log(`LLM Service - Sending Anthropic request (attempt ${i + 1}) with model: ${model}`);
-      
+
       const anthropicClient = getAnthropicClient(apiKey);
       const response = await anthropicClient.messages.create({
         model: model,
-        messages: [{ role: 'user', content: message }],
+        system: systemPrompt,
+        messages: [
+          ...history,
+          { role: 'user', content: message }
+        ],
         max_tokens: options.maxTokens || 4096,
         temperature: options.temperature || 0.7,
         top_p: options.topP || 1.0,
       });
-      
+
       const result = {
         content: response.content[0].text,
         usage: response.usage || null
       };
-      
+
       console.log(`LLM Service - Anthropic response received, tokens used:`, response.usage);
       return result;
     } catch (error) {
@@ -104,12 +112,12 @@ async function sendRequestToAnthropic(model, message, apiKey, options = {}) {
   }
 }
 
-async function sendLLMRequest(provider, model, message, apiKey,options = {}) {
+async function sendLLMRequest(provider, model, systemPrompt, history, message, apiKey, options = {}) {
   switch (provider.toLowerCase()) {
     case 'openai':
-      return sendRequestToOpenAI(model, message, apiKey,options);
+      return sendRequestToOpenAI(model, systemPrompt, history, message, apiKey, options);
     case 'anthropic':
-      return sendRequestToAnthropic(model, message, apiKey, options);
+      return sendRequestToAnthropic(model, systemPrompt, history, message, apiKey, options);
     default:
       throw new Error(`Unsupported LLM provider: ${provider}`);
   }

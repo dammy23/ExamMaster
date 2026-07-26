@@ -121,7 +121,8 @@ router.post('/message', requireAdmin, upload.single('fileAttachment'), async (re
         response: result.response,
         messageId: result.messageId,
         processingTime: result.processingTime,
-        tokenCount: result.tokenCount
+        tokenCount: result.tokenCount,
+        isFallback: result.isFallback
       }
     });
     

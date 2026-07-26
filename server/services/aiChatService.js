@@ -36,17 +36,28 @@ class AIChatService {
       console.log(`AI Chat Service - Using agent: ${agent.name}`);
       
       const startTime = Date.now();
-      
+
+      // Fetch recent turns for conversation memory (newest first, so reverse to chronological order)
+      const recentMessages = await AIChat.getRecentMessages(userId, 5);
+      const history = [];
+      recentMessages.reverse().forEach(msg => {
+        history.push({ role: 'user', content: msg.message });
+        history.push({ role: 'assistant', content: msg.response });
+      });
+      console.log(`AI Chat Service - Including ${recentMessages.length} prior turns as conversation history`);
+
+      // Extract real file content if a supported document was attached
+      const extractedFileText = fileAttachment ? await this.extractFileText(fileAttachment) : null;
+
       // Process AI request using configured platform
-      // In a real implementation, this would call the actual AI API
-      const aiResponse = await this.processAIRequest(message, platform, agent, fileAttachment);
-      
+      const aiResponse = await this.processAIRequest(message, platform, agent, fileAttachment, history, extractedFileText);
+
       // Update platform usage statistics
       await platform.updateUsage(aiResponse.tokenCount.input + aiResponse.tokenCount.output);
-      
+
       const processingTime = Date.now() - startTime;
       console.log(`AI Chat Service - Processing completed in ${processingTime}ms`);
-      
+
       // Save chat message to database
       const chatMessage = new AIChat({
         userId,
@@ -64,19 +75,21 @@ class AIChatService {
           processingTime,
           tokenCount: aiResponse.tokenCount,
           cost: aiResponse.cost
-        }
+        },
+        isFallback: aiResponse.isFallback
       });
-      
+
       const savedMessage = await chatMessage.save();
       console.log(`AI Chat Service - Message saved with ID: ${savedMessage._id}`);
-      
+
       return {
         response: aiResponse.response,
         messageId: savedMessage._id.toString(),
         processingTime,
-        tokenCount: aiResponse.tokenCount
+        tokenCount: aiResponse.tokenCount,
+        isFallback: aiResponse.isFallback
       };
-      
+
     } catch (error) {
       console.error('AI Chat Service - Error processing message:', error);
       throw error;
@@ -84,37 +97,35 @@ class AIChatService {
   }
   
   // Process AI request using configured platform
-  static async processAIRequest(message, platform, agent, fileAttachment) {
+  static async processAIRequest(message, platform, agent, fileAttachment, history, extractedFileText) {
     console.log(`AI Chat Service - Processing AI request with ${platform.displayName} (${platform.configuration.model}) and ${agent.name}`);
-    
+
     try {
       // Validate platform has required configuration
       if (!platform.configuration.apiKey && platform.name !== 'ollama') {
         throw new Error(`API key not configured for ${platform.displayName}`);
       }
-      
+
       if (platform.name === 'ollama' && !platform.configuration.baseUrl) {
         throw new Error(`Base URL not configured for ${platform.displayName}`);
       }
-      
+
       // Build system prompt using agent configuration
-      const systemPrompt = this.buildSystemPrompt(agent, fileAttachment);
-      
-      // Combine system prompt with user message
-      const fullMessage = `${systemPrompt}\n\nUser: ${message}`;
-      
+      const systemPrompt = this.buildSystemPrompt(agent, fileAttachment, extractedFileText);
+
       console.log(`AI Chat Service - Sending request to ${platform.name} with model ${platform.configuration.model}`);
-      console.log(`AI Chat Service - Message length: ${fullMessage.length} characters`);
-      
+      console.log(`AI Chat Service - System prompt length: ${systemPrompt.length} characters, history turns: ${history.length}`);
+
       let response;
       let inputTokens = 0;
       let outputTokens = 0;
-      
+      const estimatedInputLength = systemPrompt.length + message.length + history.reduce((sum, h) => sum + h.content.length, 0);
+
       if (platform.name === 'ollama') {
         // Handle Ollama separately as it uses different API
-        response = await this.processOllamaRequest(message, platform, systemPrompt);
+        response = await this.processOllamaRequest(message, platform, systemPrompt, history);
         // Estimate tokens for Ollama (no exact count available)
-        inputTokens = Math.ceil(fullMessage.length / 4);
+        inputTokens = Math.ceil(estimatedInputLength / 4);
         outputTokens = Math.ceil(response.length / 4);
       } else {
         // Use existing LLM service for OpenAI and Anthropic
@@ -125,18 +136,20 @@ class AIChatService {
           presencePenalty: platform.configuration.presencePenalty || 0,
           frequencyPenalty: platform.configuration.frequencyPenalty || 0
         };
-        
-        
+
+
         const llmResponse = await llmService.sendLLMRequest(
           platform.name,
           platform.configuration.model,
-          fullMessage,
+          systemPrompt,
+          history,
+          message,
           platform.configuration.apiKey,
           options
         );
-        
+
         response = llmResponse.content;
-        
+
         // Use real token counts if available, otherwise estimate
         if (llmResponse.usage) {
           inputTokens = llmResponse.usage.prompt_tokens || llmResponse.usage.input_tokens || 0;
@@ -144,30 +157,31 @@ class AIChatService {
           console.log(`AI Chat Service - Real token usage from ${platform.name}: input=${inputTokens}, output=${outputTokens}`);
         } else {
           // Fallback to estimation if no usage data available
-          inputTokens = Math.ceil(fullMessage.length / 4);
+          inputTokens = Math.ceil(estimatedInputLength / 4);
           outputTokens = Math.ceil(response.length / 4);
           console.log(`AI Chat Service - Estimated token usage: input=${inputTokens}, output=${outputTokens}`);
         }
       }
-      
+
       // Calculate estimated cost based on platform pricing
       const cost = this.calculateCost(platform, inputTokens, outputTokens);
-      
+
       console.log(`AI Chat Service - Response received from ${platform.name}`);
       console.log(`AI Chat Service - Tokens used - Input: ${inputTokens}, Output: ${outputTokens}, Cost: $${cost}`);
-      
+
       return {
         response: response.trim(),
         tokenCount: {
           input: inputTokens,
           output: outputTokens
         },
-        cost: Math.round(cost * 100) / 100 // round to 2 decimal places
+        cost: Math.round(cost * 100) / 100, // round to 2 decimal places
+        isFallback: false
       };
-      
+
     } catch (error) {
       console.error(`AI Chat Service - Error processing request with ${platform.name}:`, error);
-      
+
       // Provide fallback response if AI service fails
       const fallbackResponse = await this.generateFallbackResponse(agent.agentId, message, error.message);
 
@@ -177,15 +191,16 @@ class AIChatService {
           input: Math.ceil(message.length / 4),
           output: Math.ceil(fallbackResponse.length / 4)
         },
-        cost: 0 // No cost for fallback response
+        cost: 0, // No cost for fallback response
+        isFallback: true
       };
     }
   }
   
   // Build system prompt using agent configuration
-  static buildSystemPrompt(agent, fileAttachment) {
+  static buildSystemPrompt(agent, fileAttachment, extractedFileText) {
     let systemPrompt = agent.systemPrompt || `You are ${agent.name}, ${agent.description}`;
-    
+
     // Add ExamMaster context
     systemPrompt += `\n\nYou are working within ExamMaster, a comprehensive Computer-Based Examination (CBE) platform. The system includes:
 - Exam creation and management
@@ -199,8 +214,10 @@ class AIChatService {
 Your capabilities include: ${agent.capabilities.join(', ')}.`;
 
     // Add file attachment context if present
-    if (fileAttachment) {
-      systemPrompt += `\n\nNote: The user has attached a file "${fileAttachment.fileName}" (${fileAttachment.mimeType}). Consider this file in your response if relevant to their question.`;
+    if (fileAttachment && extractedFileText) {
+      systemPrompt += `\n\nThe user has attached a file "${fileAttachment.fileName}". Its content:\n\n${extractedFileText}\n\nConsider this content in your response.`;
+    } else if (fileAttachment) {
+      systemPrompt += `\n\nNote: The user has attached a file "${fileAttachment.fileName}" (${fileAttachment.mimeType}). Its content could not be read automatically; ask the user to paste relevant text if needed.`;
     }
 
     systemPrompt += `\n\nProvide helpful, accurate, and detailed responses. Format your responses clearly with markdown when appropriate.
@@ -230,14 +247,26 @@ This format is crucial for the system to detect and save questions properly.`;
   }
   
   // Process Ollama request (different API structure)
-  static async processOllamaRequest(message, platform, systemPrompt) {
+  static async processOllamaRequest(message, platform, systemPrompt, history) {
     console.log(`AI Chat Service - Processing Ollama request to ${platform.configuration.baseUrl}`);
-    
+
     try {
       const axios = require('axios');
+
+      let historyText = '';
+      if (history && history.length > 0) {
+        historyText += 'Previous conversation:\n';
+        for (let i = 0; i < history.length; i += 2) {
+          historyText += `User: ${history[i].content}\nAssistant: ${history[i + 1].content}\n`;
+        }
+        historyText += '\n';
+      }
+
+      const prompt = `${systemPrompt}\n\n${historyText}Current question:\nUser: ${message}\n\nAssistant:`;
+
       const response = await axios.post(`${platform.configuration.baseUrl}/api/generate`, {
         model: platform.configuration.model,
-        prompt: `${systemPrompt}\n\nUser: ${message}\n\nAssistant:`,
+        prompt,
         stream: false,
         options: {
           temperature: platform.configuration.temperature || 0.7,
@@ -247,7 +276,7 @@ This format is crucial for the system to detect and save questions properly.`;
       }, {
         timeout: 60000 // 60 second timeout
       });
-      
+
       if (response.data && response.data.response) {
         console.log(`AI Chat Service - Received response from Ollama: ${response.data.response.length} characters`);
         return response.data.response;
@@ -260,6 +289,38 @@ This format is crucial for the system to detect and save questions properly.`;
         throw new Error(`Cannot connect to Ollama server at ${platform.configuration.baseUrl}. Please ensure Ollama is running.`);
       }
       throw new Error(`Ollama request failed: ${error.message}`);
+    }
+  }
+
+  // Extract real text content from a supported uploaded file for AI context
+  static async extractFileText(fileAttachment) {
+    const SUPPORTED_MIME_TYPES = [
+      'text/plain',
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+
+    if (!SUPPORTED_MIME_TYPES.includes(fileAttachment.mimeType)) {
+      console.log(`AI Chat Service - Skipping file text extraction, unsupported mime type: ${fileAttachment.mimeType}`);
+      return null;
+    }
+
+    try {
+      const path = require('path');
+      const DocumentParsingService = require('./documentParsingService');
+      const diskPath = path.join(__dirname, '..', fileAttachment.fileUrl);
+      const text = await DocumentParsingService.parseDocument(diskPath, fileAttachment.mimeType);
+
+      const MAX_LENGTH = 8000;
+      if (text.length > MAX_LENGTH) {
+        console.log(`AI Chat Service - Truncating extracted file text from ${text.length} to ${MAX_LENGTH} characters`);
+        return `${text.substring(0, MAX_LENGTH)}\n...[truncated]`;
+      }
+      return text;
+    } catch (error) {
+      console.error(`AI Chat Service - Failed to extract file text for ${fileAttachment.fileName}:`, error.message);
+      return null;
     }
   }
   
