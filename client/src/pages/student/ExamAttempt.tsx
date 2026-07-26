@@ -3,6 +3,8 @@ import { useParams, useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { LoadingState } from "@/components/ui/loading-state"
+import { EmptyState } from "@/components/ui/empty-state"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
@@ -425,9 +427,9 @@ export function ExamAttempt() {
 
   const getTimeColor = () => {
     const percentage = (timeRemaining / (exam?.duration * 60)) * 100
-    if (percentage <= 10) return "text-red-600"
-    if (percentage <= 25) return "text-orange-600"
-    return "text-green-600"
+    if (percentage <= 10) return "text-status-danger-foreground"
+    if (percentage <= 25) return "text-status-warning-foreground"
+    return "text-status-success-foreground"
   }
 
   const currentQuestion = questions[currentQuestionIndex]
@@ -435,32 +437,28 @@ export function ExamAttempt() {
   const answeredCount = Object.keys(answers).length
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    )
+    return <LoadingState label="Loading exam..." className="min-h-screen" />
   }
 
   if (!exam ) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-2">Exam not found</h2>
-          <Button onClick={() => navigate('/student')}>Return to Dashboard</Button>
-        </div>
-      </div>
+      <EmptyState
+        icon={AlertTriangle}
+        title="Exam not found"
+        action={{ label: "Return to Dashboard", onClick: () => navigate('/student') }}
+        className="min-h-screen"
+      />
     )
   }
 
   if (!currentQuestion) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-2">Questions not found</h2>
-          <Button onClick={() => navigate('/student')}>Return to Dashboard</Button>
-        </div>
-      </div>
+      <EmptyState
+        icon={AlertTriangle}
+        title="Questions not found"
+        action={{ label: "Return to Dashboard", onClick: () => navigate('/student') }}
+        className="min-h-screen"
+      />
     )
   }
 
@@ -554,8 +552,8 @@ export function ExamAttempt() {
                       variant={isCurrent ? "default" : "outline"}
                       size="sm"
                       className={`relative h-8 w-8 p-0 ${
-                        isAnswered ? "bg-green-100 border-green-300" : ""
-                      } ${isFlagged ? "bg-yellow-100 border-yellow-300" : ""}`}
+                        isAnswered ? "bg-status-success/20 border-status-success" : ""
+                      } ${isFlagged ? "bg-status-warning/20 border-status-warning" : ""}`}
                       onClick={() => {
                         if (exam.allowReview || index >= currentQuestionIndex) {
                           setCurrentQuestionIndex(index)
@@ -564,10 +562,10 @@ export function ExamAttempt() {
                     >
                       {index + 1}
                       {isFlagged && (
-                        <Flag className="absolute -top-1 -right-1 h-3 w-3 text-yellow-600" />
+                        <Flag className="absolute -top-1 -right-1 h-3 w-3 text-status-warning-foreground" />
                       )}
                       {isAnswered && (
-                        <CheckCircle className="absolute -bottom-1 -right-1 h-3 w-3 text-green-600" />
+                        <CheckCircle className="absolute -bottom-1 -right-1 h-3 w-3 text-status-success-foreground" />
                       )}
                     </Button>
                   )
@@ -589,7 +587,7 @@ export function ExamAttempt() {
                     variant="outline"
                     size="sm"
                     onClick={() => handleFlagQuestion(currentQuestion._id)}
-                    className={flaggedQuestions.has(currentQuestion._id) ? "bg-yellow-100" : ""}
+                    className={flaggedQuestions.has(currentQuestion._id) ? "bg-status-warning/20" : ""}
                   >
                     <Flag className="h-4 w-4" />
                     {flaggedQuestions.has(currentQuestion._id) ? "Unflag" : "Flag"}
