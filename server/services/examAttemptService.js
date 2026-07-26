@@ -753,9 +753,13 @@ class ExamAttemptService {
         throw new Error('Exam attempt not found');
       }
 
-      // Validate that attempt is completed
-      if (attempt.status !== 'completed') {
-        throw new Error('Can only grade theory questions for completed exam attempts');
+      if (!attempt.examId || attempt.examId.createdBy.toString() !== adminId.toString()) {
+        throw new Error('You are not authorized to grade this exam attempt');
+      }
+
+      // Validate that attempt is awaiting grading
+      if (attempt.status !== 'pending-review') {
+        throw new Error('Can only grade theory questions for attempts pending review');
       }
 
       // Extract theory questions that need grading
@@ -811,6 +815,10 @@ class ExamAttemptService {
         gradedAt: aiGradingResults.gradedAt
       };
 
+      // If every question graded cleanly this time, the attempt is done; otherwise it stays pending-review
+      const stillHasErrors = aiGradingResults.results.some(result => result.error);
+      attempt.status = stillHasErrors ? 'pending-review' : 'completed';
+
       await attempt.save();
 
       console.log(`ExamAttemptService: Theory questions graded successfully. New total score: ${newTotalScore}`);
@@ -820,11 +828,111 @@ class ExamAttemptService {
         aiGradingResults: aiGradingResults,
         totalScore: newTotalScore,
         updatedPercentage: attempt.percentage,
+        status: attempt.status,
         theoryQuestionsGraded: theoryQuestions.length
       };
 
     } catch (error) {
       console.error('ExamAttemptService: Error grading theory questions:', error.message);
+      throw error;
+    }
+  }
+
+  // Submit manual grades for all theory questions in a pending-review attempt
+  static async submitManualGrades(attemptId, adminId, grades) {
+    try {
+      console.log('ExamAttemptService: Submitting manual grades for attempt:', attemptId);
+
+      if (!mongoose.Types.ObjectId.isValid(attemptId)) {
+        throw new Error('Invalid attempt ID format');
+      }
+
+      if (!Array.isArray(grades) || grades.length === 0) {
+        throw new Error('At least one grade is required');
+      }
+
+      const attempt = await ExamAttempt.findById(attemptId).populate({
+        path: 'examId',
+        populate: {
+          path: 'questions'
+        }
+      });
+
+      if (!attempt) {
+        throw new Error('Exam attempt not found');
+      }
+
+      if (!attempt.examId || attempt.examId.createdBy.toString() !== adminId.toString()) {
+        throw new Error('You are not authorized to grade this exam attempt');
+      }
+
+      if (attempt.status !== 'pending-review') {
+        throw new Error('Can only submit manual grades for attempts pending review');
+      }
+
+      const questionsById = new Map(
+        (attempt.examId.questions || []).map(question => [question._id.toString(), question])
+      );
+
+      const results = [];
+      let totalScore = 0;
+      let totalMaxScore = 0;
+
+      for (const grade of grades) {
+        const question = questionsById.get(grade.questionId);
+        if (!question || question.type !== 'theory') {
+          throw new Error(`Question ${grade.questionId} is not a theory question in this exam`);
+        }
+
+        const score = Number(grade.score);
+        if (Number.isNaN(score) || score < 0 || score > question.marks) {
+          throw new Error(`Score for question ${grade.questionId} must be between 0 and ${question.marks}`);
+        }
+
+        results.push({
+          questionId: question._id,
+          score: score,
+          maxScore: question.marks,
+          feedback: grade.feedback || '',
+          gradedBy: adminId,
+          gradedAt: new Date()
+        });
+
+        totalScore += score;
+        totalMaxScore += question.marks;
+      }
+
+      // Recombine with the non-theory portion already scored at submission time
+      let currentNonTheoryScore = attempt.score || 0;
+      if (attempt.aiGradingResults && attempt.aiGradingResults.totalScore) {
+        currentNonTheoryScore -= attempt.aiGradingResults.totalScore;
+      }
+
+      const newTotalScore = currentNonTheoryScore + totalScore;
+      const newPercentage = attempt.examId.totalMarks ? (newTotalScore / attempt.examId.totalMarks) * 100 : 0;
+
+      attempt.score = newTotalScore;
+      attempt.percentage = Math.round(newPercentage * 100) / 100;
+      attempt.manualGradingResults = {
+        totalScore: totalScore,
+        totalMaxScore: totalMaxScore,
+        results: results,
+        gradedAt: new Date()
+      };
+      attempt.status = 'completed';
+
+      await attempt.save();
+
+      console.log(`ExamAttemptService: Manual grades submitted successfully. New total score: ${newTotalScore}`);
+
+      return {
+        success: true,
+        totalScore: newTotalScore,
+        updatedPercentage: attempt.percentage,
+        status: attempt.status
+      };
+    } catch (error) {
+      console.error('ExamAttemptService: Error submitting manual grades:', error.message);
       throw error;
     }
   }
