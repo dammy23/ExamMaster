@@ -47,10 +47,24 @@ export const sendChatMessage = async (data: { message: string; modelId: string; 
 // Description: Get chat history with pagination for current user
 // Endpoint: GET /api/ai-chat/history
 // Request: { page?: number, limit?: number }
-// Response: { messages: Array<{ _id: string, message: string, response: string, timestamp: Date, modelId: string, agentId: string }>, pagination: { currentPage: number, totalPages: number, totalCount: number, hasMore: boolean, limit: number } }
+// Response: { messages: Array<{ _id: string, message: string, response: string, timestamp: Date, modelId: string, agentId: string, isFallback: boolean, processingTime?: number, tokenCount?: { input: number, output: number } }>, pagination: { currentPage: number, totalPages: number, totalCount: number, hasMore: boolean, limit: number } }
 export const getChatHistory = async (params?: { page?: number; limit?: number }) => {
   try {
     const response = await api.get('/api/ai-chat/history', { params });
+    return response.data.data;
+  } catch (error) {
+    console.error(error);
+    throw new Error(error?.response?.data?.error || error.message);
+  }
+};
+
+// Description: Clear all chat history for current user
+// Endpoint: DELETE /api/ai-chat/history
+// Request: {}
+// Response: { success: boolean }
+export const clearChatHistory = async () => {
+  try {
+    const response = await api.delete('/api/ai-chat/history');
     return response.data.data;
   } catch (error) {
     console.error(error);
