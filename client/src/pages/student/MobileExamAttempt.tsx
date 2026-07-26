@@ -4,7 +4,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -32,7 +31,6 @@ import {
   startExamAttempt,
   saveExamAnswer,
   submitExamAttempt,
-  logExamActivity,
   type ExamQuestion,
 } from "@/api/examAttempts";
 import { getExamById } from "@/api/exams";
@@ -93,9 +91,7 @@ export function MobileExamAttempt() {
     if (attemptId && currentQuestion) {
       const answer = answers[currentQuestion._id];
       if (answer !== undefined) {
-        saveExamAnswer(attemptId, currentQuestion._id, answer).catch((error) =>
-          console.error("Error saving answer:", error),
-        );
+        saveExamAnswer(attemptId, currentQuestion._id, answer).catch(() => {});
       }
     }
   }, [answers, currentQuestionIndex, attemptId]);
@@ -127,7 +123,6 @@ export function MobileExamAttempt() {
         description: "Good luck! Remember to submit before time runs out.",
       });
     } catch (error: any) {
-      console.error("Error initializing exam:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to start exam",
@@ -148,7 +143,6 @@ export function MobileExamAttempt() {
       });
       navigate("/student/results");
     } catch (error: any) {
-      console.error("Error auto-submitting exam:", error);
       toast({
         title: "Error",
         description: "Failed to submit exam automatically",
@@ -166,7 +160,6 @@ export function MobileExamAttempt() {
       });
       navigate("/student/results");
     } catch (error: any) {
-      console.error("Error submitting exam:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to submit exam",
