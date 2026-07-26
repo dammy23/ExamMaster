@@ -418,7 +418,9 @@ export function ExamAttempt() {
 
       toast({
         title: "Exam Submitted",
-        description: `Your score: ${result.score}/${exam.totalMarks} (${result.percentage}%)`,
+        description: exam.showResultsImmediately
+          ? `Your score: ${result.score}/${exam.totalMarks} (${result.percentage}%)`
+          : "Your exam has been submitted successfully.",
       })
       
       if (isFullscreenMode) {
@@ -584,7 +586,11 @@ export function ExamAttempt() {
                       className={`relative h-8 w-8 p-0 ${
                         isAnswered ? "bg-green-100 border-green-300" : ""
                       } ${isFlagged ? "bg-yellow-100 border-yellow-300" : ""}`}
-                      onClick={() => setCurrentQuestionIndex(index)}
+                      onClick={() => {
+                        if (exam.allowReview || index >= currentQuestionIndex) {
+                          setCurrentQuestionIndex(index)
+                        }
+                      }}
                     >
                       {index + 1}
                       {isFlagged && (
@@ -675,7 +681,7 @@ export function ExamAttempt() {
                 <Button
                   variant="outline"
                   onClick={() => setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))}
-                  disabled={currentQuestionIndex === 0}
+                  disabled={currentQuestionIndex === 0 || !exam.allowReview}
                   className="gap-2"
                 >
                   <ChevronLeft className="h-4 w-4" />
