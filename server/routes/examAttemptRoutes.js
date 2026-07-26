@@ -520,7 +520,51 @@ router.get('/student/recent-results', requireUser, async (req, res) => {
   }
 });
 
-// Get recent activity for admin dashboard  
+// Get full detail (including theory question feedback) for a single completed attempt
+router.get('/student/attempt/:attemptId', requireUser, async (req, res) => {
+  try {
+    const { attemptId } = req.params;
+    console.log(`Getting attempt detail for student: attempt=${attemptId} by user: ${req.user.email}`);
+
+    if (req.user.role === 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only students can access their own attempt detail'
+      });
+    }
+
+    const attempt = await ExamAttemptService.getAttemptDetailForStudent(attemptId, req.user._id);
+
+    return res.status(200).json({
+      success: true,
+      attempt: attempt
+    });
+  } catch (error) {
+    console.error(`Error getting attempt detail for student ${req.user.email}:`, error.message);
+
+    if (error.message === 'Exam attempt not found' || error.message === 'Invalid attempt ID format') {
+      return res.status(404).json({
+        success: false,
+        error: error.message
+      });
+    }
+
+    if (error.message.includes('not authorized') || error.message.includes('not available') ||
+        error.message.includes('not been fully graded')) {
+      return res.status(403).json({
+        success: false,
+        error: error.message
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Get recent activity for admin dashboard
 router.get('/admin/recent-activity', requireUser, async (req, res) => {
   try {
     console.log(`Getting recent activity for admin: ${req.user.email}`);
