@@ -12,6 +12,7 @@ if (!process.env.JWT_SECRET) {
   process.exit(-1);
 }
 
+const http = require("http");
 const mongoose = require("mongoose");
 const express = require("express");
 const session = require("express-session");
@@ -30,6 +31,7 @@ if (!process.env.DATABASE_URL) {
 }
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 3000;
 
 console.log("Connecting to database...");
@@ -72,6 +74,10 @@ connectDB().then(() => {
   app.use('/api/ai-platforms', require('./routes/aiPlatformRoutes.js'));
   app.use('/api/ai-chat', require('./routes/aiChatRoutes.js'));
 
+  // Initialize Socket.IO for real-time admin monitoring
+  const socketManager = require('./sockets/socketManager.js');
+  socketManager.init(server);
+
   // Legacy download route handler (redirect to reports download)
   app.get('/api/downloads/:filename', (req, res) => {
     console.log(`Legacy download route accessed: ${req.params.filename}, redirecting to reports download`);
@@ -89,7 +95,7 @@ connectDB().then(() => {
 
   console.log("Starting server on port", PORT);
 
-  app.listen(PORT, () => {
+  server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
     console.log("To create initial users, visit: http://localhost:5173/seeding");
   });
