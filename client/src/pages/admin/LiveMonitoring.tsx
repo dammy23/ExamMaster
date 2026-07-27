@@ -21,6 +21,7 @@ interface AlertEntry {
   attemptId: string
   activity: string
   timestamp: string
+  severity: 'high' | 'medium'
 }
 
 function formatElapsed(startTime: string, now: number) {
@@ -103,7 +104,7 @@ export function LiveMonitoring() {
 
       if (payload.isViolation) {
         setAlerts(prev => [
-          { attemptId: payload.attemptId, activity: payload.activity, timestamp: payload.timestamp },
+          { attemptId: payload.attemptId, activity: payload.activity, timestamp: payload.timestamp, severity: payload.severity },
           ...prev
         ].slice(0, 20))
       }
@@ -250,7 +251,12 @@ export function LiveMonitoring() {
             <div className="space-y-2">
               {alerts.map((alert, index) => (
                 <div key={index} className="flex items-center justify-between text-sm border-b last:border-b-0 pb-2 last:pb-0">
-                  <span>{alert.activity.replace(/_/g, ' ')}</span>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={alert.severity === 'high' ? 'destructive' : 'secondary'}>
+                      {alert.severity === 'high' ? 'High' : 'Medium'}
+                    </Badge>
+                    <span>{alert.activity.replace(/_/g, ' ')}</span>
+                  </div>
                   <span className="text-muted-foreground">{new Date(alert.timestamp).toLocaleTimeString()}</span>
                 </div>
               ))}
