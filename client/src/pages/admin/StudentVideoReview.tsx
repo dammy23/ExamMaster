@@ -54,11 +54,13 @@ interface ExamAttemptReview {
   }
   screenRecording?: {
     enabled: boolean
-    videoUrl?: string
-    recordingStartTime?: string
-    recordingEndTime?: string
+    segments: Array<{
+      videoUrl: string
+      fileSize: number
+      startTime: string
+      endTime: string
+    }>
     recordingStatus: string
-    fileSize?: number
     reviewed?: boolean
     reviewedAt?: string
   }
@@ -431,8 +433,17 @@ export function StudentVideoReview() {
                 </CardHeader>
                 <CardContent>
                   {selectedAttempt.screenRecording?.enabled ? (
-                    selectedAttempt.screenRecording.videoUrl ? (
-                      renderVideoPlayer(selectedAttempt.screenRecording.videoUrl)
+                    selectedAttempt.screenRecording.segments && selectedAttempt.screenRecording.segments.length > 0 ? (
+                      <div className="space-y-6">
+                        {selectedAttempt.screenRecording.segments.map((segment, index) => (
+                          <div key={index} className="space-y-2">
+                            <p className="text-sm font-medium">
+                              Segment {index + 1} · {new Date(segment.startTime).toLocaleTimeString()}–{new Date(segment.endTime).toLocaleTimeString()}
+                            </p>
+                            {renderVideoPlayer(segment.videoUrl)}
+                          </div>
+                        ))}
+                      </div>
                     ) : (
                       <div className="text-center py-8 text-muted-foreground">
                         <Monitor className="h-8 w-8 mx-auto mb-2 opacity-50" />
