@@ -31,6 +31,7 @@ import { GradeAttempt } from "./pages/admin/GradeAttempt"
 import { DatabaseSeeding } from "./pages/admin/DatabaseSeeding"
 import { SettingsPage } from "./pages/admin/SettingsPage"
 import { AIChat } from "./pages/admin/AIChat"
+import { LiveMonitoring } from "./pages/admin/LiveMonitoring"
 
 function App() {
   return (
@@ -95,6 +96,7 @@ function App() {
             <Route path="admin/students" element={<StudentManagement />} />
             <Route path="admin/grading" element={<GradingQueue />} />
             <Route path="admin/grading/:attemptId" element={<GradeAttempt />} />
+            <Route path="admin/live-monitoring" element={<LiveMonitoring />} />
             <Route path="admin/reports" element={<Reports />} />
             <Route path="admin/ai-chat" element={<AIChat />} />
             <Route path="admin/settings" element={<SettingsPage />} />

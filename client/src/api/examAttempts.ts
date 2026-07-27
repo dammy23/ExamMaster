@@ -348,3 +348,30 @@ export const getAttemptDetail = async (attemptId: string) => {
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
+
+export interface LiveAttempt {
+  _id: string;
+  examId: string;
+  examTitle: string;
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  startTime: string;
+  tabSwitches: number;
+  latestActivity: { activity: string; timestamp: string } | null;
+  updatedAt: string;
+}
+
+// Description: Get all currently in-progress exam attempts across every exam this admin owns
+// Endpoint: GET /api/exam-attempts/admin/live
+// Request: {}
+// Response: { success: boolean, attempts: LiveAttempt[] }
+export const getLiveAttempts = async () => {
+  try {
+    const response = await api.get('/api/exam-attempts/admin/live');
+    return response.data;
+  } catch (error: any) {
+    console.error('Get live attempts error:', error);
+    throw new Error(error?.response?.data?.error || error.message);
+  }
+};

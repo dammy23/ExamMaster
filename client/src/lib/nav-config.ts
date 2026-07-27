@@ -12,6 +12,7 @@ import {
   TrendingUp,
   Bookmark,
   MessageSquare,
+  Activity,
 } from "lucide-react"
 
 export interface NavLeaf {
@@ -46,6 +47,7 @@ export const adminNavItems: NavEntry[] = [
   { title: "Subjects", href: "/admin/subjects", icon: Bookmark },
   { title: "Students", href: "/admin/students", icon: Users },
   { title: "Grading", href: "/admin/grading", icon: ClipboardCheck },
+  { title: "Live Monitoring", href: "/admin/live-monitoring", icon: Activity },
   { title: "Reports", href: "/admin/reports", icon: BarChart3 },
   { title: "AI Chat", href: "/admin/ai-chat", icon: MessageSquare },
   { title: "Settings", href: "/admin/settings", icon: Settings },
