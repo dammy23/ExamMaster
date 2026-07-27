@@ -30,6 +30,7 @@ router.post('/start', requireUser, async (req, res) => {
       attemptId: result.attemptId,
       questions: result.questions,
       videoRecording: result.videoRecording,
+      screenRecording: result.screenRecording,
       attemptNumber: result.attemptNumber,
       maxAttempts: result.maxAttempts
     });

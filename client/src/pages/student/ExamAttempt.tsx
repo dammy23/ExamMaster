@@ -28,7 +28,8 @@ import {
   Send,
   AlertTriangle,
   CheckCircle,
-  Video
+  Video,
+  Monitor
 } from "lucide-react"
 import {
   startExamAttempt,
@@ -40,6 +41,7 @@ import {
 import { getExamById } from "@/api/exams"
 import { useToast } from "@/hooks/useToast"
 import { VideoRecorder } from "@/components/VideoRecorder"
+import { ScreenRecorder } from "@/components/ScreenRecorder"
 
 export function ExamAttempt() {
   const { id } = useParams<{ id: string }>()
@@ -59,6 +61,7 @@ export function ExamAttempt() {
   const [securityWarnings, setSecurityWarnings] = useState<string[]>([])
   const [focusLostCount, setFocusLostCount] = useState(0)
   const [videoRecordingEnabled, setVideoRecordingEnabled] = useState(false)
+  const [screenRecordingEnabled, setScreenRecordingEnabled] = useState(false)
   const [attemptNumber, setAttemptNumber] = useState(1)
   const [maxAttempts, setMaxAttempts] = useState(1)
   const [isFullscreenMode, setIsFullscreenMode] = useState(false)
@@ -320,6 +323,7 @@ export function ExamAttempt() {
       setAttemptId(attemptData.attemptId)
       setTimeRemaining(attemptData.remainingTime || examData.duration * 60) // Use remainingTime from attempt or fallback to full duration
       setVideoRecordingEnabled(attemptData.videoRecording || false)
+      setScreenRecordingEnabled(attemptData.screenRecording || false)
       setAttemptNumber(attemptData.attemptNumber || 1)
       setMaxAttempts(attemptData.maxAttempts || 1)
     } catch (error: any) {
@@ -492,6 +496,12 @@ export function ExamAttempt() {
                 <Badge variant="secondary" className="gap-1">
                   <Video className="h-3 w-3" />
                   Recording
+                </Badge>
+              )}
+              {screenRecordingEnabled && (
+                <Badge variant="secondary" className="gap-1">
+                  <Monitor className="h-3 w-3" />
+                  Screen Recording
                 </Badge>
               )}
             </div>
@@ -709,6 +719,10 @@ export function ExamAttempt() {
       {/* Floating Video Recorder (if enabled) */}
       {videoRecordingEnabled && (
         <VideoRecorder attemptId={attemptId} />
+      )}
+      {/* Floating Screen Recorder (if enabled) -- independent of video recording, can run alongside it */}
+      {screenRecordingEnabled && (
+        <ScreenRecorder attemptId={attemptId} />
       )}
     </div>
   )
