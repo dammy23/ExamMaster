@@ -5,6 +5,8 @@ const User = require('../models/User.js');
 const AIGradingService = require('./aiGradingService.js');
 const emailService = require('./emailService.js');
 const mongoose = require('mongoose');
+const socketManager = require('../sockets/socketManager.js');
+const { isViolation } = require('../sockets/activityClassifier.js');
 
 class ExamAttemptService {
 
@@ -174,7 +176,19 @@ class ExamAttemptService {
 
       console.log('ExamAttemptService: Exam attempt started successfully with ID:', savedAttempt._id);
       console.log(`ExamAttemptService: Loaded ${questions.length} questions for exam attempt`);
-      
+
+      const student = await User.findById(studentId).select('name email');
+      socketManager.emitToAdmin(exam.createdBy.toString(), 'attempt:started', {
+        attemptId: savedAttempt._id.toString(),
+        examId: exam._id.toString(),
+        examTitle: exam.title,
+        studentId: studentId.toString(),
+        studentName: student?.name || student?.email,
+        studentEmail: student?.email,
+        startTime: savedAttempt.startTime,
+        attemptNumber: nextAttemptNumber
+      });
+
       return {
         attemptId: savedAttempt._id.toString(),
         questions: questions,
@@ -398,6 +412,18 @@ class ExamAttemptService {
 
       console.log('ExamAttemptService: Exam attempt submitted successfully with total score:', totalScore);
 
+      socketManager.emitToAdmin(attempt.examId.createdBy.toString(), 'attempt:ended', {
+        attemptId: attempt._id.toString(),
+        examId: attempt.examId._id.toString(),
+        examTitle: attempt.examId.title,
+        studentId: attempt.studentId.toString(),
+        status: attempt.status,
+        score: totalScore,
+        percentage: attempt.percentage,
+        endTime: attempt.endTime,
+        timeSpent: attempt.timeSpent
+      });
+
       // Send email results if "Show Results Immediately" is enabled — only once the score is actually final
       if (exam && exam.showResultsImmediately && !needsReview) {
         console.log('ExamAttemptService: Sending email results as showResultsImmediately is enabled');
@@ -516,7 +542,7 @@ class ExamAttemptService {
         throw new Error('Invalid attempt ID format');
       }
 
-      const attempt = await ExamAttempt.findById(attemptId);
+      const attempt = await ExamAttempt.findById(attemptId).populate('examId', 'title createdBy');
       if (!attempt) {
         throw new Error('Exam attempt not found');
       }
@@ -527,10 +553,8 @@ class ExamAttemptService {
       }
 
       // Log the activity
-      attempt.activityLog.push({
-        activity,
-        timestamp: new Date()
-      });
+      const logEntry = { activity, timestamp: new Date() };
+      attempt.activityLog.push(logEntry);
 
       // Increment tab switches if it's a tab switch activity
       if (activity === 'tab_switch') {
@@ -539,10 +563,59 @@ class ExamAttemptService {
 
       await attempt.save();
 
+      if (attempt.examId && attempt.examId.createdBy) {
+        socketManager.emitToAdmin(attempt.examId.createdBy.toString(), 'attempt:activity', {
+          attemptId: attempt._id.toString(),
+          examId: attempt.examId._id.toString(),
+          studentId: attempt.studentId.toString(),
+          activity,
+          timestamp: logEntry.timestamp,
+          isViolation: isViolation(activity),
+          tabSwitches: attempt.tabSwitches
+        });
+      }
+
       console.log('ExamAttemptService: Activity logged successfully');
       return { success: true };
     } catch (error) {
       console.error('ExamAttemptService: Error logging activity:', error.message);
+      throw error;
+    }
+  }
+
+  // Get all currently in-progress (live) exam attempts across every exam this admin owns
+  static async getLiveAttempts(adminId) {
+    try {
+      console.log('ExamAttemptService: Getting live attempts for admin:', adminId);
+
+      const adminExams = await Exam.find({ createdBy: adminId }).select('_id title');
+      const examIds = adminExams.map(exam => exam._id);
+
+      if (examIds.length === 0) {
+        return [];
+      }
+
+      const attempts = await ExamAttempt.find({ examId: { $in: examIds }, status: 'in-progress' })
+        .populate('studentId', 'name email')
+        .populate('examId', 'title')
+        .sort({ startTime: -1 });
+
+      return attempts.map(attempt => ({
+        _id: attempt._id.toString(),
+        examId: attempt.examId._id.toString(),
+        examTitle: attempt.examId.title,
+        studentId: attempt.studentId._id.toString(),
+        studentName: attempt.studentId.name,
+        studentEmail: attempt.studentId.email,
+        startTime: attempt.startTime,
+        tabSwitches: attempt.tabSwitches,
+        latestActivity: attempt.activityLog.length > 0
+          ? attempt.activityLog[attempt.activityLog.length - 1]
+          : null,
+        updatedAt: attempt.updatedAt
+      }));
+    } catch (error) {
+      console.error('ExamAttemptService: Error getting live attempts:', error.message);
       throw error;
     }
   }
