@@ -6,7 +6,7 @@ const AIGradingService = require('./aiGradingService.js');
 const emailService = require('./emailService.js');
 const mongoose = require('mongoose');
 const socketManager = require('../sockets/socketManager.js');
-const { isViolation } = require('../sockets/activityClassifier.js');
+const { classifyActivity } = require('../sockets/activityClassifier.js');
 
 class ExamAttemptService {
 
@@ -570,13 +570,15 @@ class ExamAttemptService {
       await attempt.save();
 
       if (attempt.examId && attempt.examId.createdBy) {
+        const classification = classifyActivity(activity);
         socketManager.emitToAdmin(attempt.examId.createdBy.toString(), 'attempt:activity', {
           attemptId: attempt._id.toString(),
           examId: attempt.examId._id.toString(),
           studentId: attempt.studentId.toString(),
           activity,
           timestamp: logEntry.timestamp,
-          isViolation: isViolation(activity),
+          isViolation: classification.isViolation,
+          severity: classification.severity,
           tabSwitches: attempt.tabSwitches
         });
       }

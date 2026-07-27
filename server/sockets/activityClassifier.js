@@ -1,4 +1,4 @@
-const VIOLATION_ACTIVITIES = new Set([
+const HIGH_SEVERITY_ACTIVITIES = new Set([
   'tab_switch',
   'focus_lost',
   'right_click_attempt',
@@ -6,14 +6,26 @@ const VIOLATION_ACTIVITIES = new Set([
   'alt_tab_attempt',
   'print_screen_attempt',
   'fullscreen_exit',
-  'fullscreen_failed'
+  'fullscreen_failed',
+  'multi_monitor_detected',
+  'devtools_open_detected'
 ]);
 
-function isViolation(activity) {
-  if (VIOLATION_ACTIVITIES.has(activity)) {
-    return true;
+const MEDIUM_SEVERITY_ACTIVITIES = new Set([
+  'vm_indicator_detected',
+  'suspicious_extension_detected'
+]);
+
+function classifyActivity(activity) {
+  const isBlockedShortcut = typeof activity === 'string' && activity.startsWith('blocked_shortcut_');
+
+  if (HIGH_SEVERITY_ACTIVITIES.has(activity) || isBlockedShortcut) {
+    return { isViolation: true, severity: 'high' };
   }
-  return typeof activity === 'string' && activity.startsWith('blocked_shortcut_');
+  if (MEDIUM_SEVERITY_ACTIVITIES.has(activity)) {
+    return { isViolation: true, severity: 'medium' };
+  }
+  return { isViolation: false, severity: undefined };
 }
 
-module.exports = { isViolation };
+module.exports = { classifyActivity };
