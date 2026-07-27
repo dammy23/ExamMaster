@@ -66,51 +66,7 @@ class ExamAttemptService {
       const activeAttempt = existingAttempts.find(attempt => attempt.status === 'in-progress');
       if (activeAttempt) {
         console.log(`Student has existing active attempt: ${activeAttempt._id}`);
-        
-        // Calculate remaining time
-        const startTime = new Date(activeAttempt.startTime);
-        const now = new Date();
-        const elapsedSeconds = Math.floor((now.getTime() - startTime.getTime()) / 1000);
-        const totalTimeSeconds = exam.duration * 60;
-        const remainingTime = Math.max(0, totalTimeSeconds - elapsedSeconds);
-        
-        // Use the selected questions stored in the attempt
-        // If no selectedQuestions stored (old attempts), use all exam questions
-        let questionsToReturn;
-        if (activeAttempt.selectedQuestions && activeAttempt.selectedQuestions.length > 0) {
-          // Get the questions in the SAME ORDER they were originally selected
-          // Create a map for quick lookup
-          const questionMap = new Map(exam.questions.map(q => [q._id.toString(), q]));
-          
-          // Map the stored question IDs back to full question objects in original order
-          questionsToReturn = activeAttempt.selectedQuestions
-            .map(id => questionMap.get(id.toString()))
-            .filter(q => q !== undefined); // Filter out any questions that no longer exist
-        } else {
-          // Fallback to all questions for backward compatibility
-          questionsToReturn = exam.questions;
-        }
-        
-        const questions = questionsToReturn.map(question => {
-          const storedOrder = activeAttempt.optionOrders?.get(question._id.toString());
-          return {
-            _id: question._id,
-            type: question.type,
-            question: question.question,
-            options: storedOrder || question.options || [],
-            marks: question.marks,
-            difficulty: question.difficulty
-          };
-        });
-        
-        return {
-          attemptId: activeAttempt._id.toString(),
-          questions: questions,
-          videoRecording: exam.videoRecording,
-          attemptNumber: activeAttempt.attemptNumber,
-          maxAttempts: exam.maxAttempts,
-          remainingTime: remainingTime
-        };
+        return this.buildAttemptResponse(activeAttempt, exam);
       }
 
       // Check attempt limits (skip if unlimited attempts - maxAttempts === 0)
@@ -148,7 +104,24 @@ class ExamAttemptService {
         }
       });
 
-      const savedAttempt = await attempt.save();
+      let savedAttempt;
+      try {
+        savedAttempt = await attempt.save();
+      } catch (error) {
+        // Two near-simultaneous requests (e.g. React StrictMode's dev-only double-invoked
+        // mount effect, or a duplicate tab) can both pass the "no active attempt" check above
+        // before either commits. The partial unique index on {examId, studentId, status:
+        // 'in-progress'} correctly rejects the loser with E11000 — recover by returning the
+        // winning attempt instead of surfacing a raw DB error to the student.
+        if (error.code === 11000) {
+          console.log(`ExamAttemptService: Duplicate-key race creating attempt for exam ${examId}, student ${studentId} — recovering existing attempt`);
+          const winningAttempt = await ExamAttempt.findOne({ examId, studentId, status: 'in-progress' });
+          if (winningAttempt) {
+            return this.buildAttemptResponse(winningAttempt, exam);
+          }
+        }
+        throw error;
+      }
 
       // Get questions for this exam
       let selectedQuestions = [...exam.questions];
@@ -214,6 +187,56 @@ class ExamAttemptService {
       console.error('ExamAttemptService: Error starting exam attempt:', error.message);
       throw error;
     }
+  }
+
+  // Build the startAttempt response shape (remainingTime + ordered questions) for an
+  // already-existing in-progress attempt — shared by the "attempt already exists" check
+  // and the duplicate-key race recovery path, both of which resolve to the same attempt.
+  static buildAttemptResponse(activeAttempt, exam) {
+    // Calculate remaining time
+    const startTime = new Date(activeAttempt.startTime);
+    const now = new Date();
+    const elapsedSeconds = Math.floor((now.getTime() - startTime.getTime()) / 1000);
+    const totalTimeSeconds = exam.duration * 60;
+    const remainingTime = Math.max(0, totalTimeSeconds - elapsedSeconds);
+
+    // Use the selected questions stored in the attempt
+    // If no selectedQuestions stored (old attempts), use all exam questions
+    let questionsToReturn;
+    if (activeAttempt.selectedQuestions && activeAttempt.selectedQuestions.length > 0) {
+      // Get the questions in the SAME ORDER they were originally selected
+      // Create a map for quick lookup
+      const questionMap = new Map(exam.questions.map(q => [q._id.toString(), q]));
+
+      // Map the stored question IDs back to full question objects in original order
+      questionsToReturn = activeAttempt.selectedQuestions
+        .map(id => questionMap.get(id.toString()))
+        .filter(q => q !== undefined); // Filter out any questions that no longer exist
+    } else {
+      // Fallback to all questions for backward compatibility
+      questionsToReturn = exam.questions;
+    }
+
+    const questions = questionsToReturn.map(question => {
+      const storedOrder = activeAttempt.optionOrders?.get(question._id.toString());
+      return {
+        _id: question._id,
+        type: question.type,
+        question: question.question,
+        options: storedOrder || question.options || [],
+        marks: question.marks,
+        difficulty: question.difficulty
+      };
+    });
+
+    return {
+      attemptId: activeAttempt._id.toString(),
+      questions: questions,
+      videoRecording: exam.videoRecording,
+      attemptNumber: activeAttempt.attemptNumber,
+      maxAttempts: exam.maxAttempts,
+      remainingTime: remainingTime
+    };
   }
 
   // Save answer for a question
