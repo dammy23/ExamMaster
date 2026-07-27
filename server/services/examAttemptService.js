@@ -103,6 +103,10 @@ class ExamAttemptService {
         videoRecording: {
           enabled: exam.videoRecording,
           recordingStatus: exam.videoRecording ? 'not_started' : undefined
+        },
+        screenRecording: {
+          enabled: exam.screenRecording,
+          recordingStatus: exam.screenRecording ? 'not_started' : undefined
         }
       });
 
@@ -193,6 +197,7 @@ class ExamAttemptService {
         attemptId: savedAttempt._id.toString(),
         questions: questions,
         videoRecording: exam.videoRecording,
+        screenRecording: exam.screenRecording,
         attemptNumber: nextAttemptNumber,
         maxAttempts: exam.maxAttempts,
         remainingTime: remainingTime
@@ -247,6 +252,7 @@ class ExamAttemptService {
       attemptId: activeAttempt._id.toString(),
       questions: questions,
       videoRecording: exam.videoRecording,
+      screenRecording: exam.screenRecording,
       attemptNumber: activeAttempt.attemptNumber,
       maxAttempts: exam.maxAttempts,
       remainingTime: remainingTime

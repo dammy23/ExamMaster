@@ -102,6 +102,38 @@ const examAttemptSchema = new mongoose.Schema({
       type: Date
     }
   },
+  screenRecording: {
+    enabled: {
+      type: Boolean,
+      default: false
+    },
+    videoUrl: {
+      type: String,
+      trim: true
+    },
+    recordingStartTime: {
+      type: Date
+    },
+    recordingEndTime: {
+      type: Date
+    },
+    recordingStatus: {
+      type: String,
+      enum: ['not_started', 'recording', 'completed', 'failed'],
+      default: 'not_started'
+    },
+    fileSize: {
+      type: Number, // in bytes
+      min: 0
+    },
+    reviewed: {
+      type: Boolean,
+      default: false
+    },
+    reviewedAt: {
+      type: Date
+    }
+  },
   aiGradingResults: {
     totalScore: {
       type: Number,

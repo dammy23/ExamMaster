@@ -122,6 +122,10 @@ const examSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  screenRecording: {
+    type: Boolean,
+    default: false
+  },
   mobileEnabled: {
     type: Boolean,
     default: false
