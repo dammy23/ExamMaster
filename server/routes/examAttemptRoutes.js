@@ -1,7 +1,7 @@
 const express = require('express');
 const ExamAttemptService = require('../services/examAttemptService.js');
 const AIGradingService = require('../services/aiGradingService.js');
-const { requireUser } = require('./middleware/auth.js');
+const { requireUser, requireAdmin } = require('./middleware/auth.js');
 const { videoUpload, generateSecureVideoUrl, validateVideoAccessToken, getVideoFileInfo } = require('../utils/videoHandler.js');
 const path = require('path');
 const fs = require('fs').promises;
@@ -591,6 +591,17 @@ router.get('/admin/recent-activity', requireUser, async (req, res) => {
       success: false,
       error: error.message
     });
+  }
+});
+
+// Get all currently in-progress (live) exam attempts across every exam this admin owns
+router.get('/admin/live', requireAdmin, async (req, res) => {
+  try {
+    const attempts = await ExamAttemptService.getLiveAttempts(req.user._id);
+    return res.status(200).json({ success: true, attempts });
+  } catch (error) {
+    console.error(`Error getting live attempts for admin ${req.user.email}:`, error.message);
+    return res.status(500).json({ success: false, error: error.message });
   }
 });
 
