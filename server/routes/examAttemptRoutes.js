@@ -3,6 +3,7 @@ const ExamAttemptService = require('../services/examAttemptService.js');
 const AIGradingService = require('../services/aiGradingService.js');
 const { requireUser, requireAdmin } = require('./middleware/auth.js');
 const { videoUpload, generateSecureVideoUrl, validateVideoAccessToken, getVideoFileInfo } = require('../utils/videoHandler.js');
+const { screenUpload, generateSecureScreenUrl, validateScreenAccessToken, getScreenRecordingFileInfo } = require('../utils/screenRecordingHandler.js');
 const path = require('path');
 const fs = require('fs').promises;
 
@@ -353,6 +354,157 @@ router.get('/video/:examId/:studentId/:filename', async (req, res) => {
     return res.status(500).json({
       success: false,
       error: 'Failed to serve video file'
+    });
+  }
+});
+
+// Start screen recording
+router.post('/screen/start', requireUser, async (req, res) => {
+  try {
+    const { attemptId } = req.body;
+    console.log(`Starting screen recording for attempt: ${attemptId} by user: ${req.user.email}`);
+
+    if (!attemptId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Attempt ID is required'
+      });
+    }
+
+    const result = await ExamAttemptService.startScreenRecording(attemptId, req.user._id);
+
+    console.log(`Screen recording started successfully for user: ${req.user.email}`);
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error(`Error starting screen recording for user ${req.user.email}:`, error.message);
+
+    if (error.message === 'Exam attempt not found' || error.message === 'Invalid attempt ID format') {
+      return res.status(404).json({
+        success: false,
+        error: error.message
+      });
+    }
+
+    if (error.message.includes('not authorized') || error.message.includes('not enabled')) {
+      return res.status(403).json({
+        success: false,
+        error: error.message
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Upload screen recording
+router.post('/screen/upload', requireUser, screenUpload.single('video'), async (req, res) => {
+  try {
+    const { attemptId } = req.body;
+    console.log(`Uploading screen recording for attempt: ${attemptId} by user: ${req.user.email}`);
+
+    if (!attemptId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Attempt ID is required'
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: 'Video file is required'
+      });
+    }
+
+    const videoUrl = generateSecureScreenUrl(req.file.filename, attemptId, req.user._id.toString());
+
+    const result = await ExamAttemptService.updateScreenRecording(
+      attemptId,
+      videoUrl,
+      req.file.size,
+      req.user._id
+    );
+
+    console.log(`Screen recording uploaded successfully for user: ${req.user.email}, file: ${req.file.filename}`);
+    return res.status(200).json({
+      ...result,
+      videoUrl: videoUrl
+    });
+  } catch (error) {
+    console.error(`Error uploading screen recording for user ${req.user.email}:`, error.message);
+
+    if (req.file) {
+      try {
+        const filePath = req.file.path;
+        await fs.unlink(filePath);
+        console.log('Cleaned up uploaded file after error:', filePath);
+      } catch (cleanupError) {
+        console.error('Error cleaning up uploaded file:', cleanupError.message);
+      }
+    }
+
+    if (error.message === 'Exam attempt not found' || error.message === 'Invalid attempt ID format') {
+      return res.status(404).json({
+        success: false,
+        error: error.message
+      });
+    }
+
+    if (error.message.includes('not authorized') || error.message.includes('not enabled')) {
+      return res.status(403).json({
+        success: false,
+        error: error.message
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Serve screen recording files (with access control)
+router.get('/screen/:examId/:studentId/:filename', async (req, res) => {
+  try {
+    const { examId, studentId, filename } = req.params;
+    const { token, t: timestamp } = req.query;
+
+    console.log(`Screen recording access request: exam=${examId}, student=${studentId}, file=${filename}`);
+
+    if (!validateScreenAccessToken(token, filename, examId, studentId, timestamp)) {
+      console.log('Screen recording access denied - invalid token');
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied'
+      });
+    }
+
+    const fileInfo = await getScreenRecordingFileInfo(filename);
+    if (!fileInfo.exists) {
+      console.log('Screen recording file not found:', filename);
+      return res.status(404).json({
+        success: false,
+        error: 'Screen recording not found'
+      });
+    }
+
+    res.setHeader('Content-Type', 'video/mp4');
+    res.setHeader('Content-Length', fileInfo.size);
+    res.setHeader('Accept-Ranges', 'bytes');
+
+    const screenStream = require('fs').createReadStream(fileInfo.path);
+    screenStream.pipe(res);
+
+    console.log('Screen recording file served successfully:', filename);
+  } catch (error) {
+    console.error('Error serving screen recording file:', error.message);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to serve screen recording file'
     });
   }
 });

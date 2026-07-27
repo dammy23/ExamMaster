@@ -718,6 +718,92 @@ class ExamAttemptService {
     }
   }
 
+  // Start screen recording
+  static async startScreenRecording(attemptId, studentId) {
+    try {
+      console.log('ExamAttemptService: Starting screen recording for attempt:', attemptId);
+
+      if (!mongoose.Types.ObjectId.isValid(attemptId)) {
+        throw new Error('Invalid attempt ID format');
+      }
+
+      const attempt = await ExamAttempt.findById(attemptId);
+      if (!attempt) {
+        throw new Error('Exam attempt not found');
+      }
+
+      if (attempt.studentId.toString() !== studentId.toString()) {
+        throw new Error('You are not authorized to modify this exam attempt');
+      }
+
+      if (attempt.status !== 'in-progress') {
+        throw new Error('Cannot start recording for completed exam attempt');
+      }
+
+      if (!attempt.screenRecording.enabled) {
+        throw new Error('Screen recording is not enabled for this exam');
+      }
+
+      attempt.screenRecording.recordingStatus = 'recording';
+      attempt.screenRecording.recordingStartTime = new Date();
+
+      attempt.activityLog.push({
+        activity: 'screen_recording_started',
+        timestamp: new Date()
+      });
+
+      await attempt.save();
+
+      console.log('ExamAttemptService: Screen recording started successfully');
+      return { success: true, message: 'Screen recording started' };
+    } catch (error) {
+      console.error('ExamAttemptService: Error starting screen recording:', error.message);
+      throw error;
+    }
+  }
+
+  // Update screen recording after upload completes
+  static async updateScreenRecording(attemptId, videoUrl, fileSize, studentId) {
+    try {
+      console.log('ExamAttemptService: Updating screen recording for attempt:', attemptId);
+
+      if (!mongoose.Types.ObjectId.isValid(attemptId)) {
+        throw new Error('Invalid attempt ID format');
+      }
+
+      const attempt = await ExamAttempt.findById(attemptId);
+      if (!attempt) {
+        throw new Error('Exam attempt not found');
+      }
+
+      if (attempt.studentId.toString() !== studentId.toString()) {
+        throw new Error('You are not authorized to modify this exam attempt');
+      }
+
+      if (!attempt.screenRecording.enabled) {
+        throw new Error('Screen recording is not enabled for this exam');
+      }
+
+      attempt.screenRecording.videoUrl = videoUrl;
+      attempt.screenRecording.fileSize = fileSize;
+      attempt.screenRecording.recordingEndTime = new Date();
+      attempt.screenRecording.recordingStatus = 'completed';
+
+      attempt.activityLog.push({
+        activity: 'screen_recording_completed',
+        timestamp: new Date()
+      });
+
+      await attempt.save();
+
+      console.log('ExamAttemptService: Screen recording updated successfully');
+      return { success: true, message: 'Screen recording completed' };
+    } catch (error) {
+      console.error('ExamAttemptService: Error updating screen recording:', error.message);
+      throw error;
+    }
+  }
+
   // Get exam attempt with video details for admin review
   static async getAttemptForReview(attemptId, adminId) {
     try {
