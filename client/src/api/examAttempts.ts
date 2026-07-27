@@ -32,11 +32,13 @@ export interface ExamAttempt {
   };
   screenRecording: {
     enabled: boolean;
-    videoUrl?: string;
-    recordingStartTime?: string;
-    recordingEndTime?: string;
+    segments: Array<{
+      videoUrl: string;
+      fileSize: number;
+      startTime: string;
+      endTime: string;
+    }>;
     recordingStatus: 'not_started' | 'recording' | 'completed' | 'failed';
-    fileSize?: number;
     reviewed?: boolean;
     reviewedAt?: string;
   };
@@ -202,15 +204,16 @@ export const startScreenRecording = async (attemptId: string) => {
   }
 };
 
-// Description: Upload screen recording for exam attempt
+// Description: Upload a screen recording segment for exam attempt
 // Endpoint: POST /api/exam-attempts/screen/upload
-// Request: FormData with video file and attemptId
+// Request: FormData with video file, attemptId, and startedAt (ISO timestamp this segment began)
 // Response: { success: boolean, message: string, videoUrl: string }
-export const uploadScreenRecording = async (attemptId: string, videoBlob: Blob) => {
+export const uploadScreenRecording = async (attemptId: string, videoBlob: Blob, startedAt: string) => {
   try {
     const formData = new FormData();
     formData.append('video', videoBlob, 'screen-recording.webm');
     formData.append('attemptId', attemptId);
+    formData.append('startedAt', startedAt);
 
     const response = await api.post('/api/exam-attempts/screen/upload', formData, {
       headers: {
