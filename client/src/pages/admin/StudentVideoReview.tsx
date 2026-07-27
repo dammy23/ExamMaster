@@ -216,7 +216,7 @@ export function StudentVideoReview() {
 
   const renderVideoPlayer = (videoUrl: string) => {
     return (
-      <div className="w-full aspect-video bg-black rounded-lg overflow-hidden">
+      <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
         <video
           controls
           className="w-full h-full"
