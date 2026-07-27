@@ -1,27 +1,26 @@
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Monitor, AlertTriangle, CheckCircle, Minimize2, Maximize2, Move } from "lucide-react"
+import { Monitor, CheckCircle, Minimize2, Maximize2, Move } from "lucide-react"
 import { startScreenRecording, uploadScreenRecording } from "@/api/examAttempts"
 import { getSocket } from "@/lib/socket"
 import { useToast } from "@/hooks/useToast"
 
 interface ScreenRecorderProps {
   attemptId: string
+  stream: MediaStream
+  onStreamLost: () => void
   onRecordingComplete?: (videoUrl: string) => void
 }
 
-export function ScreenRecorder({ attemptId, onRecordingComplete }: ScreenRecorderProps) {
+export function ScreenRecorder({ attemptId, stream, onStreamLost, onRecordingComplete }: ScreenRecorderProps) {
   const { toast } = useToast()
   const [isRecording, setIsRecording] = useState(false)
   const [recordingStatus, setRecordingStatus] = useState<'idle' | 'recording' | 'stopped' | 'uploading' | 'completed'>('idle')
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null)
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
-  const [stream, setStream] = useState<MediaStream | null>(null)
   const [recordingTime, setRecordingTime] = useState(0)
-  const [hasPermissions, setHasPermissions] = useState(false)
-  const [permissionError, setPermissionError] = useState<string>("")
+  const [segmentStartedAt, setSegmentStartedAt] = useState<string>("")
 
   // Floating window states -- offset to the right of VideoRecorder's default position
   // so both widgets don't stack exactly on top of each other when both are enabled
@@ -29,7 +28,6 @@ export function ScreenRecorder({ attemptId, onRecordingComplete }: ScreenRecorde
   const [isDragging, setIsDragging] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
-  const [autoStarted, setAutoStarted] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -38,83 +36,37 @@ export function ScreenRecorder({ attemptId, onRecordingComplete }: ScreenRecorde
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'))
 
+  // Runs once per segment: a fresh `stream` prop (initial grant, or a re-share after a
+  // mid-exam loss) attaches the preview, starts recording, and watches for the track
+  // ending. Cleanup here (not a separate unmount-only effect) is deliberate: it must
+  // stop whichever stream is CURRENT when this effect re-runs or the component
+  // unmounts, not whatever stream was present on first mount.
   useEffect(() => {
-    if (!hasPermissions && !permissionError && !autoStarted) {
-      setAutoStarted(true)
-      requestPermissions().then(() => {
-        setTimeout(() => {
-          startRecording()
-        }, 1000)
-      }).catch((error) => {
-        console.error('Screen share auto-start failed:', error)
-      })
+    if (videoRef.current) {
+      videoRef.current.srcObject = stream
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
-  useEffect(() => {
+    const [track] = stream.getVideoTracks()
+    const handleEnded = () => {
+      stopRecording()
+      onStreamLost()
+    }
+    track.addEventListener('ended', handleEnded)
+
+    startRecording(stream)
+
     return () => {
+      track.removeEventListener('ended', handleEnded)
       if (recordingTimerRef.current) {
         clearInterval(recordingTimerRef.current)
       }
       if (screenshotTimerRef.current) {
         clearInterval(screenshotTimerRef.current)
       }
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop())
-      }
+      stream.getTracks().forEach(t => t.stop())
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream])
-
-  const requestPermissions = async () => {
-    try {
-      console.log('Requesting screen share permission...')
-      const mediaStream = await navigator.mediaDevices.getDisplayMedia({
-        video: {
-          frameRate: { ideal: 10 }
-        }
-      })
-
-      setStream(mediaStream)
-      setHasPermissions(true)
-      setPermissionError("")
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream
-      }
-
-      // Browsers show a native "Stop sharing" control outside the page's UI. If the
-      // student uses it, route that through the same cleanup as the in-app stop path.
-      mediaStream.getVideoTracks()[0].addEventListener('ended', () => {
-        stopRecording()
-      })
-
-      console.log('Screen share permission granted successfully')
-      toast({
-        title: "Screen Share Access Granted",
-        description: "Screen recording will start automatically for exam security",
-      })
-
-      return mediaStream
-    } catch (error: any) {
-      console.error('Error requesting screen share permission:', error)
-      let errorMessage = "Failed to access screen sharing. "
-
-      if (error.name === 'NotAllowedError') {
-        errorMessage += "Please allow screen sharing for exam security."
-      } else {
-        errorMessage += error.message || "Unknown error occurred."
-      }
-
-      setPermissionError(errorMessage)
-      toast({
-        title: "Screen Share Error",
-        description: errorMessage,
-        variant: "destructive"
-      })
-      throw new Error(errorMessage)
-    }
-  }
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (containerRef.current) {
@@ -168,20 +120,12 @@ export function ScreenRecorder({ attemptId, onRecordingComplete }: ScreenRecorde
     socket.emit('screenshot:capture', { attemptId, imageDataUrl })
   }
 
-  const startRecording = async () => {
+  const startRecording = async (mediaStream: MediaStream) => {
     try {
       console.log('Starting screen recording for attempt:', attemptId)
 
-      let mediaStream = stream
-      if (!mediaStream) {
-        mediaStream = await requestPermissions()
-      }
-
-      if (!mediaStream) {
-        throw new Error('No screen share stream available')
-      }
-
       await startScreenRecording(attemptId)
+      setSegmentStartedAt(new Date().toISOString())
 
       const recorder = new MediaRecorder(mediaStream, {
         mimeType: 'video/webm;codecs=vp9'
@@ -294,7 +238,7 @@ export function ScreenRecorder({ attemptId, onRecordingComplete }: ScreenRecorde
       setRecordingStatus('uploading')
       console.log('Uploading screen recording, size:', recordedBlob.size)
 
-      const videoUrl = await uploadScreenRecording(attemptId, recordedBlob)
+      const videoUrl = await uploadScreenRecording(attemptId, recordedBlob, segmentStartedAt)
 
       setRecordingStatus('completed')
       console.log('Screen recording uploaded successfully:', videoUrl)
@@ -350,46 +294,6 @@ export function ScreenRecorder({ attemptId, onRecordingComplete }: ScreenRecorde
       default:
         return <Badge variant="secondary">Unknown</Badge>
     }
-  }
-
-  if (!hasPermissions && !permissionError) {
-    return (
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Monitor className="h-5 w-5" />
-            Screen Recording Setup
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            This exam requires screen recording for security purposes. Please share your screen when prompted.
-          </p>
-          <Button onClick={requestPermissions} className="w-full">
-            Share Screen
-          </Button>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (permissionError) {
-    return (
-      <Card className="w-full max-w-md border-destructive">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-destructive">
-            <AlertTriangle className="h-5 w-5" />
-            Screen Share Required
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-destructive">{permissionError}</p>
-          <Button onClick={requestPermissions} variant="outline" className="w-full">
-            Retry Screen Share
-          </Button>
-        </CardContent>
-      </Card>
-    )
   }
 
   return (
