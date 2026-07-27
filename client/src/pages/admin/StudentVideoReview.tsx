@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { 
-  ArrowLeft, 
-  Video, 
-  Clock, 
-  User, 
+import {
+  ArrowLeft,
+  Video,
+  Monitor,
+  Clock,
+  User,
   Calendar,
   AlertTriangle,
   CheckCircle,
@@ -42,6 +43,16 @@ interface ExamAttemptReview {
   tabSwitches: number
   status: string
   videoRecording?: {
+    enabled: boolean
+    videoUrl?: string
+    recordingStartTime?: string
+    recordingEndTime?: string
+    recordingStatus: string
+    fileSize?: number
+    reviewed?: boolean
+    reviewedAt?: string
+  }
+  screenRecording?: {
     enabled: boolean
     videoUrl?: string
     recordingStartTime?: string
@@ -318,6 +329,7 @@ export function StudentVideoReview() {
           <Tabs defaultValue="video" className="space-y-4">
             <TabsList>
               <TabsTrigger value="video">Video Recording</TabsTrigger>
+              <TabsTrigger value="screen">Screen Recording</TabsTrigger>
               <TabsTrigger value="security">Security Log</TabsTrigger>
               <TabsTrigger value="activity">Activity Timeline</TabsTrigger>
             </TabsList>
@@ -400,6 +412,38 @@ export function StudentVideoReview() {
                     <div className="text-center py-8 text-muted-foreground">
                       <Video className="h-8 w-8 mx-auto mb-2 opacity-50" />
                       <p>Video recording was not enabled for this exam</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="screen" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Monitor className="h-5 w-5" />
+                    Screen Recording
+                    {selectedAttempt.screenRecording?.enabled && (
+                      getVideoStatusBadge(selectedAttempt.screenRecording.recordingStatus)
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {selectedAttempt.screenRecording?.enabled ? (
+                    selectedAttempt.screenRecording.videoUrl ? (
+                      renderVideoPlayer(selectedAttempt.screenRecording.videoUrl)
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Monitor className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p>Screen recording is enabled but not available</p>
+                        <p className="text-sm">Status: {selectedAttempt.screenRecording.recordingStatus}</p>
+                      </div>
+                    )
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Monitor className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p>Screen recording was not enabled for this exam</p>
                     </div>
                   )}
                 </CardContent>
