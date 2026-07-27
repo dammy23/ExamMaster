@@ -8,7 +8,8 @@ const HIGH_SEVERITY_ACTIVITIES = new Set([
   'fullscreen_exit',
   'fullscreen_failed',
   'multi_monitor_detected',
-  'devtools_open_detected'
+  'devtools_open_detected',
+  'screen_share_lost'
 ]);
 
 const MEDIUM_SEVERITY_ACTIVITIES = new Set([
