@@ -30,6 +30,16 @@ export interface ExamAttempt {
     reviewed?: boolean;
     reviewedAt?: string;
   };
+  screenRecording: {
+    enabled: boolean;
+    videoUrl?: string;
+    recordingStartTime?: string;
+    recordingEndTime?: string;
+    recordingStatus: 'not_started' | 'recording' | 'completed' | 'failed';
+    fileSize?: number;
+    reviewed?: boolean;
+    reviewedAt?: string;
+  };
   aiGradingResults?: {
     totalScore: number;
     totalMaxScore: number;
@@ -174,6 +184,42 @@ export const uploadVideoRecording = async (attemptId: string, videoBlob: Blob) =
     return response.data.videoUrl;
   } catch (error: any) {
     console.error('Upload video recording error:', error);
+    throw new Error(error?.response?.data?.error || error.message);
+  }
+};
+
+// Description: Start screen recording for exam attempt
+// Endpoint: POST /api/exam-attempts/screen/start
+// Request: { attemptId: string }
+// Response: { success: boolean, message: string }
+export const startScreenRecording = async (attemptId: string) => {
+  try {
+    const response = await api.post('/api/exam-attempts/screen/start', { attemptId });
+    return response.data;
+  } catch (error: any) {
+    console.error('Start screen recording error:', error);
+    throw new Error(error?.response?.data?.error || error.message);
+  }
+};
+
+// Description: Upload screen recording for exam attempt
+// Endpoint: POST /api/exam-attempts/screen/upload
+// Request: FormData with video file and attemptId
+// Response: { success: boolean, message: string, videoUrl: string }
+export const uploadScreenRecording = async (attemptId: string, videoBlob: Blob) => {
+  try {
+    const formData = new FormData();
+    formData.append('video', videoBlob, 'screen-recording.webm');
+    formData.append('attemptId', attemptId);
+
+    const response = await api.post('/api/exam-attempts/screen/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data.videoUrl;
+  } catch (error: any) {
+    console.error('Upload screen recording error:', error);
     throw new Error(error?.response?.data?.error || error.message);
   }
 };
@@ -360,6 +406,7 @@ export interface LiveAttempt {
   tabSwitches: number;
   latestActivity: { activity: string; timestamp: string } | null;
   updatedAt: string;
+  latestScreenshot?: string;
 }
 
 // Description: Get all currently in-progress exam attempts across every exam this admin owns
