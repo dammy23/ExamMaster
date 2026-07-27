@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react'
 import { login as apiLogin, logout as apiLogout } from '@/api/auth'
 import { getCurrentUser } from '@/api/users'
 import { useToast } from '@/hooks/useToast'
+import { connectSocket, disconnectSocket } from '@/lib/socket'
 
 interface User {
   _id: string
@@ -33,6 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const response = await getCurrentUser()
           const userData = (response as any).data
           setUser(userData)
+          connectSocket()
         } catch (error) {
           localStorage.removeItem('accessToken')
           localStorage.removeItem('refreshToken')
@@ -52,6 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('accessToken', accessToken)
       localStorage.setItem('refreshToken', refreshToken)
       setUser(userData)
+      connectSocket()
 
       toast({
         title: "Success",
@@ -72,6 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('accessToken')
     localStorage.removeItem('refreshToken')
     setUser(null)
+    disconnectSocket()
 
     toast({
       title: "Success",
