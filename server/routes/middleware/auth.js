@@ -53,7 +53,13 @@ const requireAdmin = async (req, res, next) => {
   try {
     // First, check if user is authenticated
     await requireUser(req, res, () => {});
-    
+
+    // requireUser already sends its own response (e.g. 401) when auth fails without
+    // calling next() — if that happened, stop here instead of sending a second response
+    if (res.headersSent) {
+      return;
+    }
+
     if (!req.user) {
       console.log('Auth middleware - User not authenticated');
       return res.status(401).json({ 
