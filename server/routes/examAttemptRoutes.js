@@ -403,7 +403,7 @@ router.post('/screen/start', requireUser, async (req, res) => {
 // Upload screen recording
 router.post('/screen/upload', requireUser, screenUpload.single('video'), async (req, res) => {
   try {
-    const { attemptId } = req.body;
+    const { attemptId, startedAt } = req.body;
     console.log(`Uploading screen recording for attempt: ${attemptId} by user: ${req.user.email}`);
 
     if (!attemptId) {
@@ -426,7 +426,8 @@ router.post('/screen/upload', requireUser, screenUpload.single('video'), async (
       attemptId,
       videoUrl,
       req.file.size,
-      req.user._id
+      req.user._id,
+      startedAt
     );
 
     console.log(`Screen recording uploaded successfully for user: ${req.user.email}, file: ${req.file.filename}`);

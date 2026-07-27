@@ -107,24 +107,29 @@ const examAttemptSchema = new mongoose.Schema({
       type: Boolean,
       default: false
     },
-    videoUrl: {
-      type: String,
-      trim: true
-    },
-    recordingStartTime: {
-      type: Date
-    },
-    recordingEndTime: {
-      type: Date
-    },
+    segments: [{
+      videoUrl: {
+        type: String,
+        trim: true,
+        required: true
+      },
+      fileSize: {
+        type: Number, // in bytes
+        min: 0
+      },
+      startTime: {
+        type: Date,
+        required: true
+      },
+      endTime: {
+        type: Date,
+        required: true
+      }
+    }],
     recordingStatus: {
       type: String,
       enum: ['not_started', 'recording', 'completed', 'failed'],
       default: 'not_started'
-    },
-    fileSize: {
-      type: Number, // in bytes
-      min: 0
     },
     reviewed: {
       type: Boolean,

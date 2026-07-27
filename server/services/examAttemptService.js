@@ -747,7 +747,6 @@ class ExamAttemptService {
       }
 
       attempt.screenRecording.recordingStatus = 'recording';
-      attempt.screenRecording.recordingStartTime = new Date();
 
       attempt.activityLog.push({
         activity: 'screen_recording_started',
@@ -764,8 +763,8 @@ class ExamAttemptService {
     }
   }
 
-  // Update screen recording after upload completes
-  static async updateScreenRecording(attemptId, videoUrl, fileSize, studentId) {
+  // Update screen recording after upload completes -- appends a new segment
+  static async updateScreenRecording(attemptId, videoUrl, fileSize, studentId, startedAt) {
     try {
       console.log('ExamAttemptService: Updating screen recording for attempt:', attemptId);
 
@@ -786,9 +785,15 @@ class ExamAttemptService {
         throw new Error('Screen recording is not enabled for this exam');
       }
 
-      attempt.screenRecording.videoUrl = videoUrl;
-      attempt.screenRecording.fileSize = fileSize;
-      attempt.screenRecording.recordingEndTime = new Date();
+      const endTime = new Date();
+      const startTime = startedAt ? new Date(startedAt) : endTime;
+
+      attempt.screenRecording.segments.push({
+        videoUrl,
+        fileSize,
+        startTime,
+        endTime
+      });
       attempt.screenRecording.recordingStatus = 'completed';
 
       attempt.activityLog.push({
@@ -798,7 +803,7 @@ class ExamAttemptService {
 
       await attempt.save();
 
-      console.log('ExamAttemptService: Screen recording updated successfully');
+      console.log('ExamAttemptService: Screen recording updated successfully, segment count:', attempt.screenRecording.segments.length);
       return { success: true, message: 'Screen recording completed' };
     } catch (error) {
       console.error('ExamAttemptService: Error updating screen recording:', error.message);
