@@ -42,6 +42,12 @@ import { getExamById } from "@/api/exams"
 import { useToast } from "@/hooks/useToast"
 import { VideoRecorder } from "@/components/VideoRecorder"
 import { ScreenRecorder } from "@/components/ScreenRecorder"
+import {
+  detectMultiMonitor,
+  detectVmIndicator,
+  probeSuspiciousExtensions,
+  createDevToolsWatcher,
+} from "@/lib/cheatDetection"
 
 export function ExamAttempt() {
   const { id } = useParams<{ id: string }>()
@@ -138,6 +144,26 @@ export function ExamAttempt() {
     }
 
     enterFullScreen()
+
+    // One-time environment heuristics (checked once at start, not expected to
+    // change mid-exam)
+    if (detectMultiMonitor()) {
+      logExamActivity(attemptId, 'multi_monitor_detected')
+    }
+    if (detectVmIndicator()) {
+      logExamActivity(attemptId, 'vm_indicator_detected')
+    }
+    probeSuspiciousExtensions().then(detected => {
+      if (detected) {
+        logExamActivity(attemptId, 'suspicious_extension_detected')
+      }
+    })
+
+    // Continuous DevTools-open detection (edge-triggered — only fires on the
+    // closed-to-open transition)
+    const stopDevToolsWatcher = createDevToolsWatcher(() => {
+      logExamActivity(attemptId, 'devtools_open_detected')
+    })
 
     // Handle visibility change (tab switching detection)
     const handleVisibilityChange = () => {
@@ -277,6 +303,7 @@ export function ExamAttempt() {
 
     // Cleanup function
     return () => {
+      stopDevToolsWatcher()
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('blur', handleFocusLoss)
       document.removeEventListener('fullscreenchange', handleFullscreenChange)
