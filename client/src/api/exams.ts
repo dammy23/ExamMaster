@@ -27,6 +27,7 @@ export interface Exam {
   negativeMarkingValue: number;
   maxAttempts: number; // 0 means unlimited
   videoRecording: boolean;
+  screenRecording: boolean;
   mobileEnabled: boolean;
   gradingMethod: 'ai' | 'manual';
   assignedStudents: string[];

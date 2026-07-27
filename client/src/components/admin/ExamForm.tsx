@@ -40,6 +40,7 @@ export interface ExamFormData {
   questionsPerExam?: number
   useRandomQuestions: boolean
   videoRecording: boolean
+  screenRecording: boolean
   mobileEnabled: boolean
   gradingMethod: 'ai' | 'manual'
   assignedGroups: string[]
@@ -61,6 +62,7 @@ const CREATE_DEFAULT_VALUES: Partial<ExamFormData> = {
   useRandomQuestions: false,
   questionsPerExam: undefined,
   videoRecording: false,
+  screenRecording: false,
   mobileEnabled: false,
   gradingMethod: 'ai',
   assignedGroups: []
@@ -566,6 +568,19 @@ export function ExamForm({ mode, initialValues, onSubmit, submitting }: ExamForm
                 <Switch
                   checked={watch("videoRecording")}
                   onCheckedChange={(checked) => setValue("videoRecording", checked)}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Screen Recording</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Record the student's screen during exam
+                  </p>
+                </div>
+                <Switch
+                  checked={watch("screenRecording")}
+                  onCheckedChange={(checked) => setValue("screenRecording", checked)}
                 />
               </div>
 

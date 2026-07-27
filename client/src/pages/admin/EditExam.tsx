@@ -50,6 +50,7 @@ export function EditExam() {
         useRandomQuestions: exam.questionsPerExam ? true : false,
         questionsPerExam: exam.questionsPerExam || undefined,
         videoRecording: exam.videoRecording || false,
+        screenRecording: exam.screenRecording || false,
         mobileEnabled: exam.mobileEnabled || false,
         gradingMethod: exam.gradingMethod || 'ai',
         assignedGroups: exam.assignedGroups || []
