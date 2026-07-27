@@ -42,12 +42,14 @@ import { getExamById } from "@/api/exams"
 import { useToast } from "@/hooks/useToast"
 import { VideoRecorder } from "@/components/VideoRecorder"
 import { ScreenRecorder } from "@/components/ScreenRecorder"
+import { ScreenShareGate } from "@/components/ScreenShareGate"
 import {
   detectMultiMonitor,
   detectVmIndicator,
   probeSuspiciousExtensions,
   createDevToolsWatcher,
 } from "@/lib/cheatDetection"
+import { requestEntireScreenShare } from "@/lib/screenShareGate"
 
 export function ExamAttempt() {
   const { id } = useParams<{ id: string }>()
@@ -68,6 +70,9 @@ export function ExamAttempt() {
   const [focusLostCount, setFocusLostCount] = useState(0)
   const [videoRecordingEnabled, setVideoRecordingEnabled] = useState(false)
   const [screenRecordingEnabled, setScreenRecordingEnabled] = useState(false)
+  const [screenShareBlocked, setScreenShareBlocked] = useState(false)
+  const [screenShareStream, setScreenShareStream] = useState<MediaStream | null>(null)
+  const [screenShareError, setScreenShareError] = useState<string>("")
   const [attemptNumber, setAttemptNumber] = useState(1)
   const [maxAttempts, setMaxAttempts] = useState(1)
   const [isFullscreenMode, setIsFullscreenMode] = useState(false)
@@ -337,22 +342,17 @@ export function ExamAttempt() {
 
   const initializeExam = async () => {
     try {
-      const [examResponse, attemptResponse] = await Promise.all([
-        getExamById(id!),
-        startExamAttempt(id!)
-      ])
-
+      const examResponse = await getExamById(id!)
       const examData = (examResponse as any).exam
-      const attemptData = (attemptResponse as any)
-
       setExam(examData)
-      setQuestions(attemptData.questions)
-      setAttemptId(attemptData.attemptId)
-      setTimeRemaining(attemptData.remainingTime || examData.duration * 60) // Use remainingTime from attempt or fallback to full duration
-      setVideoRecordingEnabled(attemptData.videoRecording || false)
-      setScreenRecordingEnabled(attemptData.screenRecording || false)
-      setAttemptNumber(attemptData.attemptNumber || 1)
-      setMaxAttempts(attemptData.maxAttempts || 1)
+
+      if (examData.screenRecording) {
+        setLoading(false)
+        await runScreenShareGate(examData)
+        return
+      }
+
+      await beginAttempt(examData)
     } catch (error: any) {
       toast({
         title: "Error",
@@ -362,6 +362,62 @@ export function ExamAttempt() {
       navigate('/student')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const beginAttempt = async (examData: any) => {
+    const attemptResponse = await startExamAttempt(id!)
+    const attemptData = attemptResponse as any
+
+    setQuestions(attemptData.questions)
+    setAttemptId(attemptData.attemptId)
+    setTimeRemaining(attemptData.remainingTime || examData.duration * 60) // Use remainingTime from attempt or fallback to full duration
+    setVideoRecordingEnabled(attemptData.videoRecording || false)
+    setScreenRecordingEnabled(attemptData.screenRecording || false)
+    setAttemptNumber(attemptData.attemptNumber || 1)
+    setMaxAttempts(attemptData.maxAttempts || 1)
+  }
+
+  const attemptScreenShare = async (): Promise<boolean> => {
+    setScreenShareError("")
+    try {
+      const mediaStream = await requestEntireScreenShare()
+      setScreenShareStream(mediaStream)
+      setScreenShareBlocked(false)
+      return true
+    } catch (error: any) {
+      setScreenShareError(
+        error.name === 'WrongSurfaceError'
+          ? error.message
+          : error.name === 'NotAllowedError'
+            ? 'Please allow screen sharing of your entire screen to continue.'
+            : (error.message || 'Failed to access screen sharing.')
+      )
+      return false
+    }
+  }
+
+  const runScreenShareGate = async (examData: any) => {
+    setScreenShareBlocked(true)
+    const granted = await attemptScreenShare()
+    if (granted) {
+      await beginAttempt(examData)
+    }
+  }
+
+  const handleRetryScreenShare = async () => {
+    const granted = await attemptScreenShare()
+    if (granted && !attemptId) {
+      await beginAttempt(exam)
+    }
+  }
+
+  const handleScreenShareLost = () => {
+    setScreenShareStream(null)
+    setScreenShareBlocked(true)
+    setScreenShareError("")
+    if (attemptId) {
+      logExamActivity(attemptId, 'screen_share_lost')
     }
   }
 
@@ -480,6 +536,16 @@ export function ExamAttempt() {
         title="Exam not found"
         action={{ label: "Return to Dashboard", onClick: () => navigate('/student') }}
         className="min-h-screen"
+      />
+    )
+  }
+
+  if (screenShareBlocked) {
+    return (
+      <ScreenShareGate
+        mode={attemptId ? 'reshare' : 'initial'}
+        error={screenShareError}
+        onRetry={handleRetryScreenShare}
       />
     )
   }
@@ -748,8 +814,8 @@ export function ExamAttempt() {
         <VideoRecorder attemptId={attemptId} />
       )}
       {/* Floating Screen Recorder (if enabled) -- independent of video recording, can run alongside it */}
-      {screenRecordingEnabled && (
-        <ScreenRecorder attemptId={attemptId} />
+      {screenRecordingEnabled && screenShareStream && (
+        <ScreenRecorder attemptId={attemptId} stream={screenShareStream} onStreamLost={handleScreenShareLost} />
       )}
     </div>
   )
