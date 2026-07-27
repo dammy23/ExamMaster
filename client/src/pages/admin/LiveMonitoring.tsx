@@ -11,10 +11,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Activity, AlertTriangle } from "lucide-react"
+import { Activity, AlertTriangle, Monitor } from "lucide-react"
 import { getLiveAttempts, type LiveAttempt } from "@/api/examAttempts"
 import { getSocket } from "@/lib/socket"
 import { useToast } from "@/hooks/useToast"
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
 
 interface AlertEntry {
   attemptId: string
@@ -116,14 +117,24 @@ export function LiveMonitoring() {
       })
     }
 
+    const handleScreenshot = (payload: any) => {
+      setAttempts(prev => prev.map(a =>
+        a._id === payload.attemptId
+          ? { ...a, latestScreenshot: payload.imageDataUrl }
+          : a
+      ))
+    }
+
     socket.on('attempt:started', handleStarted)
     socket.on('attempt:activity', handleActivity)
     socket.on('attempt:ended', handleEnded)
+    socket.on('screenshot:pushed', handleScreenshot)
 
     return () => {
       socket.off('attempt:started', handleStarted)
       socket.off('attempt:activity', handleActivity)
       socket.off('attempt:ended', handleEnded)
+      socket.off('screenshot:pushed', handleScreenshot)
     }
   }, [toast])
 
@@ -161,6 +172,7 @@ export function LiveMonitoring() {
                     <TableHead>Elapsed</TableHead>
                     <TableHead>Tab Switches</TableHead>
                     <TableHead>Latest Activity</TableHead>
+                    <TableHead>Screen</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -182,6 +194,30 @@ export function LiveMonitoring() {
                           <Badge variant="outline">{attempt.latestActivity.activity.replace(/_/g, ' ')}</Badge>
                         ) : (
                           <span className="text-sm text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {attempt.latestScreenshot ? (
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <button className="block h-10 w-16 overflow-hidden rounded border">
+                                <img
+                                  src={attempt.latestScreenshot}
+                                  alt={`${attempt.studentName}'s screen`}
+                                  className="h-full w-full object-cover"
+                                />
+                              </button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-3xl">
+                              <img
+                                src={attempt.latestScreenshot}
+                                alt={`${attempt.studentName}'s screen`}
+                                className="w-full rounded"
+                              />
+                            </DialogContent>
+                          </Dialog>
+                        ) : (
+                          <Monitor className="h-4 w-4 text-muted-foreground" />
                         )}
                       </TableCell>
                       <TableCell>
