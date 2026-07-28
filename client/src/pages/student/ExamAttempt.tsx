@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -76,12 +76,14 @@ export function ExamAttempt() {
   const [attemptNumber, setAttemptNumber] = useState(1)
   const [maxAttempts, setMaxAttempts] = useState(1)
   const [isFullscreenMode, setIsFullscreenMode] = useState(false)
+  const hasInitializedRef = useRef(false)
 
   useEffect(() => {
-    if (id) {
+    if (id && !hasInitializedRef.current) {
+      hasInitializedRef.current = true
       initializeExam()
     }
-    
+
     // Check if we're in fullscreen mode (opened from new window)
     const isInFullscreenWindow = window.location.pathname.startsWith('/exam-fullscreen')
     setIsFullscreenMode(isInFullscreenWindow)
@@ -110,8 +112,11 @@ export function ExamAttempt() {
             localStorage.setItem('refreshToken', event.data.refreshToken)
           }
 
-          // Trigger a re-initialization of the exam now that we have auth tokens
-          if (event.data.accessToken && id) {
+          // Re-initialize only if the mount-time init never ran (e.g. id wasn't
+          // ready yet) -- otherwise this is a redundant token-sync resend and
+          // must not re-trigger the exam/screen-share gate a second time.
+          if (event.data.accessToken && id && !hasInitializedRef.current) {
+            hasInitializedRef.current = true
             setTimeout(() => {
               initializeExam()
             }, 100)
