@@ -24,6 +24,37 @@ import { getExamAttemptsForReview, getAttemptForReview, markAttemptReviewed } fr
 import { getExamById } from "@/api/exams"
 import { useToast } from "@/hooks/useToast"
 
+function RecordingPlayer({ videoUrl }: { videoUrl: string }) {
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+
+  return (
+    <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
+      <video
+        controls
+        className="w-full h-full"
+        onLoadStart={() => { setLoading(true); setError(false) }}
+        onCanPlay={() => setLoading(false)}
+        onError={() => { setLoading(false); setError(true) }}
+      >
+        <source src={videoUrl} type="video/webm" />
+        Your browser does not support the video tag.
+      </video>
+      {loading && !error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+        </div>
+      )}
+      {error && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black bg-opacity-75 text-white text-sm">
+          <AlertTriangle className="h-6 w-6" />
+          <p>Failed to load this recording.</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface ExamAttemptReview {
   _id: string
   studentId: {
@@ -82,7 +113,6 @@ export function StudentVideoReview() {
   const [attempts, setAttempts] = useState<ExamAttemptReview[]>([])
   const [selectedAttempt, setSelectedAttempt] = useState<ExamAttemptReview | null>(null)
   const [loading, setLoading] = useState(true)
-  const [videoLoading, setVideoLoading] = useState(false)
   const [markingReviewed, setMarkingReviewed] = useState(false)
 
   useEffect(() => {
@@ -227,28 +257,6 @@ export function StudentVideoReview() {
     navigate(`/admin/exams/${examId}/video-review/${attempt._id}`)
   }
 
-  const renderVideoPlayer = (videoUrl: string) => {
-    return (
-      <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
-        <video
-          controls
-          className="w-full h-full"
-          onLoadStart={() => setVideoLoading(true)}
-          onCanPlay={() => setVideoLoading(false)}
-        >
-          <source src={videoUrl} type="video/webm" />
-          <source src={videoUrl} type="video/mp4" />
-          Your browser does not support the video tag.
-        </video>
-        {videoLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-          </div>
-        )}
-      </div>
-    )
-  }
-
   if (loading) {
     return <LoadingState label="Loading video review..." />
   }
@@ -368,7 +376,7 @@ export function StudentVideoReview() {
                   {selectedAttempt.videoRecording?.enabled ? (
                     selectedAttempt.videoRecording.videoUrl ? (
                       <div className="space-y-4">
-                        {renderVideoPlayer(selectedAttempt.videoRecording.videoUrl)}
+                        <RecordingPlayer videoUrl={selectedAttempt.videoRecording.videoUrl} />
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                           <div>
                             <p className="font-medium">Recording Started</p>
@@ -440,7 +448,7 @@ export function StudentVideoReview() {
                             <p className="text-sm font-medium">
                               Segment {index + 1} · {new Date(segment.startTime).toLocaleTimeString()}–{new Date(segment.endTime).toLocaleTimeString()}
                             </p>
-                            {renderVideoPlayer(segment.videoUrl)}
+                            <RecordingPlayer videoUrl={segment.videoUrl} />
                           </div>
                         ))}
                       </div>

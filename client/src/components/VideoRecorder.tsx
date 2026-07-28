@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,7 +12,18 @@ interface VideoRecorderProps {
   onRecordingComplete?: (videoUrl: string) => void
 }
 
-export function VideoRecorder({ attemptId, onRecordingComplete }: VideoRecorderProps) {
+export interface VideoRecorderHandle {
+  // Stops any active recording and waits for its upload to finish (or to give
+  // up), so a caller can be sure the video is saved before tearing the page
+  // down -- unmounting alone only stops the stream, it never finalizes the
+  // MediaRecorder or uploads the buffered chunks.
+  finalize: () => Promise<void>
+}
+
+export const VideoRecorder = forwardRef<VideoRecorderHandle, VideoRecorderProps>(function VideoRecorder(
+  { attemptId, onRecordingComplete },
+  ref
+) {
   const { toast } = useToast()
   const [isRecording, setIsRecording] = useState(false)
   const [recordingStatus, setRecordingStatus] = useState<'idle' | 'recording' | 'stopped' | 'uploading' | 'completed'>('idle')
@@ -34,6 +45,14 @@ export function VideoRecorder({ attemptId, onRecordingComplete }: VideoRecorderP
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const containerRef = useRef<HTMLDivElement>(null)
+  const finalizeResolveRef = useRef<(() => void) | null>(null)
+
+  const resolveFinalize = () => {
+    if (finalizeResolveRef.current) {
+      finalizeResolveRef.current()
+      finalizeResolveRef.current = null
+    }
+  }
 
   useEffect(() => {
     // Auto-request permissions and start recording when component mounts
@@ -267,6 +286,7 @@ export function VideoRecorder({ attemptId, onRecordingComplete }: VideoRecorderP
         description: "No recording available to upload",
         variant: "destructive"
       })
+      resolveFinalize()
       return
     }
 
@@ -296,6 +316,8 @@ export function VideoRecorder({ attemptId, onRecordingComplete }: VideoRecorderP
         description: error.message || "Failed to upload video recording",
         variant: "destructive"
       })
+    } finally {
+      resolveFinalize()
     }
   }
 
@@ -305,6 +327,20 @@ export function VideoRecorder({ attemptId, onRecordingComplete }: VideoRecorderP
       uploadRecording()
     }
   }, [recordingStatus, recordedBlob])
+
+  useImperativeHandle(ref, () => ({
+    finalize: () => new Promise<void>((resolve) => {
+      if (recordingStatus === 'recording') {
+        finalizeResolveRef.current = resolve
+        stopRecording()
+      } else if (recordingStatus === 'uploading' || recordingStatus === 'stopped') {
+        finalizeResolveRef.current = resolve
+      } else {
+        resolve()
+      }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [recordingStatus])
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60)
@@ -481,4 +517,4 @@ export function VideoRecorder({ attemptId, onRecordingComplete }: VideoRecorderP
       )}
     </div>
   )
-}
+})

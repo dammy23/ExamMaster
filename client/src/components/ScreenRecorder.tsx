@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Monitor, CheckCircle, Minimize2, Maximize2, Move } from "lucide-react"
@@ -13,7 +13,18 @@ interface ScreenRecorderProps {
   onRecordingComplete?: (videoUrl: string) => void
 }
 
-export function ScreenRecorder({ attemptId, stream, onStreamLost, onRecordingComplete }: ScreenRecorderProps) {
+export interface ScreenRecorderHandle {
+  // Stops any active recording and waits for its upload to finish (or to give
+  // up), so a caller can be sure the segment is saved before tearing the page
+  // down -- unmounting alone only stops the stream, it never finalizes the
+  // MediaRecorder or uploads the buffered chunks.
+  finalize: () => Promise<void>
+}
+
+export const ScreenRecorder = forwardRef<ScreenRecorderHandle, ScreenRecorderProps>(function ScreenRecorder(
+  { attemptId, stream, onStreamLost, onRecordingComplete },
+  ref
+) {
   const { toast } = useToast()
   const [isRecording, setIsRecording] = useState(false)
   const [recordingStatus, setRecordingStatus] = useState<'idle' | 'recording' | 'stopped' | 'uploading' | 'completed'>('idle')
@@ -35,6 +46,14 @@ export function ScreenRecorder({ attemptId, stream, onStreamLost, onRecordingCom
   const chunksRef = useRef<Blob[]>([])
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'))
+  const finalizeResolveRef = useRef<(() => void) | null>(null)
+
+  const resolveFinalize = () => {
+    if (finalizeResolveRef.current) {
+      finalizeResolveRef.current()
+      finalizeResolveRef.current = null
+    }
+  }
 
   // Runs once per segment: a fresh `stream` prop (initial grant, or a re-share after a
   // mid-exam loss) attaches the preview, starts recording, and watches for the track
@@ -231,6 +250,7 @@ export function ScreenRecorder({ attemptId, stream, onStreamLost, onRecordingCom
         description: "No screen recording available to upload",
         variant: "destructive"
       })
+      resolveFinalize()
       return
     }
 
@@ -260,6 +280,8 @@ export function ScreenRecorder({ attemptId, stream, onStreamLost, onRecordingCom
         description: error.message || "Failed to upload screen recording",
         variant: "destructive"
       })
+    } finally {
+      resolveFinalize()
     }
   }
 
@@ -269,6 +291,20 @@ export function ScreenRecorder({ attemptId, stream, onStreamLost, onRecordingCom
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recordingStatus, recordedBlob])
+
+  useImperativeHandle(ref, () => ({
+    finalize: () => new Promise<void>((resolve) => {
+      if (recordingStatus === 'recording') {
+        finalizeResolveRef.current = resolve
+        stopRecording()
+      } else if (recordingStatus === 'uploading' || recordingStatus === 'stopped') {
+        finalizeResolveRef.current = resolve
+      } else {
+        resolve()
+      }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [recordingStatus])
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60)
@@ -372,4 +408,4 @@ export function ScreenRecorder({ attemptId, stream, onStreamLost, onRecordingCom
       )}
     </div>
   )
-}
+})

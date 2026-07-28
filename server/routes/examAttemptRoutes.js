@@ -340,8 +340,11 @@ router.get('/video/:examId/:studentId/:filename', async (req, res) => {
       });
     }
 
-    // Set appropriate headers
-    res.setHeader('Content-Type', 'video/mp4');
+    // Set appropriate headers -- always webm: both recorders (VideoRecorder.tsx,
+    // ScreenRecorder.tsx) hardcode MediaRecorder's mimeType to video/webm, so a
+    // mismatched Content-Type here (e.g. video/mp4) makes the browser fail to
+    // decode the response even though the bytes are fine.
+    res.setHeader('Content-Type', 'video/webm');
     res.setHeader('Content-Length', videoInfo.size);
     res.setHeader('Accept-Ranges', 'bytes');
 
@@ -494,7 +497,8 @@ router.get('/screen/:examId/:studentId/:filename', async (req, res) => {
       });
     }
 
-    res.setHeader('Content-Type', 'video/mp4');
+    // Always webm -- see the matching comment on the /video serve route above.
+    res.setHeader('Content-Type', 'video/webm');
     res.setHeader('Content-Length', fileInfo.size);
     res.setHeader('Accept-Ranges', 'bytes');
 

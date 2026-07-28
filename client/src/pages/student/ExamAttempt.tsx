@@ -40,8 +40,8 @@ import {
 } from "@/api/examAttempts"
 import { getExamById } from "@/api/exams"
 import { useToast } from "@/hooks/useToast"
-import { VideoRecorder } from "@/components/VideoRecorder"
-import { ScreenRecorder } from "@/components/ScreenRecorder"
+import { VideoRecorder, type VideoRecorderHandle } from "@/components/VideoRecorder"
+import { ScreenRecorder, type ScreenRecorderHandle } from "@/components/ScreenRecorder"
 import { ScreenShareGate } from "@/components/ScreenShareGate"
 import {
   detectMultiMonitor,
@@ -77,6 +77,8 @@ export function ExamAttempt() {
   const [maxAttempts, setMaxAttempts] = useState(1)
   const [isFullscreenMode, setIsFullscreenMode] = useState(false)
   const hasInitializedRef = useRef(false)
+  const videoRecorderRef = useRef<VideoRecorderHandle>(null)
+  const screenRecorderRef = useRef<ScreenRecorderHandle>(null)
 
   useEffect(() => {
     if (id && !hasInitializedRef.current) {
@@ -452,8 +454,26 @@ export function ExamAttempt() {
     })
   }
 
+  // Neither recorder finalizes on unmount alone -- it only stops the media
+  // stream, never the MediaRecorder itself -- so without this, a recording
+  // still in progress at submit time is silently discarded. Waits for the
+  // in-flight upload(s), capped so a slow/broken upload can't block submission
+  // indefinitely.
+  const finalizeRecordings = async () => {
+    const finalizers: Promise<void>[] = []
+    if (videoRecorderRef.current) finalizers.push(videoRecorderRef.current.finalize())
+    if (screenRecorderRef.current) finalizers.push(screenRecorderRef.current.finalize())
+    if (finalizers.length === 0) return
+
+    await Promise.race([
+      Promise.all(finalizers),
+      new Promise<void>(resolve => setTimeout(resolve, 15000))
+    ])
+  }
+
   const handleAutoSubmit = async () => {
     try {
+      await finalizeRecordings()
       await submitExamAttempt(attemptId)
       toast({
         title: "Time's Up!",
@@ -479,6 +499,7 @@ export function ExamAttempt() {
 
   const handleManualSubmit = async () => {
     try {
+      await finalizeRecordings()
       const response = await submitExamAttempt(attemptId)
       const result = response as any
 
@@ -816,11 +837,11 @@ export function ExamAttempt() {
       
       {/* Floating Video Recorder (if enabled) */}
       {videoRecordingEnabled && (
-        <VideoRecorder attemptId={attemptId} />
+        <VideoRecorder ref={videoRecorderRef} attemptId={attemptId} />
       )}
       {/* Floating Screen Recorder (if enabled) -- independent of video recording, can run alongside it */}
       {screenRecordingEnabled && screenShareStream && (
-        <ScreenRecorder attemptId={attemptId} stream={screenShareStream} onStreamLost={handleScreenShareLost} />
+        <ScreenRecorder ref={screenRecorderRef} attemptId={attemptId} stream={screenShareStream} onStreamLost={handleScreenShareLost} />
       )}
     </div>
   )
